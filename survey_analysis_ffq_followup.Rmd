@@ -1,0 +1,360 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+First let's load the survey data.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(rstatix)
+load("../../data/scored_data_coded.RData")
+```
+
+## Compare Session 2 and Session 1
+
+
+```{r}
+
+
+
+
+promote_minus_prevent <- scored %>% 
+  #filter for FFQ
+  filter(scale_name %in% c("FFQ","FCI")) %>%
+  #filter for the two cols we're interested in
+  filter(scored_scale %in% c("cancer_promoting","cancer_preventing")) %>%
+  #throw it out wide
+  select(subid,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #create a composite measure
+  mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,subid,cancer_promoting_minus_preventing) %>% 
+  tidyr::spread(survey_name,cancer_promoting_minus_preventing)
+
+#pmp_fci <- promote_minus_prevent %>% filter(scale_name=="FCI") %>% select(-scale_name)
+pmp_ffq <- promote_minus_prevent %>% filter(scale_name=="FFQ") %>% select(-scale_name)
+
+
+
+```
+
+
+## Compare the conditions....
+
+
+
+```{r}
+participants_with_promote_prevent <- merge(ppt_list_clean,pmp_ffq,by = "subid")
+participants_with_promote_prevent$s2_minus_s1 <- participants_with_promote_prevent$`DEV Session 2 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
+
+```
+
+First do a qualitative look at the three conditions...
+```{r}
+ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_s1))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 - S1",title = "Cancer Promoting - Preventing Foods on the FFQ scale",caption="S2 minus S1")
+
+
+```
+
+Take the lowest session and make it the baseline 
+
+```{r}
+arm_comparison <- participants_with_promote_prevent %>% group_by(arm_session_randlabel) %>% summarise(mean_s2_minus_s1 = mean(s2_minus_s1,na.rm=TRUE))
+arm_comparison <- arm_comparison %>% arrange(mean_s2_minus_s1)
+
+
+#now do the levelling, in order from lowest to highest.
+participants_with_promote_prevent$arm_session_randlabel <- factor(participants_with_promote_prevent$arm_session_randlabel,levels=arm_comparison$arm_session_randlabel)
+```
+
+
+
+```{r}
+
+model_session_2_conditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel, participants_with_promote_prevent)
+model_session_2_noconditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`, participants_with_promote_prevent)
+summary(model_session_2_conditions)
+
+```
+
+There does appear to be differences between the conditions...let's take a look at the residuals of the model without conditions, but with the conditions classifying...
+
+```{r}
+participants_with_promote_prevent[as.integer(names(model_session_2_noconditions$residuals)),"residuals"] <- model_session_2_noconditions$residuals
+```
+
+
+```{r}
+ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=residuals))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 Residual",title = "Cancer Promoting - Preventing Foods on the FFQ scale",subtitle="Residuals at S2 controlling for S1")
+```
+
+
+## Check assumptions for ANCOVA
+
+
+### Linearity
+
+```{r}
+ggplot(participants_with_promote_prevent,aes(`DEV Session 1 Surveys`,`DEV Session 2 Surveys`,group=arm_session_randlabel,color=arm_session_randlabel))+
+  geom_point()+geom_smooth(method="lm")+facet_wrap(~arm_session_randlabel,nrow = 2)
+```
+
+
+### Homogeneity of regression slopes
+
+```{r}
+anova_test(participants_with_promote_prevent,`DEV Session 2 Surveys`~arm_session_randlabel*`DEV Session 1 Surveys`)
+```
+
+Great: no interaction observed.
+
+### Normality of residuals
+
+
+```{r}
+library(broom)
+model.metrics<- augment(model_session_2_conditions) %>% select(-.hat, -.sigma, -.fitted) # Remove details
+head(model.metrics, 3)
+```
+
+Test for non-normality of residuals
+
+```{r}
+library(rstatix)
+shapiro_test(model.metrics$.resid)
+```
+
+### homogenety of variances
+
+```{r}
+#model.metrics %>% levene_test(.resid~arm_session_randlabel)
+```
+
+
+### outliers
+
+```{r}
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>%
+  as.data.frame()
+```
+
+
+# allow for date started
+OK great - we can do this all again for the other inventory we are measuring. then we have to make a decision to pull back the data and inspect which groups are which!
+
+Also--do we want to control for other factors, like Month Began?
+
+standard way to do this in this field might be just try to add a linear trend, then quadratic, then cubic, and so on until it doesn't improve fit.
+
+```{r}
+#adding periodicity into a linear model 
+x <- seq(from=0,to=1,by=0.1)
+y <- sin(x*pi)
+plot(x,y)
+y1 <- sin(x*2*pi)
+plot(x,y1)
+```
+
+
+
+
+
+```{r}
+library(lubridate)
+min_date <- min(participants_with_promote_prevent$date_0)
+participants_with_promote_prevent$date_linear <- as.numeric(as.POSIXct(participants_with_promote_prevent$date_0))
+# summary(lm(`DEV Session 1 Surveys`~ date_linear, participants_with_promote_prevent))
+# summary(lm(`DEV Session 1 Surveys`~ I(date_linear^3), participants_with_promote_prevent))
+#no evidence of any date effect here. we could try for a simple seasonality (period of 4 with 2)
+participants_with_promote_prevent <- 
+  participants_with_promote_prevent %>% #select(date_linear,date_0) %>% 
+  mutate(date_years_linear=as.numeric(difftime(date_0,min(min_date),unit="days"))/365) %>%
+  mutate(day_in_year=yday(date_0)) %>%
+  mutate(date_years_period1 = sin(date_years_linear*pi)) %>%
+  mutate(date_years_period2 = sin(date_years_linear*2*pi)) %>%
+  mutate(year_as_factor = as.factor(year(date_0)))
+
+
+
+summary(lm(`DEV Session 1 Surveys`~ date_years_linear + date_years_period1 + date_years_period2, participants_with_promote_prevent))
+
+#no sign that any of this makes a difference...
+
+
+```
+
+But there is an effect of time on the variable we are trying to predict...
+
+we should probably control for this.
+
+```{r}
+summary(lm(s2_minus_s1~ date_years_linear + date_years_period1, participants_with_promote_prevent))
+summary(lm(s2_minus_s1~ year_as_factor, participants_with_promote_prevent)) #close enough to significance to consider adding it in.
+summary(lm(s2_minus_s1~ day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent))
+```
+
+
+```{r}
+model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent)
+summary(model_session_2_m2)
+```
+
+When we years as factor, and allow each year to vary on their own sinusoidal function, we get a much weaker p value for the intervention. It's still significant, but weaker.
+
+Ideally we should look to test the interaction between group and the linear features but we'll leave that for now.
+
+We might also be raising too high a bar here: this is a lot of nuisance factors to throw in and it might be overly conservative.
+
+Because of COVID, it's probably important to add in some seasonal variance, because things get so unpredictable.
+
+
+The following must be re-done each time we run this file but:
+Umpqua=Pike=Cognitive re-appraisal - the lowest-ranked group
+McKenzie=Georgio=Behavioral training - highest ranked group
+Willamette=Kirk - control group
+
+This shows that Umpqua has the lowest promote-prevent score, i.e., the least improvement from T1 to T2. The next highest ranked is Kirk/Williamette, followed by Georgio/McKenzie which is highest.
+
+So we have a significant differnce between Umpqua and McKenzie
+
+## Split up: which arm is more relevant?
+
+To apply an informal Benjamini-Hochberg multiple comparison correction, to be significant, at least one of these must be p<0.025 and the following one must be p<0.05
+
+```{r}
+
+promote_and_prevent <- scored %>% 
+  #filter for FFQ
+  filter(scale_name %in% c("FFQ")) %>%
+  #filter for the two cols we're interested in
+  filter(scored_scale %in% c("cancer_promoting","cancer_preventing")) %>%
+  #throw it out wide
+  select(subid,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #create a composite measure
+  mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(survey_name,subid,cancer_promoting_minus_preventing,cancer_promoting,cancer_preventing) %>% 
+  tidyr::pivot_longer(c(cancer_promoting_minus_preventing,cancer_promoting,cancer_preventing),names_to="measure_name") %>%
+  tidyr::spread(survey_name,value)
+
+
+participants_with_promote_prevent <- merge(ppt_list_clean,promote_and_prevent,by.x = "subid",by.y="subid")
+participants_with_promote_prevent$s2_minus_s1 <- participants_with_promote_prevent$`DEV Session 2 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
+
+```
+
+
+
+```{r}
+  ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_s1))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+labs(y="Promote - Prevent S2 - S1",title = "Cancer Promoting - Preventing Foods on the FFQ scale",caption="S2 minus S1")+facet_grid(~measure_name)
+
+
+```
+
+
+
+
+
+
+
+
+```{r}
+library(lubridate)
+min_date <- min(participants_with_promote_prevent$date_0)
+participants_with_promote_prevent$date_linear <- as.numeric(as.POSIXct(participants_with_promote_prevent$date_0))
+# summary(lm(`DEV Session 1 Surveys`~ date_linear, participants_with_promote_prevent))
+# summary(lm(`DEV Session 1 Surveys`~ I(date_linear^3), participants_with_promote_prevent))
+#no evidence of any date effect here. we could try for a simple seasonality (period of 4 with 2)
+participants_with_promote_prevent <- 
+  participants_with_promote_prevent %>% #select(date_linear,date_0) %>% 
+  mutate(date_years_linear=as.numeric(difftime(date_0,min(min_date),unit="days"))/365) %>%
+  mutate(day_in_year=yday(date_0)) %>%
+  mutate(date_years_period1 = sin(date_years_linear*pi)) %>%
+  mutate(date_years_period2 = sin(date_years_linear*2*pi)) %>%
+  mutate(year_as_factor = as.factor(year(date_0)))
+
+```
+
+
+
+
+```{r}
+for (measure in c("cancer_preventing","cancer_promoting", "cancer_promoting_minus_preventing")){
+  model_session_2_m2 <- lm(`DEV Session 2 Surveys`~
+                           `DEV Session 1 Surveys`+
+                           arm_session_randlabel + 
+                           day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                         participants_with_promote_prevent %>% filter(measure_name==measure))
+  print(measure)
+  print(summary(model_session_2_m2))
+}
+
+```
+
+
+## what about session 3?
+
+
+
+```{r}
+participants_with_promote_prevent$s3_minus_s1 <- participants_with_promote_prevent$`DEV Session 3 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
+```
+
+Family of top-level values we've looked at:
+ - FFQ
+ - FCI
+ - Session 2
+ - Session 2
+
+we could get away with p=0.05/2
+
+```{r}
+ 
+model_session_3_m1 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting_minus_preventing"))
+
+summary(model_session_3_m1)
+```
+
+Nope; no significant effect here. 
+
+
+Now we'd require p<0.05/3
+```{r}
+ 
+model_session_4_m1 <- lm(`DEV Session 4 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year + date_years_period1*year_as_factor
+                         , 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting_minus_preventing"))
+
+summary(model_session_4_m1)
+```
+
+I'm actually optimistic we'll get there with more power, but right now, with the number of subjects we have, it's not strong enough to be demonstrable.
+
+Next steps? I think we have to go with that Session 2 minus session 1 result and use that as our finding.
+
+
+## POST-HOC WORK: A direct comparison of control versus each of the two interventions
+
+```{r}
+# model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent)
+# summary(model_session_2_m2)
+model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                         participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting_minus_preventing"))
+summary(model_session_2_m2)
+```
+
+
+

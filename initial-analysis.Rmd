@@ -1,0 +1,258 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+load("../../data/ppt_list_w_data.RData")
+```
+
+ 
+ Great! Now we have a table that will be very easy to test pre-post.
+ 
+ Let's take a look at the change in each of the key stats across time:
+  - bmi
+  - hip_waist_ratio
+ 
+ 
+ 
+## Hip-waist Ratio
+ 
+ 
+```{r}
+hip_waist_ratio_cols <- stringr::str_subset(colnames(ppt_list_w_data),"hip_waist_ratio_\\d+$")
+
+hip_waste_ratio_data_raw <- melt(ppt_list_w_data,id.vars = c("dev_id"),measure.vars = hip_waist_ratio_cols,variable.name = "hip_waist_ratio")
+hip_waste_ratio_data_raw$measurement_id <- as.integer(gsub("hip_waist_ratio_", "", hip_waste_ratio_data_raw$hip_waist_ratio))
+hip_waste_ratio_data_raw$hip_waist_ratio<-NULL
+
+
+```
+
+remove outliers.
+```{r}
+
+identify_outliers <- function(data_series){
+  #at which value is the likelihood under 5%
+  #so if this is normally distributed, what do we expect at the 99th percentile?
+  #given we have datasize, how many values would we expect to find above each level?
+  datasize<-length(data_series)
+  n_expected_below_value <-datasize*(1-pnorm(data_series,mean(data_series,na.rm = TRUE),sd(data_series,na.rm = TRUE)))
+  n_expected_above_value <-datasize*(1-pnorm(data_series,mean(data_series,na.rm = TRUE),sd(data_series,na.rm = TRUE)))
+  
+  #given the size of the sample that we have, we expect less than 0.01 (not 1% but 0.01) values outside of this range.
+  outliers <- (n_expected_above_value<0.01)| (n_expected_below_value<0.01)
+  
+  return(outliers)
+  
+
+}
+
+#remove outliers
+hip_waste_ratio_data_dt <- hip_waste_ratio_data_raw[!identify_outliers(hip_waste_ratio_data_raw$value),]
+
+#we have data of length 905;
+#95% of all data is in 2 SD
+
+
+#view participant change since baseline....
+ggplot(hip_waste_ratio_data_dt,aes(x=measurement_id,y=value,group=dev_id))+
+  geom_line(alpha=0.2)
+
+
+
+```
+
+
+
+
+So let's look at percentage change from baseline
+
+```{r}
+hwr_with_relative_data <-hip_waste_ratio_data_dt
+time_point_1<-hwr_with_relative_data[measurement_id==1,]
+time_point_1<- rename(time_point_1,"baseline"="value")
+hwr_with_relative_data <- merge(hwr_with_relative_data,time_point_1[,.(dev_id,baseline)],by="dev_id")
+hwr_with_relative_data[,value_change_from_baseline:=value/baseline]
+
+ggplot(hwr_with_relative_data,aes(x=measurement_id,y=value_change_from_baseline,group=dev_id))+
+  geom_line(alpha=0.2)
+
+
+
+```
+
+ 
+```{r}
+#now we can test at the different times whether there was a change from baseline....
+t.test(hwr_with_relative_data[measurement_id==2,value_change_from_baseline]-1)
+length(hwr_with_relative_data[measurement_id==2,value_change_from_baseline])
+
+t.test(hwr_with_relative_data[measurement_id==3,value_change_from_baseline]-1)
+
+t.test(hwr_with_relative_data[measurement_id==4,value_change_from_baseline]-1)
+
+t.test(hwr_with_relative_data[measurement_id==5,value_change_from_baseline]-1)
+```
+
+So there is no change from baseline detected here at 135 data points...
+What if we split up by arm: is there evidence for a split?
+
+We will extract the arm data separately
+
+
+```{r}
+set.seed(Sys.time())
+arm_names <- sample(c("Georgio","Pike","Kirk"))
+arm_numbers_with_na <- unique(dev2_pp_dt_all_sessions$arm_0)
+#assumes these arm numbers are 1, 2, 3
+arm_numbers<-sort(arm_numbers_with_na[!is.na(arm_numbers_with_na)])
+stopifnot(all(arm_numbers==c(1,2,3)))
+
+dev2_pp_dt_all_sessions$arm_session_randlabel<-as.character(NA)
+for (arm_number in arm_numbers){
+  dev2_pp_dt_all_sessions[dev2_pp_dt_all_sessions$arm_0==arm_number,arm_session_randlabel:=arm_names[arm_number]]
+}
+
+# dev2_pp_dt_all_sessions$arm_0<-NULL
+# dev2_pp_dt_all_sessions$arm_0.factor<-NULL
+# dev2_pp_dt_all_sessions$arm_to_master_0___1<-NULL
+# dev2_pp_dt_all_sessions$arm_to_master_0___1.factor<-NULL
+
+arm_data <- dev2_pp_dt_all_sessions[!is.na(arm_session_randlabel),.(dev_id,arm_session_randlabel)]
+
+```
+
+
+
+```{r}
+hwr_with_relative_data <- merge(hwr_with_relative_data,arm_data)
+```
+
+Is there evidence of a difference at t2 based on group?
+
+```{r}
+t_2_dataset <- hwr_with_relative_data[measurement_id==2,]
+res.aov <- aov(value_change_from_baseline ~ arm_session_randlabel,t_2_dataset)
+summary(res.aov)
+```
+
+No evidence of any difference in the groups at t2
+
+```{r}
+t_3_dataset <- hwr_with_relative_data[measurement_id==3,]
+res.aov <- aov(value_change_from_baseline ~ arm_session_randlabel,t_3_dataset)
+summary(res.aov)
+```
+
+
+```{r}
+t_4_dataset <- hwr_with_relative_data[measurement_id==4,]
+res.aov <- aov(value_change_from_baseline ~ arm_session_randlabel,t_4_dataset)
+summary(res.aov)
+```
+
+##BMI
+
+OK, then let's look at BMI.
+
+
+
+```{r}
+bmi_cols <- stringr::str_subset(colnames(ppt_list_w_data),"bmi_\\d+$")
+
+bmi_data_raw <- melt(ppt_list_w_data,id.vars = c("dev_id"),measure.vars = bmi_cols)
+bmi_data_raw$measurement_id <- as.integer(gsub("bmi_", "", bmi_data_raw$variable))
+bmi_data_raw$variable<-NULL
+
+bmi_data_dt <- bmi_data_raw[!identify_outliers(bmi_data_raw$value),]
+
+#calculate baseline
+bmi_data_with_rel_dt <-bmi_data_dt
+time_point_1<-bmi_data_with_rel_dt[measurement_id==1,]
+time_point_1<- rename(time_point_1,"baseline"="value")
+bmi_data_with_rel_dt <- merge(bmi_data_with_rel_dt,time_point_1[,.(dev_id,baseline)],by="dev_id")
+bmi_data_with_rel_dt[,value_change_from_baseline:=value/baseline]
+
+#merge in arm data
+
+bmi_data_with_rel_dt <- merge(bmi_data_with_rel_dt,arm_data)
+```
+
+
+```{r}
+t.test(bmi_data_with_rel_dt[measurement_id==2,value_change_from_baseline]-1)
+```
+
+
+test for normality:
+
+```{r}
+hist(bmi_data_with_rel_dt[measurement_id==2,value_change_from_baseline])
+```
+
+Yeah this does look reasonably normal...
+
+
+
+
+
+```{r}
+t_2_dataset <- bmi_data_with_rel_dt[measurement_id==2,]
+res.aov <- aov(value_change_from_baseline ~ arm_session_randlabel,t_2_dataset)
+summary(res.aov)
+
+t_3_dataset <- bmi_data_with_rel_dt[measurement_id==3,]
+res.aov <- aov(value_change_from_baseline ~ arm_session_randlabel,t_3_dataset)
+summary(res.aov)
+```
+
+
+
+
+## how about bf_lbs1
+
+
+```{r}
+var_name <- "bf_lbs"
+var_cols <- stringr::str_subset(colnames(ppt_list_w_data),paste0(var_name,"_\\d+$"))
+
+var_data_raw <- melt(ppt_list_w_data,id.vars = c("dev_id"),measure.vars = var_cols)
+var_data_raw$measurement_id <- as.integer(gsub(paste0(var_name,"_"), "", var_data_raw$variable))
+var_data_raw$variable<-NULL
+
+var_data_dt <- var_data_raw[!identify_outliers(var_data_raw$value),]
+
+#calculate baseline
+var_data_with_rel_dt <-var_data_dt
+time_point_1<-var_data_with_rel_dt[measurement_id==1,]
+time_point_1<- rename(time_point_1,"baseline"="value")
+var_data_with_rel_dt <- merge(var_data_with_rel_dt,time_point_1[,.(dev_id,baseline)],by="dev_id")
+var_data_with_rel_dt[,value_change_from_baseline:=value/baseline]
+
+#merge in arm data
+
+var_data_with_rel_dt <- merge(var_data_with_rel_dt,arm_data)
+```
+
+
+
+
+
+so we can't measure that one for some weird reason.
+
+#next steps
+
+Ask:
+ - Should we be measuring from S0 or from some other time point?
+ - Should we measure any other value?
+ - Any statistical reason that the metric I have used, percentage change since the baseline period, is inappropriate?
+ - What are the lengths of time between each session?
+ - 
+
+
+
+
+
+

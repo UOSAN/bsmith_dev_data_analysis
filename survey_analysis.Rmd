@@ -1,0 +1,705 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+First let's load the survey data.
+
+```{r}
+
+
+
+```
+
+now, load pre-processed, twice-blinded participant group data.
+
+
+Now let's take a look at the scores on these scales. We want FCI and FFQ
+
+
+```{r}
+print(table(scored$survey_name))
+
+print(table(scored$scale_name))
+```
+
+```{r}
+scored %>% filter(scale_name=="FCI") %>% .$scored_scale %>% table
+```
+
+```{r}
+scored %>% filter(scale_name=="FFQ") %>% .$scored_scale %>% table
+```
+
+## Compare Session 2 and Session 1
+
+
+Better to not use percent; use differences instead.
+
+https://www.researchgate.net/publication/11881571_The_use_of_percentage_change_from_baseline_as_an_outcome_in_a_controlled_trial_is_statistically_inefficient_A_simulation_study
+
+ANCOVA with baseline score as a covariate is even better; I suspect a linear model would do the same thing
+
+Confirmed: https://stats.stackexchange.com/questions/14246/when-should-one-use-multiple-regression-with-dummy-coding-vs-ancova#:~:text=ANCOVA%20and%20multiple%20linear%20regression,one%20of%20the%20independent%20variables.
+
+Some practical guidelines for performing ANCOVA: https://www.datanovia.com/en/lessons/ancova-in-r/
+
+
+
+```{r}
+
+
+
+
+promote_minus_prevent <- scored %>% 
+  #filter for FFQ
+  filter(scale_name %in% c("FFQ","FCI")) %>%
+  #filter for the two cols we're interested in
+  filter(scored_scale %in% c("cancer_promoting","cancer_preventing")) %>%
+  #throw it out wide
+  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #create a composite measure
+  mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing) %>% 
+  tidyr::spread(survey_name,cancer_promoting_minus_preventing)
+
+pmp_fci <- promote_minus_prevent %>% filter(scale_name=="FCI") %>% select(-scale_name)
+pmp_ffq <- promote_minus_prevent %>% filter(scale_name=="FFQ") %>% select(-scale_name)
+
+
+
+```
+
+
+```{r}
+
+#we are most interested in cancer-promoting foods; this score has hopefully decreased. 
+#but...we could design a composite score...that measures both together. That might be even better...
+#I think we are interested in the intercept.
+model_session_2_ffq <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`, pmp_ffq)
+summary(model_session_2_ffq)
+
+```
+
+
+The result suggests that across 177 subjects, session 1 was strongly predictive of session 2. But to arrive at the intercept of session 2, you had to subtract a beta weight of 0.2, suggesting a reduction in cancer_promoting minus cancer_preventing food consumption.
+
+Let's see what it looks like as a simple subtraction. Then let's test the assupmtions of the ANCOVA.
+
+```{r}
+t.test(pmp_ffq$`DEV Session 2 Surveys`-pmp_ffq$`DEV Session 1 Surveys`)
+```
+
+The t-test suggests a 95% CI of 0.1 across all the methods, suggesting a main effect of a reduction of 0.1 [-0.16, -0.05] in the scale of healthy foods across the entire analysis. This is small but significant, and does include 1/3 of subjects who are in a control group. It is concerning that it is negative. We are hoping for an _increase_ in this scale across sessions.
+
+
+
+
+## Check assumptions for ANCOVA
+The most statistically powerful 
+
+### Linearity
+
+```{r}
+ggplot(pmp_ffq,aes(`DEV Session 1 Surveys`,`DEV Session 2 Surveys`))+geom_point()+geom_smooth(method="lm")
+```
+
+
+### Homogeneity of regression slopes
+
+(No grouping variable yet)
+
+
+### Normality of residuals
+
+
+```{r}
+library(broom)
+model.metrics<- augment(model_session_2_ffq) %>% select(-.hat, -.sigma, -.fitted) # Remove details
+head(model.metrics, 3)
+```
+
+Test for non-normality of residuals
+
+```{r}
+library(rstatix)
+shapiro_test(model.metrics$.resid)
+```
+
+### homogenety of variances
+
+(not for a single group)
+
+### outliers
+
+```{r}
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>%
+  as.data.frame()
+```
+
+## Compare the conditions....
+
+
+
+```{r}
+participants_with_promote_prevent <- merge(ppt_list_clean,pmp_ffq,by.x = "dev_id",by.y="SID")
+participants_with_promote_prevent$s2_minus_s1 <- participants_with_promote_prevent$`DEV Session 2 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
+
+```
+
+First do a qualitative look at the three conditions...
+```{r}
+ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_s1))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 - S1",title = "Cancer Promoting - Preventing Foods on the FFQ scale",caption="S2 minus S1")
+
+
+```
+
+Take the lowest session and make it the baseline 
+
+```{r}
+arm_comparison <- participants_with_promote_prevent %>% group_by(arm_session_randlabel) %>% summarise(mean_s2_minus_s1 = mean(s2_minus_s1,na.rm=TRUE))
+arm_comparison <- arm_comparison %>% arrange(mean_s2_minus_s1)
+
+
+#now do the levelling, in order from lowest to highest.
+participants_with_promote_prevent$arm_session_randlabel <- factor(participants_with_promote_prevent$arm_session_randlabel,levels=arm_comparison$arm_session_randlabel)
+```
+
+
+
+```{r}
+
+model_session_2_conditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel, participants_with_promote_prevent)
+model_session_2_noconditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`, participants_with_promote_prevent)
+summary(model_session_2_conditions)
+
+```
+
+There does appear to be differences between the conditions...let's take a look at the residuals of the model without conditions, but with the conditions classifying...
+
+```{r}
+participants_with_promote_prevent[as.integer(names(model_session_2_noconditions$residuals)),"residuals"] <- model_session_2_noconditions$residuals
+```
+
+
+```{r}
+ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=residuals))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 Residual",title = "Cancer Promoting - Preventing Foods on the FFQ scale",subtitle="Residuals at S2 controlling for S1")
+```
+
+
+## Check assumptions for ANCOVA
+
+
+### Linearity
+
+```{r}
+ggplot(participants_with_promote_prevent,aes(`DEV Session 1 Surveys`,`DEV Session 2 Surveys`,group=arm_session_randlabel,color=arm_session_randlabel))+
+  geom_point()+geom_smooth(method="lm")+facet_wrap(~arm_session_randlabel,nrow = 2)
+```
+
+
+### Homogeneity of regression slopes
+
+```{r}
+anova_test(participants_with_promote_prevent,`DEV Session 2 Surveys`~arm_session_randlabel*`DEV Session 1 Surveys`)
+```
+
+Great: no interaction observed.
+
+### Normality of residuals
+
+
+```{r}
+library(broom)
+model.metrics<- augment(model_session_2_conditions) %>% select(-.hat, -.sigma, -.fitted) # Remove details
+head(model.metrics, 3)
+```
+
+Test for non-normality of residuals
+
+```{r}
+library(rstatix)
+shapiro_test(model.metrics$.resid)
+```
+
+### homogenety of variances
+
+```{r}
+#model.metrics %>% levene_test(.resid~arm_session_randlabel)
+```
+
+
+### outliers
+
+```{r}
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>%
+  as.data.frame()
+```
+
+
+# allow for date started
+OK great - we can do this all again for the other inventory we are measuring. then we have to make a decision to pull back the data and inspect which groups are which!
+
+Also--do we want to control for other factors, like Month Began?
+
+standard way to do this in this field might be just try to add a linear trend, then quadratic, then cubic, and so on until it doesn't improve fit.
+
+```{r}
+#adding periodicity into a linear model 
+x <- seq(from=0,to=1,by=0.1)
+y <- sin(x*pi)
+plot(x,y)
+y1 <- sin(x*2*pi)
+plot(x,y1)
+```
+
+
+
+
+
+```{r}
+library(lubridate)
+min_date <- min(participants_with_promote_prevent$date_0)
+participants_with_promote_prevent$date_linear <- as.numeric(as.POSIXct(participants_with_promote_prevent$date_0))
+# summary(lm(`DEV Session 1 Surveys`~ date_linear, participants_with_promote_prevent))
+# summary(lm(`DEV Session 1 Surveys`~ I(date_linear^3), participants_with_promote_prevent))
+#no evidence of any date effect here. we could try for a simple seasonality (period of 4 with 2)
+participants_with_promote_prevent <- 
+  participants_with_promote_prevent %>% #select(date_linear,date_0) %>% 
+  mutate(date_years_linear=as.numeric(difftime(date_0,min(min_date),unit="days"))/365) %>%
+  mutate(day_in_year=yday(date_0)) %>%
+  mutate(date_years_period1 = sin(date_years_linear*pi)) %>%
+  mutate(date_years_period2 = sin(date_years_linear*2*pi)) %>%
+  mutate(year_as_factor = as.factor(year(date_0)))
+
+
+
+summary(lm(`DEV Session 1 Surveys`~ date_years_linear + date_years_period1 + date_years_period2, participants_with_promote_prevent))
+
+#no sign that any of this makes a difference...
+
+
+```
+
+But there is an effect of time on the variable we are trying to predict...
+
+we should probably control for this.
+
+```{r}
+summary(lm(s2_minus_s1~ date_years_linear + date_years_period1, participants_with_promote_prevent))
+summary(lm(s2_minus_s1~ year_as_factor, participants_with_promote_prevent)) #close enough to significance to consider adding it in.
+summary(lm(s2_minus_s1~ day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent))
+```
+
+
+```{r}
+model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent)
+summary(model_session_2_m2)
+```
+
+When we years as factor, and allow each year to vary on their own sinusoidal function, we get a much weaker p value for the intervention. It's still significant, but weaker.
+
+Ideally we should look to test the interaction between group and the linear features but we'll leave that for now.
+
+We might also be raising too high a bar here: this is a lot of nuisance factors to throw in and it might be overly conservative.
+
+Because of COVID, it's probably important to add in some seasonal variance, because things get so unpredictable.
+
+
+# FFQ
+
+
+```{r}
+model_session_2_ffq
+t.test(pmp_fci$`DEV Session 2 Surveys`-pmp_ffq$`DEV Session 1 Surveys`)
+```
+
+The t-test suggests a 95% CI across all the methods, suggesting a main effect of an increase of 0.48 [0.40, 0.56] in the scale of healthy foods across the entire analysis. This does seem a bit more substantial. 
+
+I'm interested in quantifying this in terms of effect size; let's try to understand the standard deviation in the subject pool....
+
+
+
+```{r}
+fci_change_sd <- sd(pmp_fci$`DEV Session 1 Surveys`,na.rm = TRUE)
+0.4/fci_change_sd
+0.56/fci_change_sd
+
+model_session_2_fci <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`, pmp_fci)
+print(summary(model_session_2_fci))
+```
+
+The standard deviation is about 0.58 at T=1, so this is an increase of 0.7 to 1 standard deviations, which seems like a decent effect size.
+
+
+## Check assumptions for ANCOVA
+
+### Linearity
+
+```{r}
+ggplot(pmp_fci,aes(`DEV Session 1 Surveys`,`DEV Session 2 Surveys`))+geom_point()+geom_smooth(method="lm")
+```
+
+### Normality of residuals
+
+
+```{r}
+library(broom)
+model.metrics<- augment(model_session_2_fci) %>% select(-.hat, -.sigma, -.fitted) # Remove details
+head(model.metrics, 3)
+```
+
+Test for non-normality of residuals
+
+```{r}
+library(rstatix)
+shapiro_test(model.metrics$.resid)
+```
+Residuals appear to be non-normal; this may indicate a problem in this dataset...
+
+
+```{r}
+hist(model.metrics$.resid,breaks = 30)
+```
+
+May actually be a good thing that residuals across groups do not function well.
+
+### homogenety of variances
+
+(not for a single group)
+
+### outliers
+
+```{r}
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>%
+  as.data.frame()
+```
+ahh, we do have an outlier; perhaps we want to exclude this subject. I'm gonna say no, though.
+
+## Compare the conditions....
+
+
+
+```{r}
+participants_with_promote_prevent <- merge(ppt_list_clean,pmp_fci,by.x = "dev_id",by.y="SID")
+participants_with_promote_prevent$s2_minus_s1 <- participants_with_promote_prevent$`DEV Session 2 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
+
+```
+
+First do a qualitative look at the three conditions...
+```{r}
+ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_s1))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 - S1",title = "Cancer Promoting - Preventing Foods on the FCI scale",caption="S2 minus S1")
+
+
+```
+
+Take the lowest session and make it the baseline 
+
+```{r}
+arm_comparison <- participants_with_promote_prevent %>% group_by(arm_session_randlabel) %>% summarise(mean_s2_minus_s1 = mean(s2_minus_s1,na.rm=TRUE))
+arm_comparison <- arm_comparison %>% arrange(mean_s2_minus_s1)
+
+
+#now do the levelling, in order from lowest to highest.
+participants_with_promote_prevent$arm_session_randlabel <- factor(participants_with_promote_prevent$arm_session_randlabel,levels=arm_comparison$arm_session_randlabel)
+```
+
+
+
+```{r}
+
+model_session_2_conditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel, participants_with_promote_prevent)
+model_session_2_noconditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`, participants_with_promote_prevent)
+summary(model_session_2_conditions)
+
+```
+
+No difference between the conditions at all.
+
+```{r}
+participants_with_promote_prevent[as.integer(names(model_session_2_noconditions$residuals)),"residuals"] <- model_session_2_noconditions$residuals
+```
+
+
+```{r}
+ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=residuals))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 Residual",title = "Cancer Promoting - Preventing Foods on the FCI scale",subtitle="Residuals at S2 controlling for S1")
+```
+
+
+## Check assumptions for ANCOVA
+
+
+### Linearity
+
+```{r}
+ggplot(participants_with_promote_prevent,aes(`DEV Session 1 Surveys`,`DEV Session 2 Surveys`,group=arm_session_randlabel,color=arm_session_randlabel))+
+  geom_point()+geom_smooth(method="lm")+facet_wrap(~arm_session_randlabel,nrow = 2)
+```
+
+
+### Homogeneity of regression slopes
+
+```{r}
+anova_test(participants_with_promote_prevent,`DEV Session 2 Surveys`~arm_session_randlabel*`DEV Session 1 Surveys`)
+```
+
+Great: no interaction observed.
+
+### Normality of residuals
+
+
+```{r}
+library(broom)
+model.metrics<- augment(model_session_2_conditions) %>% select(-.hat, -.sigma, -.fitted) # Remove details
+head(model.metrics, 3)
+```
+
+Test for non-normality of residuals
+
+```{r}
+library(rstatix)
+shapiro_test(model.metrics$.resid)
+```
+
+ahhhh. We do have non-normality of residuals. So we may have to get rid of outliers or apply the time corrections. Let's apply time corrections and only if there is still non-normality of residuals, we'll remove the outliers.
+
+
+### homogeniety of variances
+
+```{r}
+#model.metrics %>% levene_test(.resid~arm_session_randlabel)
+```
+
+
+### outliers
+
+```{r}
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>%
+  as.data.frame()
+```
+
+
+# allow for date started
+OK great - we can do this all again for the other inventory we are measuring. then we have to make a decision to pull back the data and inspect which groups are which!
+
+Also--do we want to control for other factors, like Month Began?
+
+standard way to do this in this field might be just try to add a linear trend, then quadratic, then cubic, and so on until it doesn't improve fit.
+
+
+
+
+```{r}
+library(lubridate)
+min_date <- min(participants_with_promote_prevent$date_0)
+participants_with_promote_prevent$date_linear <- as.numeric(as.POSIXct(participants_with_promote_prevent$date_0))
+# summary(lm(`DEV Session 1 Surveys`~ date_linear, participants_with_promote_prevent))
+# summary(lm(`DEV Session 1 Surveys`~ I(date_linear^3), participants_with_promote_prevent))
+#no evidence of any date effect here. we could try for a simple seasonality (period of 4 with 2)
+participants_with_promote_prevent <- 
+  participants_with_promote_prevent %>% #select(date_linear,date_0) %>% 
+  mutate(date_years_linear=as.numeric(difftime(date_0,min(min_date),unit="days"))/365) %>%
+  mutate(day_in_year=yday(date_0)) %>%
+  mutate(date_years_period1 = sin(date_years_linear*pi)) %>%
+  mutate(date_years_period2 = sin(date_years_linear*2*pi)) %>%
+  mutate(year_as_factor = as.factor(year(date_0)))
+
+
+
+summary(lm(`DEV Session 1 Surveys`~ date_years_linear + date_years_period1 + date_years_period2, participants_with_promote_prevent))
+
+#no sign that any of this makes a difference...
+
+
+```
+
+But there is an effect of time on the variable we are trying to predict...
+
+we should probably control for this.
+
+```{r}
+summary(lm(s2_minus_s1~ date_years_linear + date_years_period1, participants_with_promote_prevent))
+summary(lm(s2_minus_s1~ year_as_factor, participants_with_promote_prevent)) #close enough to significance to consider adding it in.
+summary(lm(s2_minus_s1~ day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent))
+```
+
+No sign that these factors matter...
+
+```{r}
+model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent)
+summary(model_session_2_m2)
+```
+
+
+I think we need to remove that outlier, and then try modeling again.
+
+
+```{r}
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>% print
+
+
+ppp_fci_no_outliers <- participants_with_promote_prevent[-52, ]
+```
+
+## Retest FCI with no outliers...
+
+
+
+First do a qualitative look at the three conditions...
+```{r}
+ggplot(ppp_fci_no_outliers,aes(x=arm_session_randlabel,y=s2_minus_s1))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 - S1",title = "Cancer Promoting - Preventing Foods on the FCI scale",caption="S2 minus S1")
+
+
+```
+
+Take the lowest session and make it the baseline 
+
+```{r}
+arm_comparison <- ppp_fci_no_outliers %>% group_by(arm_session_randlabel) %>% summarise(mean_s2_minus_s1 = mean(s2_minus_s1,na.rm=TRUE))
+arm_comparison <- arm_comparison %>% arrange(mean_s2_minus_s1)
+
+
+#now do the levelling, in order from lowest to highest.
+ppp_fci_no_outliers$arm_session_randlabel <- factor(ppp_fci_no_outliers$arm_session_randlabel,levels=arm_comparison$arm_session_randlabel)
+```
+
+
+
+```{r}
+
+model_session_2_conditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel, ppp_fci_no_outliers)
+model_session_2_noconditions <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`, ppp_fci_no_outliers)
+summary(model_session_2_conditions)
+
+```
+
+No difference between the conditions at all.
+
+```{r}
+ppp_fci_no_outliers[as.integer(names(model_session_2_noconditions$residuals)),"residuals"] <- model_session_2_noconditions$residuals
+```
+
+
+```{r}
+ggplot(ppp_fci_no_outliers,aes(x=arm_session_randlabel,y=residuals))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
+  labs(y="Promote - Prevent S2 Residual",title = "Cancer Promoting - Preventing Foods on the FCI scale",subtitle="Residuals at S2 controlling for S1")
+```
+
+
+## Check assumptions for ANCOVA
+
+
+### Linearity
+
+```{r}
+ggplot(ppp_fci_no_outliers,aes(`DEV Session 1 Surveys`,`DEV Session 2 Surveys`,group=arm_session_randlabel,color=arm_session_randlabel))+
+  geom_point()+geom_smooth(method="lm")+facet_wrap(~arm_session_randlabel,nrow = 2)
+```
+
+
+### Homogeneity of regression slopes
+
+```{r}
+anova_test(ppp_fci_no_outliers,`DEV Session 2 Surveys`~arm_session_randlabel*`DEV Session 1 Surveys`)
+```
+
+Great: no interaction observed.
+
+### Normality of residuals
+
+
+```{r}
+library(broom)
+model.metrics<- augment(model_session_2_conditions) %>% select(-.hat, -.sigma, -.fitted) # Remove details
+head(model.metrics, 3)
+```
+
+Test for non-normality of residuals
+
+```{r}
+library(rstatix)
+shapiro_test(model.metrics$.resid)
+```
+
+Still have residual non-normality after applying outliers! Wonder how this could get fixed? Do we try adding the time predictors in? Maybe not because they don't seem to have helped...
+
+
+### homogeniety of variances
+
+```{r}
+#model.metrics %>% levene_test(.resid~arm_session_randlabel)
+```
+
+
+### outliers
+
+```{r}
+model.metrics %>% 
+  filter(abs(.std.resid) > 3) %>%
+  as.data.frame()
+```
+
+
+# allow for date started
+OK great - we can do this all again for the other inventory we are measuring. then we have to make a decision to pull back the data and inspect which groups are which!
+
+Also--do we want to control for other factors, like Month Began?
+
+standard way to do this in this field might be just try to add a linear trend, then quadratic, then cubic, and so on until it doesn't improve fit.
+
+
+
+
+```{r}
+library(lubridate)
+min_date <- min(ppp_fci_no_outliers$date_0)
+ppp_fci_no_outliers$date_linear <- as.numeric(as.POSIXct(ppp_fci_no_outliers$date_0))
+# summary(lm(`DEV Session 1 Surveys`~ date_linear, participants_with_promote_prevent))
+# summary(lm(`DEV Session 1 Surveys`~ I(date_linear^3), participants_with_promote_prevent))
+#no evidence of any date effect here. we could try for a simple seasonality (period of 4 with 2)
+ppp_fci_no_outliers <- 
+  ppp_fci_no_outliers %>% #select(date_linear,date_0) %>% 
+  mutate(date_years_linear=as.numeric(difftime(date_0,min(min_date),unit="days"))/365) %>%
+  mutate(day_in_year=yday(date_0)) %>%
+  mutate(date_years_period1 = sin(date_years_linear*pi)) %>%
+  mutate(date_years_period2 = sin(date_years_linear*2*pi)) %>%
+  mutate(year_as_factor = as.factor(year(date_0)))
+
+
+
+summary(lm(`DEV Session 1 Surveys`~ date_years_linear + date_years_period1 + date_years_period2, ppp_fci_no_outliers))
+
+#no sign that any of this makes a difference...
+
+
+```
+
+But there is an effect of time on the variable we are trying to predict...
+
+we should probably control for this.
+
+```{r}
+summary(lm(s2_minus_s1~ date_years_linear + date_years_period1, ppp_fci_no_outliers))
+summary(lm(s2_minus_s1~ year_as_factor, ppp_fci_no_outliers)) #close enough to significance to consider adding it in.
+summary(lm(s2_minus_s1~ day_in_year*year_as_factor + date_years_period1*year_as_factor, ppp_fci_no_outliers))
+```
+
+No sign that these factors matter...
+
+```{r}
+model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, ppp_fci_no_outliers)
+summary(model_session_2_m2)
+```
+
+OK. Lame. We can't claim any effect from the FCI data! But there was a reasonable group effect in the FFQ dataset. We need to know...what it was, though, so need to perform the same analysis without the masking imposed.
