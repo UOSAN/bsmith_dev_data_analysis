@@ -9,7 +9,7 @@ First let's load the survey data.
 library(dplyr)
 library(ggplot2)
 library(rstatix)
-load("../../data/scored_data_coded.RData")
+load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_coded.RData")
 ```
 
 ## Compare Session 2 and Session 1
@@ -38,6 +38,7 @@ pmp_ffq <- promote_minus_prevent %>% filter(scale_name=="FFQ") %>% select(-scale
 
 
 
+
 ```
 
 
@@ -57,17 +58,27 @@ ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_
   labs(y="Promote - Prevent S2 - S1",title = "Cancer Promoting - Preventing Foods on the FFQ scale",caption="S2 minus S1")
 
 
+t.test(participants_with_promote_prevent[participants_with_promote_prevent$arm_session_randlabel=="Pike",s2_minus_s1],
+       participants_with_promote_prevent[participants_with_promote_prevent$arm_session_randlabel=="Kirk",s2_minus_s1])
+
+wilcox.test(participants_with_promote_prevent[participants_with_promote_prevent$arm_session_randlabel=="Pike",s2_minus_s1],
+       participants_with_promote_prevent[participants_with_promote_prevent$arm_session_randlabel=="Kirk",s2_minus_s1])
+
 ```
 
-Take the lowest session and make it the baseline 
+Take the CONTROL session and make it the baseline 
 
 ```{r}
 arm_comparison <- participants_with_promote_prevent %>% group_by(arm_session_randlabel) %>% summarise(mean_s2_minus_s1 = mean(s2_minus_s1,na.rm=TRUE))
 arm_comparison <- arm_comparison %>% arrange(mean_s2_minus_s1)
 
+#max_group <- arm_comparison[arm_comparison$mean_s2_minus_s1==max(arm_comparison$mean_s2_minus_s1),"arm_session_randlabel"]
+control_group <-group_decoding_key[group_decoding_key$arm_0.factor=="Willamette","arm_session_randlabel"][[1]]
 
+arm_comparison_no_control <- arm_comparison %>% filter(arm_session_randlabel!=control_group)
 #now do the levelling, in order from lowest to highest.
-participants_with_promote_prevent$arm_session_randlabel <- factor(participants_with_promote_prevent$arm_session_randlabel,levels=arm_comparison$arm_session_randlabel)
+participants_with_promote_prevent$arm_session_randlabel <- factor(participants_with_promote_prevent$arm_session_randlabel,
+                                                                  levels=c(control_group, arm_comparison_no_control$arm_session_randlabel))
 ```
 
 
@@ -90,6 +101,9 @@ participants_with_promote_prevent[as.integer(names(model_session_2_noconditions$
 ```{r}
 ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=residuals))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
   labs(y="Promote - Prevent S2 Residual",title = "Cancer Promoting - Preventing Foods on the FFQ scale",subtitle="Residuals at S2 controlling for S1")
+
+t.test(participants_with_promote_prevent[participants_with_promote_prevent$arm_session_randlabel=="Pike",residuals],
+       participants_with_promote_prevent[participants_with_promote_prevent$arm_session_randlabel=="Kirk",residuals])
 ```
 
 
@@ -214,13 +228,12 @@ Because of COVID, it's probably important to add in some seasonal variance, beca
 
 
 The following must be re-done each time we run this file but:
-Umpqua=Pike=Cognitive re-appraisal - the lowest-ranked group
-McKenzie=Georgio=Behavioral training - highest ranked group
-Willamette=Kirk - control group
+******=Pike=Cognitive re-appraisal - the lowest-ranked group
+****=Georgio=Behavioral training - highest ranked group
+****=Kirk - control group
 
-This shows that Umpqua has the lowest promote-prevent score, i.e., the least improvement from T1 to T2. The next highest ranked is Kirk/Williamette, followed by Georgio/McKenzie which is highest.
+This shows that Umpqua has the lowest promote-prevent score, i.e., the MOST improvement from T1 to T2. The next highest ranked is Kirk/Williamette, followed by Georgio/McKenzie which is highest.
 
-So we have a significant differnce between Umpqua and McKenzie
 
 ## Split up: which arm is more relevant?
 
@@ -246,13 +259,17 @@ promote_and_prevent <- scored %>%
 participants_with_promote_prevent <- merge(ppt_list_clean,promote_and_prevent,by.x = "subid",by.y="subid")
 participants_with_promote_prevent$s2_minus_s1 <- participants_with_promote_prevent$`DEV Session 2 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
 
+participants_with_promote_prevent$arm_session_randlabel <- factor(participants_with_promote_prevent$arm_session_randlabel,
+                                                                  levels=c(control_group, arm_comparison_no_control$arm_session_randlabel))
+
+
 ```
 
 
 
 ```{r}
   ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_s1))+geom_boxplot(alpha=0.5)+geom_point(position="jitter")+
-labs(y="Promote - Prevent S2 - S1",title = "Cancer Promoting - Preventing Foods on the FFQ scale",caption="S2 minus S1")+facet_grid(~measure_name)
+labs(y="S2 - S1",title = "Cancer Promoting - Preventing Foods on the FFQ scale",caption="S2 minus S1")+facet_grid(~measure_name)
 
 
 ```
@@ -348,13 +365,323 @@ Next steps? I think we have to go with that Session 2 minus session 1 result and
 
 ## POST-HOC WORK: A direct comparison of control versus each of the two interventions
 
+Not sure what the threshold for this one has to be, but to survive post-hoc comparison measures it should probably be at least p<0.025, and we have right on 0.05.
+
 ```{r}
-# model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, participants_with_promote_prevent)
-# summary(model_session_2_m2)
+
+
 model_session_2_m2 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel + day_in_year*year_as_factor + date_years_period1*year_as_factor, 
-                         participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting_minus_preventing"))
+                         participants_with_promote_prevent %>% 
+                           filter(measure_name=="cancer_promoting_minus_preventing") %>%
+                           filter(arm_session_randlabel %in% c("Georgio",control_group))
+                           )
+
 summary(model_session_2_m2)
+
+
+model_session_2_m3 <- lm(`DEV Session 2 Surveys`~`DEV Session 1 Surveys`+arm_session_randlabel, 
+                         participants_with_promote_prevent %>% 
+                           filter(measure_name=="cancer_promoting_minus_preventing") %>%
+                           filter(arm_session_randlabel %in% c("Georgio",control_group))
+                           )
+
+summary(model_session_2_m3)
+
+```
+```{r}
+# t.test(participants_with_promote_prevent %>% 
+#                            filter(measure_name=="cancer_promoting_minus_preventing" & (arm_session_randlabel==control_group)) %>% .$s2_minus_s1,
+#        participants_with_promote_prevent %>% 
+#                            filter(measure_name=="cancer_promoting_minus_preventing" &arm_session_randlabel==max_group) %>% .$s2_minus_s1
+#        )
+```
+
+Get some stats for the write-up
+```{r}
+useable_data <- participants_with_promote_prevent %>% filter(!is.na(`DEV Session 2 Surveys`) & !is.na(`DEV Session 1 Surveys`) & measure_name=="cancer_promoting_minus_preventing" & !is.na(day_in_year))# %>% select(subid,`DEV Session 2 Surveys`,`DEV Session 1 Surveys`)
+
+#number of subjects
+length(unique(useable_data$subid))
+
+#groups
+
+useable_data %>% group_by(arm_session_randlabel) %>% summarise(length=length(subid))
+
 ```
 
 
 
+
+### Further testing
+
+How many subjective decisions are involved in reporting this?
+
+  - Going with "cancer promoting" over cancer-preventing (2)
+  - Moving to session 3 rather than session 2 (or 4)
+  - Looking at FFQ rather than FCI
+  
+That gives us potentially `2*3*2= 12` different conditions; Bonferroni correction on this would give us p<0.004
+
+We don't need to consider time within this calculation because that works out fine regardless of which measure we choose.
+
+The "Georgio" group does not survive comparison for multiple corrections.
+
+```{r}
+#with pre-determined date corrections
+model_session_3_m1 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"))
+
+model_session_3_m1 <- lm.beta::lm.beta(model_session_3_m1)
+summary(model_session_3_m1)
+#Without complex date corrections
+model_session_3_m2 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"))
+model_session_3_m2 <- lm.beta::lm.beta(model_session_3_m2)
+summary(model_session_3_m2)
+
+session_3_subjects <- participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting") %>% 
+  filter(!is.na(`DEV Session 3 Surveys`)  & !is.na(`DEV Session 1 Surveys`))
+
+#length(session_3_subjects$subid)
+
+session_3_subjects %>% group_by(arm_session_randlabel) %>% summarise(length=length(subid))
+```
+
+Date makes very little difference to the Pike condition, which is encouraging. It makes some difference to the Georgio condition, which is significant without a p-value correction.
+
+With the _very same subjects_, there is no effect at S2.
+
+
+```{r}
+ 
+
+#with pre-determined date corrections
+model_session_2_m1 <- lm(`DEV Session 2 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"  & subid %in% session_3_subjects))
+
+summary(model_session_2_m1)
+
+#Without complex date corrections
+model_session_2_m2 <- lm(`DEV Session 2 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"  & subid %in% session_3_subjects))
+
+summary(model_session_2_m2)
+
+
+
+
+
+```
+
+
+
+How about S4?
+
+
+
+```{r}
+ 
+
+#with pre-determined date corrections
+model_session_4_m1 <- lm(`DEV Session 4 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_4_m1)
+
+#Without complex date corrections
+model_session_4_m2 <- lm(`DEV Session 4 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_4_m2)
+
+session_4_subjects <- participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting") %>% 
+  filter(!is.na(`DEV Session 4 Surveys`)  & !is.na(`DEV Session 1 Surveys`))
+
+session_4_subjects %>% group_by(arm_session_randlabel) %>% summarise(length=length(subid))
+
+```
+and S5?
+
+
+
+
+How about S4?
+
+
+
+```{r}
+ 
+
+#with pre-determined date corrections
+model_session_5_m1 <- lm(`DEV Session 5 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_5_m1)
+
+#Without complex date corrections
+model_session_5_m2 <- lm(`DEV Session 5 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_5_m2)
+
+session_5_subjects <- participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting") %>% 
+  filter(!is.na(`DEV Session 5 Surveys`)  & !is.na(`DEV Session 1 Surveys`))
+
+session_5_subjects %>% group_by(arm_session_randlabel) %>% summarise(length=length(subid))
+
+```
+
+
+### What if we made this just the two active conditions?
+
+
+```{r}
+#with pre-determined date corrections
+model_session_3_m1 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting") %>% filter(arm_session_randlabel!="Kirk"))
+
+model_session_3_m1 <- lm.beta::lm.beta(model_session_3_m1)
+summary(model_session_3_m1)
+#Without complex date corrections
+model_session_3_m2 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting")%>% filter(arm_session_randlabel!="Kirk"))
+model_session_3_m2 <- lm.beta::lm.beta(model_session_3_m2)
+summary(model_session_3_m2)
+
+session_3_subjects <- participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting") %>% 
+  filter(!is.na(`DEV Session 3 Surveys`)  & !is.na(`DEV Session 1 Surveys`))
+
+#length(session_3_subjects$subid)
+
+session_3_subjects %>% group_by(arm_session_randlabel) %>% summarise(length=length(subid))
+```
+
+
+
+
+```{r}
+#with pre-determined date corrections
+model_session_3_m1 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting_minus_preventing") %>% filter(arm_session_randlabel!="Kirk"))
+
+model_session_3_m1 <- lm.beta::lm.beta(model_session_3_m1)
+summary(model_session_3_m1)
+#Without complex date corrections
+model_session_3_m2 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting_minus_preventing")%>% filter(arm_session_randlabel!="Kirk"))
+model_session_3_m2 <- lm.beta::lm.beta(model_session_3_m2)
+summary(model_session_3_m2)
+
+session_3_subjects <- participants_with_promote_prevent %>% filter(measure_name=="cancer_promoting_minus_preventing") %>% 
+  filter(!is.na(`DEV Session 3 Surveys`)  & !is.na(`DEV Session 1 Surveys`))
+
+#length(session_3_subjects$subid)
+
+session_3_subjects %>% group_by(arm_session_randlabel) %>% summarise(length=length(subid))
+```
+
+### What about FCI?
+
+```{r}
+
+
+promote_and_prevent_fci <- scored %>% 
+  #filter for FFQ
+  filter(scale_name %in% c("FCI")) %>%
+  #filter for the two cols we're interested in
+  filter(scored_scale %in% c("cancer_promoting","cancer_preventing")) %>%
+  #throw it out wide
+  select(subid,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #create a composite measure
+  mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(survey_name,subid,cancer_promoting_minus_preventing,cancer_promoting,cancer_preventing) %>% 
+  tidyr::pivot_longer(c(cancer_promoting_minus_preventing,cancer_promoting,cancer_preventing),names_to="measure_name") %>%
+  tidyr::spread(survey_name,value)
+
+
+participants_with_promote_prevent_fci <- merge(ppt_list_clean,promote_and_prevent_fci,by.x = "subid",by.y="subid")
+participants_with_promote_prevent_fci$s2_minus_s1 <- participants_with_promote_prevent_fci$`DEV Session 2 Surveys`-participants_with_promote_prevent_fci$`DEV Session 1 Surveys`
+
+participants_with_promote_prevent_fci$arm_session_randlabel <- factor(participants_with_promote_prevent_fci$arm_session_randlabel,
+                                                                  levels=c(control_group, arm_comparison_no_control$arm_session_randlabel))
+```
+
+
+
+```{r}
+library(lubridate)
+min_date <- min(participants_with_promote_prevent_fci$date_0)
+participants_with_promote_prevent_fci$date_linear <- as.numeric(as.POSIXct(participants_with_promote_prevent_fci$date_0))
+# summary(lm(`DEV Session 1 Surveys`~ date_linear, participants_with_promote_prevent))
+# summary(lm(`DEV Session 1 Surveys`~ I(date_linear^3), participants_with_promote_prevent))
+#no evidence of any date effect here. we could try for a simple seasonality (period of 4 with 2)
+participants_with_promote_prevent_fci <- 
+  participants_with_promote_prevent_fci %>% #select(date_linear,date_0) %>% 
+  mutate(date_years_linear=as.numeric(difftime(date_0,min(min_date),unit="days"))/365) %>%
+  mutate(day_in_year=yday(date_0)) %>%
+  mutate(date_years_period1 = sin(date_years_linear*pi)) %>%
+  mutate(date_years_period2 = sin(date_years_linear*2*pi)) %>%
+  mutate(year_as_factor = as.factor(year(date_0)))
+
+```
+
+
+
+
+
+```{r}
+ 
+
+#with pre-determined date corrections
+model_session_3_m1 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       participants_with_promote_prevent_fci %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_3_m1)
+
+#Without complex date corrections
+model_session_3_m2 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       participants_with_promote_prevent_fci %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_3_m2)
+
+session_3_subjects <- participants_with_promote_prevent_fci %>% filter(measure_name=="cancer_promoting") %>% 
+  filter(!is.na(`DEV Session 3 Surveys`)  & !is.na(`DEV Session 1 Surveys`))
+
+
+```

@@ -1,0 +1,75 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+cwd<-getwd()
+
+data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+
+#setwd(data_dir)
+
+#source("DEV2-RuralVsUrbanDataExam_R_2021-01-21_2323.r")
+
+#setwd(cwd)
+```
+
+```{r}
+#let's use good old data.table, I miss it
+library(data.table)
+library(dplyr)
+
+
+
+```
+
+
+Useful:
+https://mcdc.missouri.edu/applications/geocorr2014.html
+
+
+```{r}
+#this 
+county_zip_table <- readr::read_csv(paste0(data_dir,"geocorr2014.csv"),skip = 1)# %>% filter(zipname=="Los Angeles, CA")
+county_zip_table %>% filter (`County code`=="41039")
+```
+
+Let's take a look at the different county codes on offer.
+
+```{r}
+library(readxl)
+
+rucc2013<-readxl::read_xls(paste0(data_dir,"ruralurbancodes2013.xls"),sheet="Rural-urban Continuum Code 2013")
+
+rucc2013_codes_list <- rucc2013 %>% select(RUCC_2013,Description) %>% arrange(. , RUCC_2013) %>% unique
+rucc2013_codes_list
+```
+```{r}
+rucc2013 %>% filter(State=="OR")
+```
+
+
+How does RUCC_2013 correlate with obesity?
+
+
+```{r}
+obesity_rate_OR <- read.csv(paste0(data_dir,"DiabetesAtlasCountyData_OR.csv"),skip = 2)
+rucc2013$FIPS <- as.integer(rucc2013$FIPS)
+ob_or_rurality<-merge(obesity_rate_OR,rucc2013,by.x="CountyFIPS",by.y="FIPS",all.x=TRUE,all.y=FALSE)
+
+
+library(ggplot2)
+library(ggrepel)
+ggplot(ob_or_rurality,aes(RUCC_2013,Percentage,size=Population_2010))+geom_boxplot(aes(x=RUCC_2013, y=Percentage,group=RUCC_2013),alpha=0.1,color="grey")+
+  geom_text_repel(aes(label=County_Name),size=3,hjust=0,vjust=1)+labs(x="Rurality (higher=more rural)",y="Percent Obesity 2017",title="Obesity rate in Oregon by County: Urban to Rural")+
+  #geom_smooth(method="lm") +
+  geom_point()+
+  scale_x_continuous(breaks = 1:9)
+  #theme(axis.text.x = element_text(angle=30))
+  
+
+```
+
+
+

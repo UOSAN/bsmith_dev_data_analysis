@@ -7,7 +7,10 @@ First let's load the survey data.
 
 ```{r}
 
-
+library(dplyr)
+library(ggplot2)
+library(rstatix)
+load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_coded.RData")
 
 ```
 
@@ -57,11 +60,11 @@ promote_minus_prevent <- scored %>%
   #filter for the two cols we're interested in
   filter(scored_scale %in% c("cancer_promoting","cancer_preventing")) %>%
   #throw it out wide
-  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  select(subid,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
   #create a composite measure
   mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing) %>%
   #wide across the surveys so that we can compare the surveys
-  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing) %>% 
+  select(scale_name,survey_name,subid,cancer_promoting_minus_preventing) %>% 
   tidyr::spread(survey_name,cancer_promoting_minus_preventing)
 
 pmp_fci <- promote_minus_prevent %>% filter(scale_name=="FCI") %>% select(-scale_name)
@@ -83,7 +86,7 @@ summary(model_session_2_ffq)
 ```
 
 
-The result suggests that across 177 subjects, session 1 was strongly predictive of session 2. But to arrive at the intercept of session 2, you had to subtract a beta weight of 0.2, suggesting a reduction in cancer_promoting minus cancer_preventing food consumption.
+The result suggests that across 177 subjects, session 1 was strongly predictive of session 2. But to arrive at the intercept of session 2, you had to subtract a beta weight of 0.19, suggesting a reduction in cancer_promoting minus cancer_preventing food consumption.
 
 Let's see what it looks like as a simple subtraction. Then let's test the assupmtions of the ANCOVA.
 
@@ -144,7 +147,7 @@ model.metrics %>%
 
 
 ```{r}
-participants_with_promote_prevent <- merge(ppt_list_clean,pmp_ffq,by.x = "dev_id",by.y="SID")
+participants_with_promote_prevent <- merge(ppt_list_clean,pmp_ffq,by.x = "subid",by.y="subid")
 participants_with_promote_prevent$s2_minus_s1 <- participants_with_promote_prevent$`DEV Session 2 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
 
 ```
@@ -157,11 +160,11 @@ ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_
 
 ```
 
-Take the lowest session and make it the baseline 
+Take the HIGHEST session and make it the baseline 
 
 ```{r}
 arm_comparison <- participants_with_promote_prevent %>% group_by(arm_session_randlabel) %>% summarise(mean_s2_minus_s1 = mean(s2_minus_s1,na.rm=TRUE))
-arm_comparison <- arm_comparison %>% arrange(mean_s2_minus_s1)
+arm_comparison <- arm_comparison %>% arrange(-mean_s2_minus_s1)
 
 
 #now do the levelling, in order from lowest to highest.
@@ -387,7 +390,7 @@ ahh, we do have an outlier; perhaps we want to exclude this subject. I'm gonna s
 
 
 ```{r}
-participants_with_promote_prevent <- merge(ppt_list_clean,pmp_fci,by.x = "dev_id",by.y="SID")
+participants_with_promote_prevent <- merge(ppt_list_clean,pmp_fci,by.x = "subid",by.y="subid")
 participants_with_promote_prevent$s2_minus_s1 <- participants_with_promote_prevent$`DEV Session 2 Surveys`-participants_with_promote_prevent$`DEV Session 1 Surveys`
 
 ```
@@ -400,11 +403,11 @@ ggplot(participants_with_promote_prevent,aes(x=arm_session_randlabel,y=s2_minus_
 
 ```
 
-Take the lowest session and make it the baseline 
+Take the HIGHEST session and make it the baseline 
 
 ```{r}
 arm_comparison <- participants_with_promote_prevent %>% group_by(arm_session_randlabel) %>% summarise(mean_s2_minus_s1 = mean(s2_minus_s1,na.rm=TRUE))
-arm_comparison <- arm_comparison %>% arrange(mean_s2_minus_s1)
+arm_comparison <- arm_comparison %>% arrange(-mean_s2_minus_s1)
 
 
 #now do the levelling, in order from lowest to highest.
@@ -703,3 +706,35 @@ summary(model_session_2_m2)
 ```
 
 OK. Lame. We can't claim any effect from the FCI data! But there was a reasonable group effect in the FFQ dataset. We need to know...what it was, though, so need to perform the same analysis without the masking imposed.
+
+
+## Session 3 Follow-up after in-depth FFQ analysis.
+
+
+
+
+```{r}
+
+
+#with pre-determined date corrections
+model_session_3_m1 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel + 
+                         day_in_year*year_as_factor + date_years_period1*year_as_factor, 
+                       promote_minus_prevent %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_3_m1)
+
+#Without complex date corrections
+model_session_3_m2 <- lm(`DEV Session 3 Surveys`~
+                         `DEV Session 1 Surveys`+
+                         arm_session_randlabel, 
+                       promote_minus_prevent %>% filter(measure_name=="cancer_promoting"))
+
+summary(model_session_3_m2)
+
+session_3_subjects <- promote_minus_prevent %>% filter(measure_name=="cancer_promoting") %>% 
+  filter(!is.na(`DEV Session 3 Surveys`)  & !is.na(`DEV Session 1 Surveys`)) %>% .$subid
+
+
+```

@@ -1,0 +1,198 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+First let's load the survey data.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+library(rstatix)
+load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_coded.RData")
+```
+
+## Compare Session 2 and Session 1
+
+
+```{r}
+
+#grab the cognitive appraisal group
+# stop("need to run this manually, and look up the specific Randlabel that applies for your session :-)")
+# cog_appraisal_group <- ppt_list_clean[ppt_list_clean$arm_session_randlabel=="Kirk",]
+# control_group<-"Kirk"
+# 
+
+```
+
+```{r}
+
+#iterate through each of our scales, and test their correlation with FCI and FFQ
+
+promote <- scored %>% 
+  #filter for FFQ
+  filter(scale_name %in% c("FFQ","FCI")) %>%
+  #filter for the two cols we're interested in
+  filter(scored_scale %in% c("cancer_promoting")) %>%
+  #throw it out wide
+  select(subid,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #create a composite measure
+  #mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,subid,cancer_promoting) %>% 
+  tidyr::spread(survey_name,cancer_promoting)
+
+pmp_fci <- promote %>% filter(scale_name=="FCI") %>% select(-scale_name) %>% 
+  mutate(fci_s2_minus_s1 = `DEV Session 2 Surveys` - `DEV Session 1 Surveys`)
+pmp_ffq <- promote %>% filter(scale_name=="FFQ") %>% select(-scale_name) %>% 
+  mutate(ffq_s2_minus_s1 = `DEV Session 2 Surveys` - `DEV Session 1 Surveys`)
+
+outcome_difference_scales <- merge(pmp_fci,pmp_ffq, by="subid") %>% select(subid,fci_s2_minus_s1,ffq_s2_minus_s1)
+```
+
+## Understand the other scales
+
+```{r}
+#iterate through each scale; let's pick the ones that we think might be worth checking...
+#should capture three scales: BFI, NCS, IMI, BIS-11, and PLAN
+#if we've missed any of those we should feel free to add it in later.
+scales_to_check <- c(
+  "abstract_thinking",
+  "avoid_depth",
+  "cognitive",
+  "cognitive_strategies",
+  "deliberating_issues",
+  "effort_importance",
+  "extraversion","agreeableness","conscientiousness","neuroticism","openness",
+  "get_job_done",
+  "intellectual_task",
+  "interest_enjoyment",
+  "like_responsibility",
+  "mental_forecasting",
+  "new_solutions_to_problems",
+  "non_planning",
+  "perceived_choice","perceived_competence",
+  "prefer_complex","prefer_little_thought",
+  "relief_not_satisfaction","satisfaction_in_deliberating",
+  "small_daily_projects","solve_puzzles",
+  "tasks_little_thought","temporal_orientation","think_minimally","thinking_not_exciting","thinking_not_fun",
+  "thought_appealing",
+  "total_impulsiveness",
+  "value_usefulness")
+
+scored %>% filter(scored_scale %in% scales_to_check) %>% .$scale_name %>% table
+#scales in the first survey are BFI, NCS, and PLAN
+session_0_surveys <- scored %>% filter(survey_name=="DEV Session 0 Surveys")%>% filter(scale_name %in% c("BFI", "NCS","PLAN")) %>%
+  filter(n_items>1) %>% #just get the constructs, not the individual questions
+  select(scale_name,scored_scale,score,subid)
+
+session_1_surveys <- scored %>% 
+  filter(survey_name=="DEV Session 1 Surveys")%>% 
+  filter(scale_name %in% c("BIS-11")) %>%
+  filter(n_items>1) %>% #just get the constructs, not the individual questions
+  select(scale_name,scored_scale,score,subid)
+
+session_2_surveys <- scored %>% 
+  filter(survey_name=="DEV Session 2 Surveys")%>% 
+  filter(scale_name %in% c("IMI")) %>%
+  filter(n_items>1) %>% #just get the constructs, not the individual questions
+  select(scale_name,scored_scale,score,subid)
+
+#now combine those
+
+selected_trait_survey_results_long <- 
+  #combine
+  rbind(session_0_surveys,session_1_surveys,session_2_surveys) %>%
+  #create a label
+  mutate(scale_subscale_name = paste0(scale_name,"_",scored_scale))
+
+#find out how many scales exactly we're dealing with
+scale_count <- length(unique(selected_trait_survey_results_long$scale_subscale_name))
+
+selected_trait_survey_results <- 
+  selected_trait_survey_results_long %>%
+  #select just the cols we want
+  select(score,subid,scale_subscale_name) %>% 
+  #throw it out wide
+  tidyr::pivot_wider(names_from = scale_subscale_name,values_from = score)
+
+
+
+
+```
+
+
+```{r}
+results_traits_and_outcomes <- merge(outcome_difference_scales,selected_trait_survey_results,by="subid")
+
+library(GGally)
+ggpairs(results_traits_and_outcomes %>% select(-subid),columns=c(1,2))
+```
+
+
+
+
+```{r}
+library(corrplot)
+
+data_to_corr <- results_traits_and_outcomes %>% select(-subid)
+
+corrplot.mixed(cor(data_to_corr,use = "pairwise.complete.obs"), order="hclust", tl.col="black")
+
+
+
+```
+
+
+
+
+
+This should show us any correlations that we should be paying attention to.
+
+
+
+
+No, there is no scale that predicts s2 minus s1 performance....
+
+
+## Separate out conditions
+
+OK, but what about within each condition?
+
+```{r}
+results_traits_and_outcomes2 <- merge(outcome_difference_scales %>% mutate(s2_minus_s1 = fci_s2_minus_s1 + ffq_s2_minus_s1) %>% select("subid","s2_minus_s1"),selected_trait_survey_results,by="subid")
+results_traits_and_outcomes3 <- merge(
+  ppt_list_clean %>% select(subid,arm_session_randlabel),
+  results_traits_and_outcomes2)
+
+
+groups <- unique(results_traits_and_outcomes3$arm_session_randlabel)
+groups_no_control <- setdiff(groups,control_group)
+dframe <- NULL
+for (g in groups_no_control){
+  group_results <- results_traits_and_outcomes3 %>% filter(arm_session_randlabel==g) %>% select(-arm_session_randlabel)
+  data_to_corr <- group_results %>% select(-subid)
+  
+  for (x in c("s2_minus_s1")){
+    for (y in colnames(data_to_corr)[3:ncol(data_to_corr)]){
+      #print(paste0("corr between",x,y))
+      cor_test_result <- cor.test(data_to_corr[[x]],data_to_corr[[y]])
+      dframe_row <- data.frame("group"=g, "x"=x,"y"=y, "r"=cor_test_result$estimate, "pval"=cor_test_result$p.value)
+      if(is.null(dframe)){
+        dframe <- dframe_row
+      }else{
+        dframe <- rbind(dframe,dframe_row)
+      }
+      
+    }
+}
+}
+
+
+```
+```{r}
+dframe$pval_bhadjust <- p.adjust(dframe$pval,method="BH")
+```
+
+
+

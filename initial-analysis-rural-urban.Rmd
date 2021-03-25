@@ -6,7 +6,9 @@ output: html_notebook
 ```{r}
 cwd<-getwd()
 
-setwd("../../data/")
+data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+
+setwd(data_dir)
 
 source("DEV2-RuralVsUrbanDataExam_R_2021-01-21_2323.r")
 
@@ -56,7 +58,7 @@ ppt_list_clean$ZIPCode <- stringr::str_extract(trimws(ppt_list_clean$address),"[
 ppt_list_clean <- ppt_list_clean[!is.na(ppt_list_clean$address) & ppt_list_clean$address!=""]
 
 #manually add a couple of zipcodes that were entered incorrectly but can be human-deduced
-source("../../data/manual_tag_zipcodes.R")
+source(paste0(data_dir,"manual_tag_zipcodes.R"))
 
 #remove entries where we really can't tag a zip, even manually.
 ppt_list_clean <- ppt_list_clean[!is.na(ZIPCode)]
@@ -73,7 +75,7 @@ https://mcdc.missouri.edu/applications/geocorr2014.html
 
 ```{r}
 #this 
-county_zip_table <- readr::read_csv("../../data/geocorr2014.csv",skip = 1)# %>% filter(zipname=="Los Angeles, CA")
+county_zip_table <- readr::read_csv(paste0(data_dir,"geocorr2014.csv"),skip = 1)# %>% filter(zipname=="Los Angeles, CA")
 county_zip_table %>% filter (`County code`=="41039")
 ```
 
@@ -82,7 +84,7 @@ Let's take a look at the different county codes on offer.
 ```{r}
 library(readxl)
 
-rucc2013<-readxl::read_xls("../../data/ruralurbancodes2013.xls",sheet="Rural-urban Continuum Code 2013")
+rucc2013<-readxl::read_xls(paste0(data_dir,"ruralurbancodes2013.xls"),sheet="Rural-urban Continuum Code 2013")
 
 rucc2013_codes_list <- rucc2013 %>% select(RUCC_2013,Description) %>% arrange(. , RUCC_2013) %>% unique
 rucc2013_codes_list
