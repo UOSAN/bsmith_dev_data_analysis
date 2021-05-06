@@ -92,7 +92,16 @@ So what about the other ones...let's look at RUCA
 ```{r}
 #get the FIPS code for the counties
 county_of_interest_fips <- rucc2013_or %>% filter(County_Name %in% all_counties_of_interest) %>% .$FIPS %>% as.integer()
+```
 
+
+## RUCA
+
+https://www.ers.usda.gov/data-products/rural-urban-commuting-area-codes.aspx
+
+
+
+```{r}
 ruca2010_2019_revised<-readxl::read_xlsx(paste0(data_dir,"ruca2010revised.xlsx"),sheet="Data",skip = 1)
 tracts_in_relevant_counties <- ruca2010_2019_revised %>% filter(`State-County FIPS Code` %in% county_of_interest_fips)
 

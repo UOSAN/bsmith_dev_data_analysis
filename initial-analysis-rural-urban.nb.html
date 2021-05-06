@@ -1751,20 +1751,47 @@ summary {
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY3dkPC1nZXR3ZCgpXG5cbmRhdGFfZGlyIDwtIFwiL1VzZXJzL2JlbmphbWluc21pdGgvRHJvcGJveCAoVW5pdmVyc2l0eSBvZiBPcmVnb24pL1VPLVNBTiBMYWIvQmVya21hbiBMYWIvRGV2YWx1YXRpb24vYW5hbHlzaXNfZmlsZXMvZGF0YS9cIlxuXG5zZXR3ZChkYXRhX2RpcilcbmBgYCJ9 -->
-<pre class="r"><code>cwd&lt;-getwd()
-
-data_dir &lt;- &quot;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/&quot;
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY3dkPC1nZXR3ZCgpXG5gYGAifQ== -->
+<pre class="r"><code>cwd&lt;-getwd()</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiVGhlcmUgd2VyZSAyNiB3YXJuaW5ncyAodXNlIHdhcm5pbmdzKCkgdG8gc2VlIHRoZW0pXG4ifQ== -->
+<pre><code>There were 26 warnings (use warnings() to see them)</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YV9kaXIgPC0gXCIvVXNlcnMvYmVuamFtaW5zbWl0aC9Ecm9wYm94IChVbml2ZXJzaXR5IG9mIE9yZWdvbikvVU8tU0FOIExhYi9CZXJrbWFuIExhYi9EZXZhbHVhdGlvbi9hbmFseXNpc19maWxlcy9kYXRhL1wiXG5cbnNldHdkKGRhdGFfZGlyKVxuYGBgIn0= -->
+<pre class="r"><code>data_dir &lt;- &quot;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/&quot;
 
 setwd(data_dir)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-output-begin eyJkYXRhIjoiVGhlIHdvcmtpbmcgZGlyZWN0b3J5IHdhcyBjaGFuZ2VkIHRvIC9Vc2Vycy9iZW5qYW1pbnNtaXRoL0Ryb3Bib3ggKFVuaXZlcnNpdHkgb2YgT3JlZ29uKS9VTy1TQU4gTGFiL0JlcmttYW4gTGFiL0RldmFsdWF0aW9uL2FuYWx5c2lzX2ZpbGVzL2RhdGEgaW5zaWRlIGEgbm90ZWJvb2sgY2h1bmsuIFRoZSB3b3JraW5nIGRpcmVjdG9yeSB3aWxsIGJlIHJlc2V0IHdoZW4gdGhlIGNodW5rIGlzIGZpbmlzaGVkIHJ1bm5pbmcuIFVzZSB0aGUga25pdHIgcm9vdC5kaXIgb3B0aW9uIGluIHRoZSBzZXR1cCBjaHVuayB0byBjaGFuZ2UgdGhlIHdvcmtpbmcgZGlyZWN0b3J5IGZvciBub3RlYm9vayBjaHVua3MuXG4ifQ== -->
 <pre><code>The working directory was changed to /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data inside a notebook chunk. The working directory will be reset when the chunk is finished running. Use the knitr root.dir option in the setup chunk to change the working directory for notebook chunks.</code></pre>
 <!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc291cmNlKFwiREVWMi1SdXJhbFZzVXJiYW5EYXRhRXhhbV9SXzIwMjEtMDEtMjFfMjMyMy5yXCIpXG5cbiNzZXR3ZChjd2QpXG5gYGAifQ== -->
-<pre class="r"><code>source(&quot;DEV2-RuralVsUrbanDataExam_R_2021-01-21_2323.r&quot;)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuc291cmNlKFwiREVWMi1SdXJhbFZzVXJiYW5EYXRhRXhhbV9SXzIwMjEtMDEtMjFfMjMyMy5yXCIpXG5gYGAifQ== -->
+<pre class="r"><code>source(&quot;DEV2-RuralVsUrbanDataExam_R_2021-01-21_2323.r&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiTG9hZGluZyByZXF1aXJlZCBwYWNrYWdlOiBsYXR0aWNlXG5Mb2FkaW5nIHJlcXVpcmVkIHBhY2thZ2U6IHN1cnZpdmFsXG5Mb2FkaW5nIHJlcXVpcmVkIHBhY2thZ2U6IEZvcm11bGFcbkxvYWRpbmcgcmVxdWlyZWQgcGFja2FnZTogZ2dwbG90MlxuUmVnaXN0ZXJlZCBTMyBtZXRob2Qgb3ZlcndyaXR0ZW4gYnkgJ2h0bWx3aWRnZXRzJzpcbiAgbWV0aG9kICAgICAgICAgICBmcm9tICAgICAgICAgXG4gIHByaW50Lmh0bWx3aWRnZXQgdG9vbHM6cnN0dWRpb1xuUmVnaXN0ZXJlZCBTMyBtZXRob2Qgb3ZlcndyaXR0ZW4gYnkgJ2RhdGEudGFibGUnOlxuICBtZXRob2QgICAgICAgICAgIGZyb21cbiAgcHJpbnQuZGF0YS50YWJsZSAgICAgXG5cbkF0dGFjaGluZyBwYWNrYWdlOiDigJhIbWlzY+KAmVxuXG5UaGUgZm9sbG93aW5nIG9iamVjdHMgYXJlIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6ZHBseXLigJk6XG5cbiAgICBzcmMsIHN1bW1hcml6ZVxuXG5UaGUgZm9sbG93aW5nIG9iamVjdHMgYXJlIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6YmFzZeKAmTpcblxuICAgIGZvcm1hdC5wdmFsLCB1bml0c1xuIn0= -->
+<pre><code>Loading required package: lattice
+Loading required package: survival
+Loading required package: Formula
+Loading required package: ggplot2
+Registered S3 method overwritten by &#39;htmlwidgets&#39;:
+  method           from         
+  print.htmlwidget tools:rstudio
+Registered S3 method overwritten by &#39;data.table&#39;:
+  method           from
+  print.data.table     
 
-#setwd(cwd)</code></pre>
+Attaching package: ‘Hmisc’
+
+The following objects are masked from ‘package:dplyr’:
+
+    src, summarize
+
+The following objects are masked from ‘package:base’:
+
+    format.pval, units</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI3NldHdkKGN3ZClcbmBgYCJ9 -->
+<pre class="r"><code>#setwd(cwd)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1777,38 +1804,23 @@ setwd(data_dir)</code></pre>
 <pre class="r"><code>#let&#39;s use good old data.table, I miss it
 library(data.table)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiZGF0YS50YWJsZSAxLjEzLjYgdXNpbmcgMSB0aHJlYWRzIChzZWUgP2dldERUdGhyZWFkcykuICBMYXRlc3QgbmV3czogci1kYXRhdGFibGUuY29tXG4qKioqKioqKioqXG5UaGlzIGluc3RhbGxhdGlvbiBvZiBkYXRhLnRhYmxlIGhhcyBub3QgZGV0ZWN0ZWQgT3Blbk1QIHN1cHBvcnQuIEl0IHNob3VsZCBzdGlsbCB3b3JrIGJ1dCBpbiBzaW5nbGUtdGhyZWFkZWQgbW9kZS5cblRoaXMgaXMgYSBNYWMuIFBsZWFzZSByZWFkIGh0dHBzOi8vbWFjLnItcHJvamVjdC5vcmcvb3Blbm1wLy4gUGxlYXNlIGVuZ2FnZSB3aXRoIEFwcGxlIGFuZCBhc2sgdGhlbSBmb3Igc3VwcG9ydC4gQ2hlY2sgci1kYXRhdGFibGUuY29tIGZvciB1cGRhdGVzLCBhbmQgb3VyIE1hYyBpbnN0cnVjdGlvbnMgaGVyZTogaHR0cHM6Ly9naXRodWIuY29tL1JkYXRhdGFibGUvZGF0YS50YWJsZS93aWtpL0luc3RhbGxhdGlvbi4gQWZ0ZXIgc2V2ZXJhbCB5ZWFycyBvZiBtYW55IHJlcG9ydHMgb2YgaW5zdGFsbGF0aW9uIHByb2JsZW1zIG9uIE1hYywgaXQncyB0aW1lIHRvIGdpbmdlcmx5IHBvaW50IG91dCB0aGF0IHRoZXJlIGhhdmUgYmVlbiBubyBzaW1pbGFyIHByb2JsZW1zIG9uIFdpbmRvd3Mgb3IgTGludXguXG4qKioqKioqKioqXG4ifQ== -->
+<!-- rnb-output-begin eyJkYXRhIjoiZGF0YS50YWJsZSAxLjEzLjYgdXNpbmcgMSB0aHJlYWRzIChzZWUgP2dldERUdGhyZWFkcykuICBMYXRlc3QgbmV3czogci1kYXRhdGFibGUuY29tXG4qKioqKioqKioqXG5UaGlzIGluc3RhbGxhdGlvbiBvZiBkYXRhLnRhYmxlIGhhcyBub3QgZGV0ZWN0ZWQgT3Blbk1QIHN1cHBvcnQuIEl0IHNob3VsZCBzdGlsbCB3b3JrIGJ1dCBpbiBzaW5nbGUtdGhyZWFkZWQgbW9kZS5cblRoaXMgaXMgYSBNYWMuIFBsZWFzZSByZWFkIGh0dHBzOi8vbWFjLnItcHJvamVjdC5vcmcvb3Blbm1wLy4gUGxlYXNlIGVuZ2FnZSB3aXRoIEFwcGxlIGFuZCBhc2sgdGhlbSBmb3Igc3VwcG9ydC4gQ2hlY2sgci1kYXRhdGFibGUuY29tIGZvciB1cGRhdGVzLCBhbmQgb3VyIE1hYyBpbnN0cnVjdGlvbnMgaGVyZTogaHR0cHM6Ly9naXRodWIuY29tL1JkYXRhdGFibGUvZGF0YS50YWJsZS93aWtpL0luc3RhbGxhdGlvbi4gQWZ0ZXIgc2V2ZXJhbCB5ZWFycyBvZiBtYW55IHJlcG9ydHMgb2YgaW5zdGFsbGF0aW9uIHByb2JsZW1zIG9uIE1hYywgaXQncyB0aW1lIHRvIGdpbmdlcmx5IHBvaW50IG91dCB0aGF0IHRoZXJlIGhhdmUgYmVlbiBubyBzaW1pbGFyIHByb2JsZW1zIG9uIFdpbmRvd3Mgb3IgTGludXguXG4qKioqKioqKioqXG5cbkF0dGFjaGluZyBwYWNrYWdlOiDigJhkYXRhLnRhYmxl4oCZXG5cblRoZSBmb2xsb3dpbmcgb2JqZWN0cyBhcmUgbWFza2VkIGZyb20g4oCYcGFja2FnZTpkcGx5cuKAmTpcblxuICAgIGJldHdlZW4sIGZpcnN0LCBsYXN0XG4ifQ== -->
 <pre><code>data.table 1.13.6 using 1 threads (see ?getDTthreads).  Latest news: r-datatable.com
 **********
 This installation of data.table has not detected OpenMP support. It should still work but in single-threaded mode.
 This is a Mac. Please read https://mac.r-project.org/openmp/. Please engage with Apple and ask them for support. Check r-datatable.com for updates, and our Mac instructions here: https://github.com/Rdatatable/data.table/wiki/Installation. After several years of many reports of installation problems on Mac, it&#39;s time to gingerly point out that there have been no similar problems on Windows or Linux.
-**********</code></pre>
+**********
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:dplyr’:
+
+    between, first, last</code></pre>
 <!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcbmBgYCJ9 -->
-<pre class="r"><code>library(dplyr)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiXG5BdHRhY2hpbmcgcGFja2FnZTog4oCYZHBseXLigJlcblxuVGhlIGZvbGxvd2luZyBvYmplY3RzIGFyZSBtYXNrZWQgZnJvbSDigJhwYWNrYWdlOmRhdGEudGFibGXigJk6XG5cbiAgICBiZXR3ZWVuLCBmaXJzdCwgbGFzdFxuXG5UaGUgZm9sbG93aW5nIG9iamVjdHMgYXJlIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6SG1pc2PigJk6XG5cbiAgICBzcmMsIHN1bW1hcml6ZVxuXG5UaGUgZm9sbG93aW5nIG9iamVjdHMgYXJlIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6c3RhdHPigJk6XG5cbiAgICBmaWx0ZXIsIGxhZ1xuXG5UaGUgZm9sbG93aW5nIG9iamVjdHMgYXJlIG1hc2tlZCBmcm9tIOKAmHBhY2thZ2U6YmFzZeKAmTpcblxuICAgIGludGVyc2VjdCwgc2V0ZGlmZiwgc2V0ZXF1YWwsIHVuaW9uXG4ifQ== -->
-<pre><code>
-Attaching package: ‘dplyr’
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkcGx5cilcblxuZGV2Ml9ydV9kdF9hbGxfc2Vzc2lvbnM8LSBkYXRhLnRhYmxlKGRhdGEpXG5cbmRldjJfcnVfc2Vzc2lvbjAxIDwtIGRldjJfcnVfZHRfYWxsX3Nlc3Npb25zW3JlZGNhcF9ldmVudF9uYW1lICVpbiUgYyhcInNlc3Npb25fMF9hcm1fMVwiLFwidDFfYXJtXzFcIixcInNlc3Npb25fMV9hcm1fMVwiKV1cblxuXG5cbmBgYCJ9 -->
+<pre class="r"><code>library(dplyr)
 
-The following objects are masked from ‘package:data.table’:
-
-    between, first, last
-
-The following objects are masked from ‘package:Hmisc’:
-
-    src, summarize
-
-The following objects are masked from ‘package:stats’:
-
-    filter, lag
-
-The following objects are masked from ‘package:base’:
-
-    intersect, setdiff, setequal, union</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGV2Ml9ydV9kdF9hbGxfc2Vzc2lvbnM8LSBkYXRhLnRhYmxlKGRhdGEpXG5cbmRldjJfcnVfc2Vzc2lvbjAxIDwtIGRldjJfcnVfZHRfYWxsX3Nlc3Npb25zW3JlZGNhcF9ldmVudF9uYW1lICVpbiUgYyhcInNlc3Npb25fMF9hcm1fMVwiLFwidDFfYXJtXzFcIixcInNlc3Npb25fMV9hcm1fMVwiKV1cblxuXG5cbmBgYCJ9 -->
-<pre class="r"><code>dev2_ru_dt_all_sessions&lt;- data.table(data)
+dev2_ru_dt_all_sessions&lt;- data.table(data)
 
 dev2_ru_session01 &lt;- dev2_ru_dt_all_sessions[redcap_event_name %in% c(&quot;session_0_arm_1&quot;,&quot;t1_arm_1&quot;,&quot;session_1_arm_1&quot;)]
 </code></pre>
@@ -1818,41 +1830,24 @@ dev2_ru_session01 &lt;- dev2_ru_dt_all_sessions[redcap_event_name %in% c(&quot;s
 <p>Let’s get some participant information….</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxucHB0X2lkIDwtIGMoXFxkZXZfaWRcXCxcXGRhdGVfMFxcLFxcYWRkcmVzc1xcLFxcYmlydGhzZXhcXCxcXGRvYlxcLFxccmFjZV9fXzFcXCxcXHJhY2VfX18yXFwsXFxyYWNlX19fM1xcLFxccmFjZV9fXzRcXCxcXHJhY2VfX181XFwsXFxyYWNlX19fNlxcLFxccmFjZV9fXzdcXCxcXHJhY2VfX184XFwsXFxhZ2VcXClcbiNvbmx5IHN0b3JlIGluZm8gcmVsZXZhbnQgdG8gcGFydGljaXBhbnQgSURcbnBhcnRpY2lwYW50X2xpc3RfcmF3IDwtIGRldjJfcnVfc2Vzc2lvbjAxWyxwcHRfaWQsd2l0aD1GQUxTRV1cbiNub3cgcmVtb3ZlIG1pc3NpbmcgZGF0YSBjb2x1bW5zXG5ibGFua19ieV9yb3cgPC0gcm93U3Vtcyhpcy5uYShwYXJ0aWNpcGFudF9saXN0X3JhdykpK3Jvd1N1bXMocGFydGljaXBhbnRfbGlzdF9yYXc9PVxcXFwsbmEucm0gPSBUUlVFKVxuI3JlbW92ZSByb3dzIHdpdGggdGhlIGxlYXN0IGFtb3VudCBvZiBpbmZvcm1hdGlvblxucHB0X2xpc3RfY2xlYW4uMSA8LSBwYXJ0aWNpcGFudF9saXN0X3Jhd1tibGFua19ieV9yb3c8bWF4KGJsYW5rX2J5X3JvdyldXG5wcHRfbGlzdF9jbGVhbiA8LSBwcHRfbGlzdF9jbGVhbi4xW3N0cmluZ3I6OnN0cl9kZXRlY3QocHB0X2xpc3RfY2xlYW4uMSRkZXZfaWQsXFxERVZcXFxcZFxcXFxkXFxcXGRcXCkgJiBwcHRfbGlzdF9jbGVhbi4xJGRvYiE9XFxcXCxdXG5cbmBgYFxuYGBgIn0= -->
-<pre class="r"><code>```r
-ppt_id &lt;- c(\dev_id\,\date_0\,\address\,\birthsex\,\dob\,\race___1\,\race___2\,\race___3\,\race___4\,\race___5\,\race___6\,\race___7\,\race___8\,\age\)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHB0X2lkIDwtIGMoXCJkZXZfaWRcIixcImRhdGVfMFwiLFwiYWRkcmVzc1wiLFwiYmlydGhzZXhcIixcImRvYlwiLFwicmFjZV9fXzFcIixcInJhY2VfX18yXCIsXCJyYWNlX19fM1wiLFwicmFjZV9fXzRcIixcInJhY2VfX181XCIsXCJyYWNlX19fNlwiLFwicmFjZV9fXzdcIixcInJhY2VfX184XCIsXCJhZ2VcIilcbiNvbmx5IHN0b3JlIGluZm8gcmVsZXZhbnQgdG8gcGFydGljaXBhbnQgSURcbnBhcnRpY2lwYW50X2xpc3RfcmF3IDwtIGRldjJfcnVfc2Vzc2lvbjAxWyxwcHRfaWQsd2l0aD1GQUxTRV1cbiNub3cgcmVtb3ZlIG1pc3NpbmcgZGF0YSBjb2x1bW5zXG5ibGFua19ieV9yb3cgPC0gcm93U3Vtcyhpcy5uYShwYXJ0aWNpcGFudF9saXN0X3JhdykpK3Jvd1N1bXMocGFydGljaXBhbnRfbGlzdF9yYXc9PVwiXCIsbmEucm0gPSBUUlVFKVxuI3JlbW92ZSByb3dzIHdpdGggdGhlIGxlYXN0IGFtb3VudCBvZiBpbmZvcm1hdGlvblxucHB0X2xpc3RfY2xlYW4uMSA8LSBwYXJ0aWNpcGFudF9saXN0X3Jhd1tibGFua19ieV9yb3c8bWF4KGJsYW5rX2J5X3JvdyldXG5wcHRfbGlzdF9jbGVhbiA8LSBwcHRfbGlzdF9jbGVhbi4xW3N0cmluZ3I6OnN0cl9kZXRlY3QocHB0X2xpc3RfY2xlYW4uMSRkZXZfaWQsXCJERVZcXFxcZFxcXFxkXFxcXGRcIikgJiBwcHRfbGlzdF9jbGVhbi4xJGRvYiE9XCJcIixdXG5cbmBgYCJ9 -->
+<pre class="r"><code>ppt_id &lt;- c(&quot;dev_id&quot;,&quot;date_0&quot;,&quot;address&quot;,&quot;birthsex&quot;,&quot;dob&quot;,&quot;race___1&quot;,&quot;race___2&quot;,&quot;race___3&quot;,&quot;race___4&quot;,&quot;race___5&quot;,&quot;race___6&quot;,&quot;race___7&quot;,&quot;race___8&quot;,&quot;age&quot;)
 #only store info relevant to participant ID
 participant_list_raw &lt;- dev2_ru_session01[,ppt_id,with=FALSE]
 #now remove missing data columns
-blank_by_row &lt;- rowSums(is.na(participant_list_raw))+rowSums(participant_list_raw==\\,na.rm = TRUE)
+blank_by_row &lt;- rowSums(is.na(participant_list_raw))+rowSums(participant_list_raw==&quot;&quot;,na.rm = TRUE)
 #remove rows with the least amount of information
 ppt_list_clean.1 &lt;- participant_list_raw[blank_by_row&lt;max(blank_by_row)]
-ppt_list_clean &lt;- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_id,\DEV\\d\\d\\d\) &amp; ppt_list_clean.1$dob!=\\,]
+ppt_list_clean &lt;- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_id,&quot;DEV\\d\\d\\d&quot;) &amp; ppt_list_clean.1$dob!=&quot;&quot;,]
 </code></pre>
-<pre><code>
-&lt;!-- rnb-source-end --&gt;
-
-&lt;!-- rnb-chunk-end --&gt;
-
-
-&lt;!-- rnb-text-begin --&gt;
-
-
-
-Great. Now let&#39;s get zipcodes for the participants
-
-
-
-&lt;!-- rnb-text-end --&gt;
-
-
-&lt;!-- rnb-chunk-begin --&gt;
-
-
-&lt;!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxuI2h0dHBzOi8vd3d3Lm9yZWlsbHkuY29tL2xpYnJhcnkvdmlldy9yZWd1bGFyLWV4cHJlc3Npb25zLWNvb2tib29rLzk3ODE0NDkzMjc0NTMvY2gwNHMxNC5odG1sXG5wcHRfbGlzdF9jbGVhbiRaSVBDb2RlIDwtIHN0cmluZ3I6OnN0cl9leHRyYWN0KHRyaW13cyhwcHRfbGlzdF9jbGVhbiRhZGRyZXNzKSxcXFswLTldezV9KD86LVswLTldezR9KT8kXFwpXG4jV2UgaGF2ZSB0byByZW1vdmUgcGFydGljaXBhbnRzIHdoZXJlIHdlIGRpZG4ndCBoYXZlIGFkZHJlc3Nlcy5cbnBwdF9saXN0X2NsZWFuIDwtIHBwdF9saXN0X2NsZWFuWyFpcy5uYShwcHRfbGlzdF9jbGVhbiRhZGRyZXNzKSAmIHBwdF9saXN0X2NsZWFuJGFkZHJlc3MhPVxcXFxdXG5cbiNtYW51YWxseSBhZGQgYSBjb3VwbGUgb2YgemlwY29kZXMgdGhhdCB3ZXJlIGVudGVyZWQgaW5jb3JyZWN0bHkgYnV0IGNhbiBiZSBodW1hbi1kZWR1Y2VkXG5zb3VyY2UoXFwuLi8uLi9kYXRhL21hbnVhbF90YWdfemlwY29kZXMuUlxcKVxuXG4jcmVtb3ZlIGVudHJpZXMgd2hlcmUgd2UgcmVhbGx5IGNhbid0IHRhZyBhIHppcCwgZXZlbiBtYW51YWxseS5cbnBwdF9saXN0X2NsZWFuIDwtIHBwdF9saXN0X2NsZWFuWyFpcy5uYShaSVBDb2RlKV1cblxuI3JlbW92ZSBhZGRyZXNzLCBhbmQgcmVtb3ZlIHNvbWUgdGFibGVzIHdlIGRvbid0IG5lZWQgYW55bW9yZVxucHB0X2xpc3RfY2xlYW4kYWRkcmVzcyA8LSBOVUxMXG5ybShwcHRfbGlzdF9jbGVhbi4xKVxucm0ocGFydGljaXBhbnRfbGlzdF9yYXcpXG5gYGBcbmBgYCJ9 --&gt;
-
-```r
-```r
+<!-- rnb-source-end -->
+<!-- rnb-chunk-end -->
+<!-- rnb-text-begin -->
+<p>Great. Now let’s get zipcodes for the participants</p>
+<!-- rnb-text-end -->
+<!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxuI2h0dHBzOi8vd3d3Lm9yZWlsbHkuY29tL2xpYnJhcnkvdmlldy9yZWd1bGFyLWV4cHJlc3Npb25zLWNvb2tib29rLzk3ODE0NDkzMjc0NTMvY2gwNHMxNC5odG1sXG5wcHRfbGlzdF9jbGVhbiRaSVBDb2RlIDwtIHN0cmluZ3I6OnN0cl9leHRyYWN0KHRyaW13cyhwcHRfbGlzdF9jbGVhbiRhZGRyZXNzKSxcXFswLTldezV9KD86LVswLTldezR9KT8kXFwpXG4jV2UgaGF2ZSB0byByZW1vdmUgcGFydGljaXBhbnRzIHdoZXJlIHdlIGRpZG4ndCBoYXZlIGFkZHJlc3Nlcy5cbnBwdF9saXN0X2NsZWFuIDwtIHBwdF9saXN0X2NsZWFuWyFpcy5uYShwcHRfbGlzdF9jbGVhbiRhZGRyZXNzKSAmIHBwdF9saXN0X2NsZWFuJGFkZHJlc3MhPVxcXFxdXG5cbiNtYW51YWxseSBhZGQgYSBjb3VwbGUgb2YgemlwY29kZXMgdGhhdCB3ZXJlIGVudGVyZWQgaW5jb3JyZWN0bHkgYnV0IGNhbiBiZSBodW1hbi1kZWR1Y2VkXG5zb3VyY2UoXFwuLi8uLi9kYXRhL21hbnVhbF90YWdfemlwY29kZXMuUlxcKVxuXG4jcmVtb3ZlIGVudHJpZXMgd2hlcmUgd2UgcmVhbGx5IGNhbid0IHRhZyBhIHppcCwgZXZlbiBtYW51YWxseS5cbnBwdF9saXN0X2NsZWFuIDwtIHBwdF9saXN0X2NsZWFuWyFpcy5uYShaSVBDb2RlKV1cblxuI3JlbW92ZSBhZGRyZXNzLCBhbmQgcmVtb3ZlIHNvbWUgdGFibGVzIHdlIGRvbid0IG5lZWQgYW55bW9yZVxucHB0X2xpc3RfY2xlYW4kYWRkcmVzcyA8LSBOVUxMXG5ybShwcHRfbGlzdF9jbGVhbi4xKVxucm0ocGFydGljaXBhbnRfbGlzdF9yYXcpXG5gYGBcbmBgYCJ9 -->
+<pre class="r"><code>```r
 #https://www.oreilly.com/library/view/regular-expressions-cookbook/9781449327453/ch04s14.html
 ppt_list_clean$ZIPCode &lt;- stringr::str_extract(trimws(ppt_list_clean$address),\[0-9]{5}(?:-[0-9]{4})?$\)
 #We have to remove participants where we didn&#39;t have addresses.
