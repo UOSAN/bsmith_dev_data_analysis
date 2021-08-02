@@ -1,0 +1,361 @@
+---
+title: "Power analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+#install.packages("tidystats")
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(rstatix)
+
+load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data.RData")
+
+scored$score <- as.numeric(scored$score)
+```
+
+```{r}
+
+#
+scored %>% filter(scale_name %in% c("FCI")) %>% select(scored_scale) %>% unique
+
+```
+```{r}
+scored$scale_name %>% unique
+```
+
+
+Now get BMI
+
+```{r}
+load("../../../files/data/ppt_list_w_data.RData")
+#our primary health outcome measure
+ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bmi_0,bf_1) %>% filter(!is.na(bmi_0) | !is.na(bf_1))
+rm(ppt_list_w_data)
+
+```
+
+## Health measures include:
+ - Percent Body Fat (`bf_1`)
+ - BMI (`bmi_0`)
+ 
+## Behavioral outcome measures
+
+We also have behavioral outcome measures:
+
+ - Food Frequency Questionnaire. Very closely related to the Food Craving Inventory so that needs to be considered carefully.
+ 
+
+
+## Self-report predictor variables to investigate 
+
+Which predictor scales should we include?
+ 
+Need the behavioral and self-report imho
+ 
+Before we decide which to include, perhaps we put them into categories: obvious theoretical link to outcome (3), possible theoretical link to outcome (2), no clear theoretical link to outcome (1).
+ 
+Listing them by these categories we get:
+
+### Obvious theoretical link to outcome
+
+These are explicitly designed to measure constructs we are concerned about, like self control or habits.
+
+ - Brief Self Control Scale
+ - Self-reported Habit Index
+ - Tempest Self-Regulation Questionnaire for Eating
+ - Treatment Self-Regulation Questionnaire
+ - Barratt Impulsiveness Scale
+ - Eating Dysregulation Measure
+ - Food Craving Inventory
+ - Restraint Scale
+
+
+### Possible theoretical link to outcome
+
+These aren't explicitly designed to measure constructs we are concerned about, but there are theoretical reasons or at least 'stories you could tell' to expect a link to outcome.
+
+ - Big Five
+ - Planfulness
+ - Regulatory Mode Questionnaire
+ - Responses to Failure Scale
+ - Perceived Competence Scale
+ 
+ 
+
+### No clear theoretical link to outcome
+
+For this category it is unclear why we would expect any link to the outcome (eating). Some are included in DEV more because of their theoretical link to the treatment rather than to baseline level of obesity.
+
+ - Need for Cognition Scale
+ - Vividness of Visual Imagery Questionnaire
+ - Intrinsic Motivation Inventory
+ - Adverse Childhood Experiences
+
+### In DEV but not a construct of interest
+
+These are in DEV but aren't psychological constructs and so I'm not considering them.
+
+  - International Physical Activity Questionnaire
+  - Demographic measures
+  
+## Behavioral predictor variables
+
+ - WTP
+    - price given for healthy foods
+    - price given for unhealthy foods
+    - difference between the above two
+ - ROC
+    - [regulate - look] craving reduction for healthy foods
+    - [regulate - look] craving reduction for unhealthy foods
+    - balance of the above two
+ - SST
+    - Participant behavioral net response bias toward healthy foods
+    - Participant behavioral net response bias toward unhealthy foods
+    - difference between the above
+  
+
+# Checking for presence of each of these  
+
+Do we have these scales? let's take a look.
+
+```{r}
+table(scored$scale_name)
+```
+
+
+Group 1:
+
+ - Brief Self Control Scale - Y
+ - Self-reported Habit Index - N- no rubric
+ - Tempest Self-Regulation Questionnaire for Eating - N- no rubric
+ - Treatment Self-Regulation Questionnaire - N- no rubric
+ - Barratt Impulsiveness Scale - N- no rubric
+ - Eating Dysregulation Measure - Y
+ - Food Craving Inventory - Y
+ - Restraint Scale - N- no rubric
+
+Group 2:
+
+These aren't explicitly designed to measure constructs we are concerned about, but there are theoretical reasons or at least 'stories you could tell' to expect a link to outcome.
+
+ - Big Five - Y
+ - Planfulness -Y
+ - Regulatory Mode Questionnaire - N- no rubric
+ - Responses to Failure Scale - N- no rubric
+ - Perceived Competence Scale - N- no rubric
+ 
+
+## scramble
+
+```{r}
+#get a scrambled dataset we can use to test the pipeline without revealing any results
+scored_dummy <- scored
+scored_dummy$score <-sample(scored_dummy$score,length(scored_dummy$score))
+scored <- scored_dummy
+
+ppt_health_outcomes$bmi_0<-sample(ppt_health_outcomes$bmi_0,nrow(ppt_health_outcomes))
+ppt_health_outcomes$bf_1<-sample(ppt_health_outcomes$bf_1,nrow(ppt_health_outcomes))
+```
+
+
+
+
+
+## analysis (left over from previous analysis)
+
+Get the first survey for each scale:
+```{r}
+scored$survey_num <- as.numeric(str_trim(str_match(scored$survey_name,"[DEV Session \\s][\\d+][\\sSurveys]")))
+first_survey_for_scale<-scored %>% group_by(scale_name) %>% dplyr::summarise("first_survey"=min(survey_num))
+
+#then select it.
+scored_fs <- scored %>%
+  merge(first_survey_for_scale,by="scale_name") %>%
+  filter(survey_num==first_survey)
+
+print("survey used for each scale:")
+print(first_survey_for_scale)
+```
+
+
+```{r}
+
+#iterate through each of our scales, and test their correlation with FCI and FFQ
+
+#scales where there's a promote-prevent
+promote_minus_prevent <- scored_fs %>% 
+  #filter for FFQ
+  filter(scale_name %in% c("FFQ","FCI")) %>%
+  #filter for the two cols we're interested in
+  filter(scored_scale %in% c("cancer_promoting","cancer_preventing","craved_cancer_promoting","liked_cancer_promoting","craved_cancer_preventing","liked_cancer_preventing")) %>%
+  #throw it out wide
+  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #create a composite measure
+  mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing,
+         "cancer_promoting_minus_preventing_craved"=craved_cancer_promoting-craved_cancer_preventing,
+         "cancer_promoting_minus_preventing_liked"=liked_cancer_promoting-liked_cancer_preventing
+         ) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing,cancer_promoting_minus_preventing_craved,cancer_promoting_minus_preventing_liked) %>% 
+  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
+                     names_from=scale_name,
+                     values_from=c(
+    "cancer_promoting_minus_preventing",
+    "cancer_promoting_minus_preventing_craved",
+    "cancer_promoting_minus_preventing_liked")
+    )
+
+single_scale_predictors <- c("BSCS","EDM")
+
+single_scale_values <- scored_fs %>% 
+  #filter for FFQ
+  filter(scale_name %in% single_scale_predictors) %>%
+  #filter for the two cols we're interested in
+  #filter(scored_scale %in% c("mean")) %>%#unnecessary
+  #throw it out wide
+  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,SID,mean) %>% 
+  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
+                     names_from=scale_name,
+                     values_from=c("mean")
+    )
+
+#now merge these
+
+scales_wide<-merge(promote_minus_prevent,single_scale_values,by=c("SID","survey_name"),all=TRUE)
+
+ppt_data_wide_raw_1 <- merge(scales_wide,ppt_health_outcomes,by.x="SID",by.y="dev_id",all=TRUE)
+
+```
+
+
+```{r}
+#Now do multi-scale predictors
+#Big5, Planfulness
+multi_scale_predictor_list <- list(BFI =c("agreeableness","conscientiousness","extraversion","neuroticism","openness"),
+                           PLAN = c("cognitive_strategies","mental_forecasting","temporal_orientation"))
+
+#go through the table and label every subscale that we want to keep
+scored_fs$INCLUDE_SUBSCALE <- FALSE
+for (scale_x in names(multi_scale_predictor_list)){
+  print(scale_x)
+  for(subscale_x in multi_scale_predictor_list[[scale_x]]){
+    print(subscale_x)
+    scored_fs[scored_fs$scale_name==scale_x & scored_fs$scored_scale==subscale_x,"INCLUDE_SUBSCALE"] <- TRUE
+  }
+}
+
+scored_multi <- scored_fs[scored_fs$INCLUDE_SUBSCALE,]
+
+scored_multi$scale_subscale_name <- paste0(scored_multi$scale_name,"_",scored_multi$scored_scale)
+
+multi_scale_values <- scored_multi %>% 
+  #throw it out wide
+  select(SID,survey_name,score,scale_subscale_name) %>% tidyr::pivot_wider(names_from = scale_subscale_name,values_from = score)
+
+ppt_data_wide <- merge(ppt_data_wide_raw_1,multi_scale_values,by=c("SID","survey_name"),all=TRUE)
+```
+
+
+
+```{r}
+ppt_data_wide_dummy <- ppt_data_wide
+
+for (cn in colnames(ppt_data_wide_dummy)[3:length(colnames(ppt_data_wide_dummy))]){
+  print(cn)
+  ppt_data_wide_dummy[,cn]<-sample(ppt_data_wide_dummy[,cn],length(ppt_data_wide_dummy[,cn]))
+}
+rm(ppt_data_wide)
+```
+
+### Exploratory analysis for health special issue
+
+Here we'll follow a few basic steps:
+
+ - Loop through each source and do these analyses. This might occur several times because we'll need to arrange different sources in unique ways.
+ - Add each test of interest to a grand table of findings, storing the label, effect, and the p-value
+ - Do FWE test on the findings to determine the end result
+ 
+ 
+For each set, we'll need to loop through the three outcome measures, and then loop through the relevant predictor variables. We do two-way correlations to understand which should be followed up.
+
+
+
+
+label the variables
+```{r}
+IVs <- c("cancer_promoting_minus_preventing_craved_FCI","cancer_promoting_minus_preventing_liked_FCI",
+         "EDM","BSCS",
+         'BSCS', 'EDM', 
+         'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
+         'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation'
+         )
+DVs <- c("cancer_promoting_minus_preventing_FFQ","bmi_0","bf_1")
+```
+
+THESE ARE DUMMY RESULTS ONLY. NEED TO REMOVE THE RANDOMIZATION AND CHANGE DUMMY VALUES TO REAL ONES.
+
+
+```{r}
+
+
+#now we estimate R^2....
+draw_names <- unique(ppt_data_wide_dummy$survey_name)
+correlation_df <- data.frame()
+for (DV in DVs){
+  for(IV in IVs){
+    for (dn in draw_names){
+      pairwise_not_na <- (is.na(ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,IV])==FALSE) &  (is.na(ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,DV])==FALSE)
+      if(sum(pairwise_not_na)>0){
+        print(paste0(DV,",", IV, " (",as.character(sum(pairwise_not_na)) , " values in ",dn,")"))
+          cor_res <-cor.test(
+            ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,IV],
+            ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,DV],
+            use = "complete.obs"
+          )
+          #print(paste0("r value of ", as.character(cor_res$estimate)))
+          cat(".")
+          cor_df <- data.frame(
+            "v1"=DV,
+            "v2"=IV,
+            "n"=sum(pairwise_not_na),
+            "survey"=dn,
+            "statistic" = cor_res$statistic,
+            "df" = cor_res$parameter,
+            "p.value" = cor_res$p.value,
+            "estimate"=cor_res$estimate,
+            "ci_lower" = cor_res$conf.int[[1]],
+            "ci_upper" = cor_res$conf.int[[2]]
+            
+            
+          )
+          correlation_df <-rbind(correlation_df,cor_df)
+          #correlation_list <- correlation_list %>% add_stats(cor_res)
+          
+
+      }#else{
+        #print(paste("no valid column pair for:",IV,",", DV, " (",dn,")"))
+      #}
+   }
+  }
+}
+
+#correlation_df <-  tidy_stats_to_data_frame(correlation_list)
+
+
+
+```
+
+
+
+```{r}
+View(correlation_df)
+```
+
+
