@@ -1751,14 +1751,10 @@ summary {
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY3dkPC1nZXR3ZCgpXG5gYGAifQ== -->
-<pre class="r"><code>cwd&lt;-getwd()</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiVGhlcmUgd2VyZSA1MCBvciBtb3JlIHdhcm5pbmdzICh1c2Ugd2FybmluZ3MoKSB0byBzZWUgdGhlIGZpcnN0IDUwKVxuIn0= -->
-<pre><code>There were 50 or more warnings (use warnings() to see the first 50)</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YV9kaXIgPC0gXCIvVXNlcnMvYmVuamFtaW5zbWl0aC9Ecm9wYm94IChVbml2ZXJzaXR5IG9mIE9yZWdvbikvVU8tU0FOIExhYi9CZXJrbWFuIExhYi9EZXZhbHVhdGlvbi9hbmFseXNpc19maWxlcy9kYXRhL1wiXG5cbnNldHdkKGRhdGFfZGlyKVxuYGBgIn0= -->
-<pre class="r"><code>data_dir &lt;- &quot;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/&quot;
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY3dkPC1nZXR3ZCgpXG5cbmRhdGFfZGlyIDwtIFwiL1VzZXJzL2JlbmphbWluc21pdGgvRHJvcGJveCAoVW5pdmVyc2l0eSBvZiBPcmVnb24pL1VPLVNBTiBMYWIvQmVya21hbiBMYWIvRGV2YWx1YXRpb24vYW5hbHlzaXNfZmlsZXMvZGF0YS9cIlxuXG5zZXR3ZChkYXRhX2RpcilcbmBgYCJ9 -->
+<pre class="r"><code>cwd&lt;-getwd()
+
+data_dir &lt;- &quot;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/&quot;
 
 setwd(data_dir)</code></pre>
 <!-- rnb-source-end -->
@@ -1807,28 +1803,22 @@ ppt_list_clean &lt;- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_i
 <p>testing my regex:</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ3N1YihcIihcXFxcdyksPyBPUiw/IChcXFxcZClcIixcIlxcXFwxLCBPUiwgXFxcXDJcIixcbiAgICAgYyhcIkV1Z2VuZSBPUiAxMjM0NVwiLFwiRXVnZW5lIE9SIDEyMzQ1XCIsXCJFdWdlbmUgT1Igbm9uZGlnaXRcIixcIjkxNyBXIEJyb2Fkd2F5IEFsbGV5IEFwdCAxLCBFdWdlbmUsIE9SIDk3NDAyXCIpLGlnbm9yZS5jYXNlID0gVFJVRSlcblxuYGBgIn0= -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ3N1YihcIihcXFxcdyksPyBPUiw/IChcXFxcZClcIixcIlxcXFwxLCBPUiwgXFxcXDJcIixcbiAgICAgYyhcIkV1Z2VuZSBPUiAxMjM0NVwiLFwiRXVnZW5lIE9SIDEyMzQ1XCIsXCJFdWdlbmUgT1Igbm9uZGlnaXRcIixcIjkxNyBXIEJyb2Fkd2F5IEFsbGV5IEFwdCAxLCBFdWdlbmUsIE9SIDk3NDAyXCIpLGlnbm9yZS5jYXNlID0gVFJVRSlcbmBgYCJ9 -->
 <pre class="r"><code>gsub(&quot;(\\w),? OR,? (\\d)&quot;,&quot;\\1, OR, \\2&quot;,
-     c(&quot;Eugene OR 12345&quot;,&quot;Eugene OR 12345&quot;,&quot;Eugene OR nondigit&quot;,&quot;917 W Broadway Alley Apt 1, Eugene, OR 97402&quot;),ignore.case = TRUE)
-</code></pre>
+     c(&quot;Eugene OR 12345&quot;,&quot;Eugene OR 12345&quot;,&quot;Eugene OR nondigit&quot;,&quot;917 W Broadway Alley Apt 1, Eugene, OR 97402&quot;),ignore.case = TRUE)</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiWzFdIFwiRXVnZW5lLCBPUiwgMTIzNDVcIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXCJFdWdlbmUsIE9SLCAxMjM0NVwiICAgICAgICAgICAgICAgICAgICAgICAgICAgIFxuWzNdIFwiRXVnZW5lIE9SIG5vbmRpZ2l0XCIgICAgICAgICAgICAgICAgICAgICAgICAgICAgXCI5MTcgVyBCcm9hZHdheSBBbGxleSBBcHQgMSwgRXVnZW5lLCBPUiwgOTc0MDJcIlxuIn0= -->
-<pre><code>[1] &quot;Eugene, OR, 12345&quot;                             &quot;Eugene, OR, 12345&quot;                            
-[3] &quot;Eugene OR nondigit&quot;                            &quot;917 W Broadway Alley Apt 1, Eugene, OR, 97402&quot;</code></pre>
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIFwiRXVnZW5lLCBPUiwgMTIzNDVcIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXCJFdWdlbmUsIE9SLCAxMjM0NVwiICAgICAgICAgICAgICAgICAgICAgICAgICAgICBcIkV1Z2VuZSBPUiBub25kaWdpdFwiICAgICAgICAgICAgICAgICAgICAgICAgICAgXG5bNF0gXCI5MTcgVyBCcm9hZHdheSBBbGxleSBBcHQgMSwgRXVnZW5lLCBPUiwgOTc0MDJcIlxuIn0= -->
+<pre><code>[1] &quot;Eugene, OR, 12345&quot;                             &quot;Eugene, OR, 12345&quot;                             &quot;Eugene OR nondigit&quot;                           
+[4] &quot;917 W Broadway Alley Apt 1, Eugene, OR, 97402&quot;</code></pre>
 <!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p>Tidy addresses:</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWRkcmVzc19tb2QgPC0gcHB0X2xpc3RfY2xlYW4kYWRkcmVzc1xuYGBgIn0= -->
-<pre class="r"><code>address_mod &lt;- ppt_list_clean$address</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiVGhlcmUgd2VyZSAyNiB3YXJuaW5ncyAodXNlIHdhcm5pbmdzKCkgdG8gc2VlIHRoZW0pXG4ifQ== -->
-<pre><code>There were 26 warnings (use warnings() to see them)</code></pre>
-<!-- rnb-output-end -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWRkcmVzc19tb2QgPC0gZ3N1YihcIiB3ZXN0IFwiLFwiIFcgXCIsYWRkcmVzc19tb2QsaWdub3JlLmNhc2UgPSBUUlVFKVxuYWRkcmVzc19tb2QgPC0gZ3N1YihcIiBlYXN0IFwiLFwiIEUgXCIsYWRkcmVzc19tb2QsaWdub3JlLmNhc2UgPSBUUlVFKVxuYWRkcmVzc19tb2QgPC0gZ3N1YihcIiBub3J0aCBcIixcIiBOIFwiLGFkZHJlc3NfbW9kLGlnbm9yZS5jYXNlID0gVFJVRSlcbmFkZHJlc3NfbW9kIDwtIGdzdWIoXCIgc291dGggXCIsXCIgUyBcIixhZGRyZXNzX21vZCxpZ25vcmUuY2FzZSA9IFRSVUUpXG4jaHR0cHM6Ly9zdGFja292ZXJmbG93LmNvbS9xdWVzdGlvbnMvNDYyODc0Mzcvci1nc3ViLXBhcnRpYWwtcmVwbGFjZW1lbnQtd2lsZGNhcmRzXG4jaHR0cDovL3d3dy5lbmRtZW1vLmNvbS9yL2dzdWIucGhwXG4jaHR0cHM6Ly9yZWdleDEwMS5jb20vXG5hZGRyZXNzX21vZCA8LSBnc3ViKFwiKFxcXFx3KSw/IE9SLD8gKFxcXFxkKVwiLFwiXFxcXDEsIE9SLCBcXFxcMlwiLGFkZHJlc3NfbW9kLGlnbm9yZS5jYXNlID0gVFJVRSlcblxuXG5wcHRfbGlzdF9jbGVhbl9mb3JfYWRkcmVzc19tYXRjaCA8LSBwcHRfbGlzdF9jbGVhblxucHB0X2xpc3RfY2xlYW5fZm9yX2FkZHJlc3NfbWF0Y2gkYWRkcmVzcyA8LSBhZGRyZXNzX21vZFxuYGBgIn0= -->
-<pre class="r"><code>address_mod &lt;- gsub(&quot; west &quot;,&quot; W &quot;,address_mod,ignore.case = TRUE)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYWRkcmVzc19tb2QgPC0gcHB0X2xpc3RfY2xlYW4kYWRkcmVzc1xuYWRkcmVzc19tb2QgPC0gZ3N1YihcIiB3ZXN0IFwiLFwiIFcgXCIsYWRkcmVzc19tb2QsaWdub3JlLmNhc2UgPSBUUlVFKVxuYWRkcmVzc19tb2QgPC0gZ3N1YihcIiBlYXN0IFwiLFwiIEUgXCIsYWRkcmVzc19tb2QsaWdub3JlLmNhc2UgPSBUUlVFKVxuYWRkcmVzc19tb2QgPC0gZ3N1YihcIiBub3J0aCBcIixcIiBOIFwiLGFkZHJlc3NfbW9kLGlnbm9yZS5jYXNlID0gVFJVRSlcbmFkZHJlc3NfbW9kIDwtIGdzdWIoXCIgc291dGggXCIsXCIgUyBcIixhZGRyZXNzX21vZCxpZ25vcmUuY2FzZSA9IFRSVUUpXG4jaHR0cHM6Ly9zdGFja292ZXJmbG93LmNvbS9xdWVzdGlvbnMvNDYyODc0Mzcvci1nc3ViLXBhcnRpYWwtcmVwbGFjZW1lbnQtd2lsZGNhcmRzXG4jaHR0cDovL3d3dy5lbmRtZW1vLmNvbS9yL2dzdWIucGhwXG4jaHR0cHM6Ly9yZWdleDEwMS5jb20vXG5hZGRyZXNzX21vZCA8LSBnc3ViKFwiKFxcXFx3KSw/IE9SLD8gKFxcXFxkKVwiLFwiXFxcXDEsIE9SLCBcXFxcMlwiLGFkZHJlc3NfbW9kLGlnbm9yZS5jYXNlID0gVFJVRSlcblxuXG5wcHRfbGlzdF9jbGVhbl9mb3JfYWRkcmVzc19tYXRjaCA8LSBwcHRfbGlzdF9jbGVhblxucHB0X2xpc3RfY2xlYW5fZm9yX2FkZHJlc3NfbWF0Y2gkYWRkcmVzcyA8LSBhZGRyZXNzX21vZFxuYGBgIn0= -->
+<pre class="r"><code>address_mod &lt;- ppt_list_clean$address
+address_mod &lt;- gsub(&quot; west &quot;,&quot; W &quot;,address_mod,ignore.case = TRUE)
 address_mod &lt;- gsub(&quot; east &quot;,&quot; E &quot;,address_mod,ignore.case = TRUE)
 address_mod &lt;- gsub(&quot; north &quot;,&quot; N &quot;,address_mod,ignore.case = TRUE)
 address_mod &lt;- gsub(&quot; south &quot;,&quot; S &quot;,address_mod,ignore.case = TRUE)
@@ -1849,13 +1839,18 @@ ppt_list_clean_for_address_match$address &lt;- address_mod</code></pre>
 </ol>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHB0X2xpc3RfY2xlYW5fZm9yX2FkZHJlc3NfbWF0Y2gkYWRkcmVzc19tYXRjaGVyX2lkIDwtIHNhbXBsZShucm93KHBwdF9saXN0X2NsZWFuX2Zvcl9hZGRyZXNzX21hdGNoKSlcbndyaXRleGw6OndyaXRlX3hsc3goXG4gIHBwdF9saXN0X2NsZWFuX2Zvcl9hZGRyZXNzX21hdGNoW3NhbXBsZShucm93KHBwdF9saXN0X2NsZWFuX2Zvcl9hZGRyZXNzX21hdGNoKSksLihhZGRyZXNzX21hdGNoZXJfaWQsYWRkcmVzcyldLFxuICBwYXRoID0gcGFzdGUwKGRhdGFfZGlyLCBcImFkZHJlc3Nlc190b19tYXRjaC54bHN4XCIpLFxuICBjb2xfbmFtZXMgPSBGQUxTRSlcbmFkZHJlc3NfbWF0Y2hfZGVjb2RlciA8LSBwcHRfbGlzdF9jbGVhbl9mb3JfYWRkcmVzc19tYXRjaFtzYW1wbGUobnJvdyhwcHRfbGlzdF9jbGVhbl9mb3JfYWRkcmVzc19tYXRjaCkpLC4oZGV2X2lkLGFkZHJlc3NfbWF0Y2hlcl9pZCldXG5gYGAifQ== -->
-<pre class="r"><code>ppt_list_clean_for_address_match$address_matcher_id &lt;- sample(nrow(ppt_list_clean_for_address_match))
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI3RoaXMgaXMgZG9uZSBmb3IgcHJpdmFjeS4gYnkgc3BsaXR0aW5nIHRoZSBkYXRhIHdpdGggYW4gYWRkcmVzcyBtYXRjaGVyIElELFxuI3dlIGNhbiBhdm9pZCBzYXZpbmcgdGhlIERFVl9JRCB0byBBZGRyZXNzIGRhdGEgaW50byBhbnkgbmV3IGZsYXRmaWxlXG4jYW5kIGF2b2lkIHVwbG9hZGluZyB0aGUgREVWIElEcyB0byB0aGUgZXh0ZXJuYWwgc291cmNlLlxuI3RoZSBtYXRjaCBmcm9tIERFVl9JRCB0byBhZGRyZXNzIGlzIG9ubHkgc3RvcmVkIGluIHRoZSBkZWNvZGVyIGluIGEgdmFyaWFibGVcbnBwdF9saXN0X2NsZWFuX2Zvcl9hZGRyZXNzX21hdGNoJGFkZHJlc3NfbWF0Y2hlcl9pZCA8LSBzYW1wbGUobnJvdyhwcHRfbGlzdF9jbGVhbl9mb3JfYWRkcmVzc19tYXRjaCkqMTAwMCxzaXplPW5yb3cocHB0X2xpc3RfY2xlYW5fZm9yX2FkZHJlc3NfbWF0Y2gpLHJlcGxhY2U9RkFMU0UpXG53cml0ZXhsOjp3cml0ZV94bHN4KFxuICBwcHRfbGlzdF9jbGVhbl9mb3JfYWRkcmVzc19tYXRjaFtzYW1wbGUobnJvdyhwcHRfbGlzdF9jbGVhbl9mb3JfYWRkcmVzc19tYXRjaCkpLC4oYWRkcmVzc19tYXRjaGVyX2lkLGFkZHJlc3MpXSxcbiAgcGF0aCA9IHBhc3RlMChkYXRhX2RpciwgXCJhZGRyZXNzZXNfdG9fbWF0Y2gueGxzeFwiKSxcbiAgY29sX25hbWVzID0gRkFMU0UpXG5hZGRyZXNzX21hdGNoX2RlY29kZXIgPC0gcHB0X2xpc3RfY2xlYW5fZm9yX2FkZHJlc3NfbWF0Y2hbc2FtcGxlKG5yb3cocHB0X2xpc3RfY2xlYW5fZm9yX2FkZHJlc3NfbWF0Y2gpKSwuKGRldl9pZCxhZGRyZXNzX21hdGNoZXJfaWQpXVxuXG5gYGAifQ== -->
+<pre class="r"><code>#this is done for privacy. by splitting the data with an address matcher ID,
+#we can avoid saving the DEV_ID to Address data into any new flatfile
+#and avoid uploading the DEV IDs to the external source.
+#the match from DEV_ID to address is only stored in the decoder in a variable
+ppt_list_clean_for_address_match$address_matcher_id &lt;- sample(nrow(ppt_list_clean_for_address_match)*1000,size=nrow(ppt_list_clean_for_address_match),replace=FALSE)
 writexl::write_xlsx(
   ppt_list_clean_for_address_match[sample(nrow(ppt_list_clean_for_address_match)),.(address_matcher_id,address)],
   path = paste0(data_dir, &quot;addresses_to_match.xlsx&quot;),
   col_names = FALSE)
-address_match_decoder &lt;- ppt_list_clean_for_address_match[sample(nrow(ppt_list_clean_for_address_match)),.(dev_id,address_matcher_id)]</code></pre>
+address_match_decoder &lt;- ppt_list_clean_for_address_match[sample(nrow(ppt_list_clean_for_address_match)),.(dev_id,address_matcher_id)]
+</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
@@ -1866,18 +1861,40 @@ address_match_decoder &lt;- ppt_list_clean_for_address_match[sample(nrow(ppt_lis
 </ol>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGFibGUoZ2VvY29kZWRfcmVzdWx0cyRYMylcblxuYGBgIn0= -->
-<pre class="r"><code>table(geocoded_results$X3)
-</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZ2VvY29kZWRfcmVzdWx0cyA8LSBkYXRhLnRhYmxlKHJlYWRyOjpyZWFkX2NzdihwYXN0ZTAoZGF0YV9kaXIsXCJHZW9jb2RlUmVzdWx0cy5jc3ZcIiksY29sX25hbWVzID0gRkFMU0UpKVxuYGBgIn0= -->
+<pre class="r"><code>geocoded_results &lt;- data.table(readr::read_csv(paste0(data_dir,&quot;GeocodeResults.csv&quot;),col_names = FALSE))</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG7ilIDilIAgQ29sdW1uIHNwZWNpZmljYXRpb24g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAXG5jb2xzKFxuICBYMSA9IGNvbF9kb3VibGUoKSxcbiAgWDIgPSBjb2xfY2hhcmFjdGVyKCksXG4gIFgzID0gY29sX2NoYXJhY3RlcigpXG4pXG5cbjgyIHBhcnNpbmcgZmFpbHVyZXMuXG5yb3cgY29sICBleHBlY3RlZCAgICAgYWN0dWFsICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGZpbGVcbiAgMiAgLS0gMyBjb2x1bW5zIDEyIGNvbHVtbnMgJy9Vc2Vycy9iZW5qYW1pbnNtaXRoL0Ryb3Bib3ggKFVuaXZlcnNpdHkgb2YgT3JlZ29uKS9VTy1TQU4gTGFiL0JlcmttYW4gTGFiL0RldmFsdWF0aW9uL2FuYWx5c2lzX2ZpbGVzL2RhdGEvR2VvY29kZVJlc3VsdHMuY3N2J1xuICA0ICAtLSAzIGNvbHVtbnMgMTIgY29sdW1ucyAnL1VzZXJzL2JlbmphbWluc21pdGgvRHJvcGJveCAoVW5pdmVyc2l0eSBvZiBPcmVnb24pL1VPLVNBTiBMYWIvQmVya21hbiBMYWIvRGV2YWx1YXRpb24vYW5hbHlzaXNfZmlsZXMvZGF0YS9HZW9jb2RlUmVzdWx0cy5jc3YnXG4gIDcgIC0tIDMgY29sdW1ucyAxMiBjb2x1bW5zICcvVXNlcnMvYmVuamFtaW5zbWl0aC9Ecm9wYm94IChVbml2ZXJzaXR5IG9mIE9yZWdvbikvVU8tU0FOIExhYi9CZXJrbWFuIExhYi9EZXZhbHVhdGlvbi9hbmFseXNpc19maWxlcy9kYXRhL0dlb2NvZGVSZXN1bHRzLmNzdidcbiAgOCAgLS0gMyBjb2x1bW5zIDEyIGNvbHVtbnMgJy9Vc2Vycy9iZW5qYW1pbnNtaXRoL0Ryb3Bib3ggKFVuaXZlcnNpdHkgb2YgT3JlZ29uKS9VTy1TQU4gTGFiL0JlcmttYW4gTGFiL0RldmFsdWF0aW9uL2FuYWx5c2lzX2ZpbGVzL2RhdGEvR2VvY29kZVJlc3VsdHMuY3N2J1xuIDEwICAtLSAzIGNvbHVtbnMgMTIgY29sdW1ucyAnL1VzZXJzL2JlbmphbWluc21pdGgvRHJvcGJveCAoVW5pdmVyc2l0eSBvZiBPcmVnb24pL1VPLVNBTiBMYWIvQmVya21hbiBMYWIvRGV2YWx1YXRpb24vYW5hbHlzaXNfZmlsZXMvZGF0YS9HZW9jb2RlUmVzdWx0cy5jc3YnXG4uLi4gLi4uIC4uLi4uLi4uLiAuLi4uLi4uLi4uIC4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi5cblNlZSBwcm9ibGVtcyguLi4pIGZvciBtb3JlIGRldGFpbHMuXG4ifQ== -->
+<pre><code>
+── Column specification ──────────────────────────────────────────────────────────────────────────────────────
+cols(
+  X1 = col_double(),
+  X2 = col_character(),
+  X3 = col_character()
+)
+
+82 parsing failures.
+row col  expected     actual                                                                                                                            file
+  2  -- 3 columns 12 columns &#39;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/GeocodeResults.csv&#39;
+  4  -- 3 columns 12 columns &#39;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/GeocodeResults.csv&#39;
+  7  -- 3 columns 12 columns &#39;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/GeocodeResults.csv&#39;
+  8  -- 3 columns 12 columns &#39;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/GeocodeResults.csv&#39;
+ 10  -- 3 columns 12 columns &#39;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/GeocodeResults.csv&#39;
+... ... ......... .......... ...............................................................................................................................
+See problems(...) for more details.</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGFibGUoZ2VvY29kZWRfcmVzdWx0cyRYMylcbmBgYCJ9 -->
+<pre class="r"><code>table(geocoded_results$X3)</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-output-begin eyJkYXRhIjoiXG4gICBNYXRjaCBOb19NYXRjaCAgICAgIFRpZSBcbiAgICAgIDgyICAgICAgIDkyICAgICAgICA2IFxuIn0= -->
 <pre><code>
    Match No_Match      Tie 
       82       92        6 </code></pre>
 <!-- rnb-output-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiVGhlcmUgd2VyZSAyNiB3YXJuaW5ncyAodXNlIHdhcm5pbmdzKCkgdG8gc2VlIHRoZW0pXG4ifQ== -->
-<pre><code>There were 26 warnings (use warnings() to see them)</code></pre>
-<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuVmlldyhnZW9jb2RlZF9yZXN1bHRzW1gzPT1cIk1hdGNoXCIsXSlcblZpZXcoZ2VvY29kZWRfcmVzdWx0c1tYMyE9XCJNYXRjaFwiLF0pXG5gYGAifQ== -->
+<pre class="r"><code>View(geocoded_results[X3==&quot;Match&quot;,])
+View(geocoded_results[X3!=&quot;Match&quot;,])</code></pre>
+<!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <ol start="5" style="list-style-type: decimal">
@@ -1911,24 +1928,46 @@ rm(participant_list_raw)</code></pre>
 <p>Useful: <a href="https://mcdc.missouri.edu/applications/geocorr2014.html" class="uri">https://mcdc.missouri.edu/applications/geocorr2014.html</a></p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI3RoaXMgXG5jb3VudHlfemlwX3RhYmxlIDwtIHJlYWRyOjpyZWFkX2NzdihwYXN0ZTAoZGF0YV9kaXIsXCJnZW9jb3JyMjAxNC5jc3ZcIiksc2tpcCA9IDEpIyAlPiUgZmlsdGVyKHppcG5hbWU9PVwiTG9zIEFuZ2VsZXMsIENBXCIpXG5jb3VudHlfemlwX3RhYmxlICU+JSBmaWx0ZXIgKGBDb3VudHkgY29kZWA9PVwiNDEwMzlcIilcbmBgYCJ9 -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuI3RoaXMgXG5jb3VudHlfemlwX3RhYmxlIDwtIHJlYWRyOjpyZWFkX2NzdihwYXN0ZTAoZGF0YV9kaXIsXCJnZW9jb3JyMjAxNC5jc3ZcIiksc2tpcCA9IDEpIyAlPiUgZmlsdGVyKHppcG5hbWU9PVwiTG9zIEFuZ2VsZXMsIENBXCIpXG5gYGAifQ== -->
 <pre class="r"><code>#this 
-county_zip_table &lt;- readr::read_csv(paste0(data_dir,&quot;geocorr2014.csv&quot;),skip = 1)# %&gt;% filter(zipname==&quot;Los Angeles, CA&quot;)
-county_zip_table %&gt;% filter (`County code`==&quot;41039&quot;)</code></pre>
+county_zip_table &lt;- readr::read_csv(paste0(data_dir,&quot;geocorr2014.csv&quot;),skip = 1)# %&gt;% filter(zipname==&quot;Los Angeles, CA&quot;)</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiXG7ilIDilIAgQ29sdW1uIHNwZWNpZmljYXRpb24g4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSA4pSAXG5jb2xzKFxuICBgQ291bnR5IGNvZGVgID0gY29sX2NoYXJhY3RlcigpLFxuICBgU3RhdGUgY29kZWAgPSBjb2xfY2hhcmFjdGVyKCksXG4gIGBaSVAgY2Vuc3VzIHRhYnVsYXRpb24gYXJlYWAgPSBjb2xfZG91YmxlKCksXG4gIGBTdGF0ZSBhYmJyZXZpYXRpb25gID0gY29sX2NoYXJhY3RlcigpLFxuICBgQ291bnR5IG5hbWVgID0gY29sX2NoYXJhY3RlcigpLFxuICBgWkNUQSBuYW1lYCA9IGNvbF9jaGFyYWN0ZXIoKSxcbiAgYFRvdGFsIHBvcHVsYXRpb24gKDIwMTApYCA9IGNvbF9kb3VibGUoKSxcbiAgYGNvdW50eSB0byB6Y3RhNSBhbGxvY2F0aW9uIGZhY3RvcmAgPSBjb2xfZG91YmxlKClcbilcbiJ9 -->
+<pre><code>
+── Column specification ──────────────────────────────────────────────────────────────────────────────────────
+cols(
+  `County code` = col_character(),
+  `State code` = col_character(),
+  `ZIP census tabulation area` = col_double(),
+  `State abbreviation` = col_character(),
+  `County name` = col_character(),
+  `ZCTA name` = col_character(),
+  `Total population (2010)` = col_double(),
+  `county to zcta5 allocation factor` = col_double()
+)</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuY291bnR5X3ppcF90YWJsZSAlPiUgZmlsdGVyIChgQ291bnR5IGNvZGVgPT1cIjQxMDM5XCIpXG5gYGAifQ== -->
+<pre class="r"><code>county_zip_table %&gt;% filter (`County code`==&quot;41039&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-frame-begin eyJtZXRhZGF0YSI6eyJjbGFzc2VzIjpbInNwZWNfdGJsX2RmIiwidGJsX2RmIiwidGJsIiwiZGF0YS5mcmFtZSJdLCJucm93IjozOSwibmNvbCI6OH0sInJkZiI6Ikg0c0lBQUFBQUFBQUErMlhYV2djUlJ6QUo1ZWV2WnpOUjZ1bytMUytXTVVtSktaK0lYcVhYcHFtTVRFaGlXM00wODN0VHU3V1RIYk8yYmxjVWtTRG9DSzJXTFJJSC9LUTJqNjBJQ1VnS0JTRkkwamlYZTZnaUNBK3BWV0xIMCtLRDRXcWpiTTcvNzN1N292NFloKzhoZVUzLy8vOFAyZG41MjdIKzZkNjQxTnhoRkF6Mm9FaXFEa3FoeWo2d3VSQTU1TUk3WWhJb1VsT3REaGNrRVozeVVGTTNoM3kzZ3NUMGYwOTNiMVBOWVQvbFJEY0FwSDlQWTNSYlJ3aDFPWThqZVQxdFpMei9pYXZyMTlSM0RnSlhBR3VBc0Z1NDdMaWx3aVlCSTRCd2I0TTgyVU5tQWJtZ1JDL0RQSEtrTC84cTJJRjdDdExRSWhiZ1RvcTRGY0J2d3I0YlVMZVRhaG5FL0pWUWE1QzNDckVyWUpmRGZ4cUhVQ291d2I5MWNDLzV0YU5RcnQ1ZEx3eHVvMmo0TlBZT1l3dG90VU5HbUpEL0xkaWNFTzE5RkdiNEgyMzdGb25UWU1Vc1NEY3A0d2ZMR1NKUmY0VHpaMEhLTlp6ZE5HbmFqdEFDMFFiTitjRFJlMUs1WWlkTTduZmVYZUtDWUd6UkR2RTJUd0pHSE5pRndtbGZsMC93VWFSTWNOZlR6OVpDUFhlenppeGNLQm1PbWR5djZadEFGT3F5UlJrMWg5L2dEcXV1citPdGtITXVXbG5DanpyTDN1b1lPbkNaSmFXTW9XLzgvZ3c0emk0WU1NczNNWUl6bE1pbU9WZnhCSE1kVWI5TmU0ZW93VGIyQkxhb0Jud2o0OHdpek4vanRqelRKaitES040bHB0RzFtL1RQcEhucHBXZE1RazEvbG5kT2xFMGJUdkg1Z0t0SEpGUFh2aHJqQjB4RGIvY2ZoUlQrVFRtWmNFQlIwY2Q3UGNvc2NXTUdkZ2Vqb3JpMmNEZWVsRnVMU3pzZmVwRlVQOFRIa2Z1bFJ4WVV2d2VmdGQvT2xWeXVmNngwbSs5cHVScjFSV2wzM0lka2t1RGF2NTRUdkhrZWNYTHZ5ajd0UnRLWHVoUS9QQlp4Uk9ROTl4OWl1OHRLMWFiVmR4ZW1OL0lLWG1oVzhrZkFJL0hGRS85b0hqMmEwVVQrbmhqU3ZIaWtPSjNUVW5GUFdtWHhWV2xMeTJwK08rZVZ2STdtcUpJSzc0Ty9mQXJpbE1sQkplN2ZpaDBKVDdQbi8wbS9zekxpYldScjM2NzhNZVBpWlZyNmI2M254aE9mSHBpZE90cFl6cFJrdEp6NitmcityR01ZL2huSXZlKytPeWxWMi9VZWVHZXR4Nko3QnBLTEg4VTYzbnc1OFc2M1NzZ2UzWmgrZHhmdjM5eThNeG12WjR6T2I2cWZiRmM5OCtIOHVWRGNUMjdOUEJOcDR6RGx4S1hyaDY2ZVBleHEzVjZkcWREZFh0KzRUZ2czMXFwd0JkbDFNSnp4RWJxZEk1NSt6WEZDcFpZMUhSbUVHL3ZUd2g1T1BzMTkwOGZIdE4wWXRrRld4TTRVNkRZUFVrd0p4Z3M5aWdmbk1sd01tKzYwNkVFVG5MdkYyRTZOZG5uVjl3N3lRU21XcDdsdmRBUFBkcmQwLzB3VEQrZ3F4Q0NhY2QwZ1IvVDVGSElkR1U0ZzNYQmVLalRGczZLWFY2M3JmS09PUHR2ZTN2NzIvQ1M2QlRiM3BKNHlyaUJCZTZhNFU1OUNOME11ZXhrZVNleGRJbzRYK2ZSa0hNVER5bmFDNVpUaWRHcDV3cldiS2Z6OFJCM3A5WFZDdU85dm5GTXBZeHNRNmdvaExxRFdGblQ4aFl0U25HR1VPL1FseDI3RFhjNWg2UHdPcEZhdTBzNGkrdHA1Skh0YWR6ZTBNMi9BVGxuZ3RhVUVBQUEifQ== -->
+<div data-pagedtable="false">
+<script data-pagedtable-source type="application/json">
+{"columns":[{"label":["County code"],"name":[1],"type":["chr"],"align":["left"]},{"label":["State code"],"name":[2],"type":["chr"],"align":["left"]},{"label":["ZIP census tabulation area"],"name":[3],"type":["dbl"],"align":["right"]},{"label":["State abbreviation"],"name":[4],"type":["chr"],"align":["left"]},{"label":["County name"],"name":[5],"type":["chr"],"align":["left"]},{"label":["ZCTA name"],"name":[6],"type":["chr"],"align":["left"]},{"label":["Total population (2010)"],"name":[7],"type":["dbl"],"align":["right"]},{"label":["county to zcta5 allocation factor"],"name":[8],"type":["dbl"],"align":["right"]}],"data":[{"1":"41039","2":"41","3":"97324","4":"OR","5":"Lane OR","6":"Alsea, OR","7":"22","8":"0.000"},{"1":"41039","2":"41","3":"97390","4":"OR","5":"Lane OR","6":"Tidewater, OR","7":"45","8":"0.000"},{"1":"41039","2":"41","3":"97401","4":"OR","5":"Lane OR","6":"Eugene, OR","7":"40521","8":"0.115"},{"1":"41039","2":"41","3":"97402","4":"OR","5":"Lane OR","6":"Eugene, OR","7":"50342","8":"0.143"},{"1":"41039","2":"41","3":"97403","4":"OR","5":"Lane OR","6":"Eugene, OR","7":"11622","8":"0.033"},{"1":"41039","2":"41","3":"97404","4":"OR","5":"Lane OR","6":"Eugene, OR","7":"32255","8":"0.092"},{"1":"41039","2":"41","3":"97405","4":"OR","5":"Lane OR","6":"Eugene, OR","7":"44645","8":"0.127"},{"1":"41039","2":"41","3":"97408","4":"OR","5":"Lane OR","6":"Eugene, OR","7":"11711","8":"0.033"},{"1":"41039","2":"41","3":"97412","4":"OR","5":"Lane OR","6":"Blachly, OR","7":"521","8":"0.001"},{"1":"41039","2":"41","3":"97413","4":"OR","5":"Lane OR","6":"Blue River, OR","7":"909","8":"0.003"},{"1":"41039","2":"41","3":"97419","4":"OR","5":"Lane OR","6":"Cheshire, OR","7":"1066","8":"0.003"},{"1":"41039","2":"41","3":"97424","4":"OR","5":"Lane OR","6":"Cottage Grove, OR","7":"17323","8":"0.049"},{"1":"41039","2":"41","3":"97426","4":"OR","5":"Lane OR","6":"Creswell, OR","7":"9716","8":"0.028"},{"1":"41039","2":"41","3":"97430","4":"OR","5":"Lane OR","6":"Deadwood, OR","7":"385","8":"0.001"},{"1":"41039","2":"41","3":"97431","4":"OR","5":"Lane OR","6":"Dexter, OR","7":"2335","8":"0.007"},{"1":"41039","2":"41","3":"97434","4":"OR","5":"Lane OR","6":"Dorena, OR","7":"928","8":"0.003"},{"1":"41039","2":"41","3":"97437","4":"OR","5":"Lane OR","6":"Elmira, OR","7":"2572","8":"0.007"},{"1":"41039","2":"41","3":"97438","4":"OR","5":"Lane OR","6":"Fall Creek, OR","7":"1191","8":"0.003"},{"1":"41039","2":"41","3":"97439","4":"OR","5":"Lane OR","6":"Florence, OR","7":"14343","8":"0.041"},{"1":"41039","2":"41","3":"97446","4":"OR","5":"Lane OR","6":"Harrisburg, OR","7":"19","8":"0.000"},{"1":"41039","2":"41","3":"97448","4":"OR","5":"Lane OR","6":"Junction City, OR","7":"11985","8":"0.034"},{"1":"41039","2":"41","3":"97451","4":"OR","5":"Lane OR","6":"Lorane, OR","7":"387","8":"0.001"},{"1":"41039","2":"41","3":"97452","4":"OR","5":"Lane OR","6":"Lowell, OR","7":"1420","8":"0.004"},{"1":"41039","2":"41","3":"97453","4":"OR","5":"Lane OR","6":"Mapleton, OR","7":"897","8":"0.003"},{"1":"41039","2":"41","3":"97454","4":"OR","5":"Lane OR","6":"Marcola, OR","7":"1337","8":"0.004"},{"1":"41039","2":"41","3":"97455","4":"OR","5":"Lane OR","6":"Pleasant Hill, OR","7":"2538","8":"0.007"},{"1":"41039","2":"41","3":"97456","4":"OR","5":"Lane OR","6":"Monroe, OR","7":"204","8":"0.001"},{"1":"41039","2":"41","3":"97461","4":"OR","5":"Lane OR","6":"Noti, OR","7":"683","8":"0.002"},{"1":"41039","2":"41","3":"97463","4":"OR","5":"Lane OR","6":"Oakridge, OR","7":"3877","8":"0.011"},{"1":"41039","2":"41","3":"97477","4":"OR","5":"Lane OR","6":"Springfield, OR","7":"36874","8":"0.105"},{"1":"41039","2":"41","3":"97478","4":"OR","5":"Lane OR","6":"Springfield, OR","7":"37011","8":"0.105"},{"1":"41039","2":"41","3":"97480","4":"OR","5":"Lane OR","6":"Swisshome, OR","7":"379","8":"0.001"},{"1":"41039","2":"41","3":"97487","4":"OR","5":"Lane OR","6":"Veneta, OR","7":"8449","8":"0.024"},{"1":"41039","2":"41","3":"97488","4":"OR","5":"Lane OR","6":"Vida, OR","7":"1011","8":"0.003"},{"1":"41039","2":"41","3":"97489","4":"OR","5":"Lane OR","6":"Walterville, OR","7":"868","8":"0.002"},{"1":"41039","2":"41","3":"97490","4":"OR","5":"Lane OR","6":"Walton, OR","7":"326","8":"0.001"},{"1":"41039","2":"41","3":"97492","4":"OR","5":"Lane OR","6":"Westfir, OR","7":"597","8":"0.002"},{"1":"41039","2":"41","3":"97493","4":"OR","5":"Lane OR","6":"Westlake, OR","7":"302","8":"0.001"},{"1":"41039","2":"41","3":"97498","4":"OR","5":"Lane OR","6":"Yachats, OR","7":"99","8":"0.000"}],"options":{"columns":{"min":{},"max":[10],"total":[8]},"rows":{"min":[10],"max":[10],"total":[39]},"pages":{}}}
+  </script>
+</div>
+<!-- rnb-frame-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p>Let’s take a look at the different county codes on offer.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShyZWFkeGwpXG5cbnJ1Y2MyMDEzPC1yZWFkeGw6OnJlYWRfeGxzKHBhc3RlMChkYXRhX2RpcixcInJ1cmFsdXJiYW5jb2RlczIwMTMueGxzXCIpLHNoZWV0PVwiUnVyYWwtdXJiYW4gQ29udGludXVtIENvZGUgMjAxM1wiKVxuXG5ydWNjMjAxM19jb2Rlc19saXN0IDwtIHJ1Y2MyMDEzICU+JSBzZWxlY3QoUlVDQ18yMDEzLERlc2NyaXB0aW9uKSAlPiUgYXJyYW5nZSguICwgUlVDQ18yMDEzKSAlPiUgdW5pcXVlXG5ydWNjMjAxM19jb2Rlc19saXN0XG5gYGAifQ== -->
-<pre class="r"><code>library(readxl)
-
-rucc2013&lt;-readxl::read_xls(paste0(data_dir,&quot;ruralurbancodes2013.xls&quot;),sheet=&quot;Rural-urban Continuum Code 2013&quot;)
-
-rucc2013_codes_list &lt;- rucc2013 %&gt;% select(RUCC_2013,Description) %&gt;% arrange(. , RUCC_2013) %&gt;% unique
-rucc2013_codes_list</code></pre>
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuZGF0YV9kaXJcblxuYGBgIn0= -->
+<pre class="r"><code>data_dir
+</code></pre>
 <!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiWzFdIFwiL1VzZXJzL2JlbmphbWluc21pdGgvRHJvcGJveCAoVW5pdmVyc2l0eSBvZiBPcmVnb24pL1VPLVNBTiBMYWIvQmVya21hbiBMYWIvRGV2YWx1YXRpb24vYW5hbHlzaXNfZmlsZXMvZGF0YS9cIlxuIn0= -->
+<pre><code>[1] &quot;/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/&quot;</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-chunk-begin -->
 <!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucnVjY19icmllZiA8LSBydWNjMjAxMyAlPiUgc2VsZWN0KEZJUFMsU3RhdGUsUlVDQ18yMDEzKVxuYGBgIn0= -->
@@ -1939,24 +1978,54 @@ rucc2013_codes_list</code></pre>
 <p>Now we can code the ZIP codes with RUCC codes</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuemlwX3RvX3J1Y2MgPC0gY291bnR5X3ppcF90YWJsZSAlPiUgc2VsZWN0KGBaSVAgY2Vuc3VzIHRhYnVsYXRpb24gYXJlYWAsYENvdW50eSBjb2RlYCxgU3RhdGUgYWJicmV2aWF0aW9uYCkgJT4lIG1lcmdlKHJ1Y2NfYnJpZWYsYnkueCA9IFwiQ291bnR5IGNvZGVcIixieS55PVwiRklQU1wiKVxuemlwX3RvX3J1Y2MkYFpJUCBjZW5zdXMgdGFidWxhdGlvbiBhcmVhYCA8LSBhcy5jaGFyYWN0ZXIoemlwX3RvX3J1Y2MkYFpJUCBjZW5zdXMgdGFidWxhdGlvbiBhcmVhYCkgI3N0b3JlIFpJUCBjb2RlIGFzIGNoYXJhY3RlciB0byBhdm9pZCBjb25mdXNpb25cblxuYGBgIn0= -->
-<pre class="r"><code>zip_to_rucc &lt;- county_zip_table %&gt;% select(`ZIP census tabulation area`,`County code`,`State abbreviation`) %&gt;% merge(rucc_brief,by.x = &quot;County code&quot;,by.y=&quot;FIPS&quot;)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxuemlwX3RvX3J1Y2MgPC0gY291bnR5X3ppcF90YWJsZSAlPiUgc2VsZWN0KGBaSVAgY2Vuc3VzIHRhYnVsYXRpb24gYXJlYWAsYENvdW50eSBjb2RlYCxgU3RhdGUgYWJicmV2aWF0aW9uYCkgJT4lIG1lcmdlKHJ1Y2NfYnJpZWYsYnkueCA9IFxcQ291bnR5IGNvZGVcXCxieS55PVxcRklQU1xcKVxuemlwX3RvX3J1Y2MkYFpJUCBjZW5zdXMgdGFidWxhdGlvbiBhcmVhYCA8LSBhcy5jaGFyYWN0ZXIoemlwX3RvX3J1Y2MkYFpJUCBjZW5zdXMgdGFidWxhdGlvbiBhcmVhYCkgI3N0b3JlIFpJUCBjb2RlIGFzIGNoYXJhY3RlciB0byBhdm9pZCBjb25mdXNpb25cblxuYGBgXG5gYGAifQ== -->
+<pre class="r"><code>```r
+zip_to_rucc &lt;- county_zip_table %&gt;% select(`ZIP census tabulation area`,`County code`,`State abbreviation`) %&gt;% merge(rucc_brief,by.x = \County code\,by.y=\FIPS\)
 zip_to_rucc$`ZIP census tabulation area` &lt;- as.character(zip_to_rucc$`ZIP census tabulation area`) #store ZIP code as character to avoid confusion
 </code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxucHB0X2xpc3Rfd2l0aF9ydWNjIDwtIG1lcmdlKHBwdF9saXN0X2NsZWFuLGRhdGEudGFibGUoemlwX3RvX3J1Y2MpLGJ5Lng9XCJaSVBDb2RlXCIsYnkueT1cIlpJUCBjZW5zdXMgdGFidWxhdGlvbiBhcmVhXCIsYWxsLng9VFJVRSlcbmBgYCJ9 -->
-<pre class="r"><code>ppt_list_with_rucc &lt;- merge(ppt_list_clean,data.table(zip_to_rucc),by.x=&quot;ZIPCode&quot;,by.y=&quot;ZIP census tabulation area&quot;,all.x=TRUE)</code></pre>
-<!-- rnb-source-end -->
-<!-- rnb-chunk-end -->
-<!-- rnb-text-begin -->
-<!-- rnb-text-end -->
-<!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxudGFibGUocHB0X2xpc3Rfd2l0aF9ydWNjJFJVQ0NfMjAxMylcbmBgYCJ9 -->
-<pre class="r"><code>table(ppt_list_with_rucc$RUCC_2013)</code></pre>
+<pre><code>
+&lt;!-- rnb-source-end --&gt;
+
+&lt;!-- rnb-chunk-end --&gt;
+
+
+&lt;!-- rnb-text-begin --&gt;
+
+
+
+&lt;!-- rnb-text-end --&gt;
+
+
+&lt;!-- rnb-chunk-begin --&gt;
+
+
+&lt;!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxucHB0X2xpc3Rfd2l0aF9ydWNjIDwtIG1lcmdlKHBwdF9saXN0X2NsZWFuLGRhdGEudGFibGUoemlwX3RvX3J1Y2MpLGJ5Lng9XFxaSVBDb2RlXFwsYnkueT1cXFpJUCBjZW5zdXMgdGFidWxhdGlvbiBhcmVhXFwsYWxsLng9VFJVRSlcbmBgYFxuYGBgIn0= --&gt;
+
+```r
+```r
+ppt_list_with_rucc &lt;- merge(ppt_list_clean,data.table(zip_to_rucc),by.x=\ZIPCode\,by.y=\ZIP census tabulation area\,all.x=TRUE)</code></pre>
+<pre><code>
+&lt;!-- rnb-source-end --&gt;
+
+&lt;!-- rnb-chunk-end --&gt;
+
+
+&lt;!-- rnb-text-begin --&gt;
+
+
+
+&lt;!-- rnb-text-end --&gt;
+
+
+&lt;!-- rnb-chunk-begin --&gt;
+
+
+&lt;!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYGBgclxudGFibGUocHB0X2xpc3Rfd2l0aF9ydWNjJFJVQ0NfMjAxMylcbmBgYFxuYGBgIn0= --&gt;
+
+```r
+```r
+table(ppt_list_with_rucc$RUCC_2013)</code></pre>
+<p>```</p>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->

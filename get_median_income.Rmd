@@ -1,0 +1,12 @@
+---
+title: "get median income"
+output: html_notebook
+---
+
+
+```{r}
+data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+
+zip_income_data <- readr::read_csv(paste0(data_dir,"MedianZIP-3.csv"))
+```
+

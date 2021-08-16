@@ -13,9 +13,11 @@ library(dplyr)
 library(ggplot2)
 library(rstatix)
 
-load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data.RData")
-
+load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_w_demographics.RData")
+scored<-scored_with_demographics
+rm(scored_with_demographics)
 scored$score <- as.numeric(scored$score)
+scored$scale_name <- sub("-","_",scored$scale_name)
 ```
 
 ```{r}
@@ -34,7 +36,7 @@ Now get BMI
 ```{r}
 load("../../../files/data/ppt_list_w_data.RData")
 #our primary health outcome measure
-ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bmi_0,bf_1) %>% filter(!is.na(bmi_0) | !is.na(bf_1))
+ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bf_1) %>% filter(!is.na(bf_1))
 rm(ppt_list_w_data)
 
 ```
@@ -139,6 +141,8 @@ Group 1:
  - Food Craving Inventory - Y
  - Restraint Scale - N- no rubric
 
+
+## the following were NOT pre-registered.
 Group 2:
 
 These aren't explicitly designed to measure constructs we are concerned about, but there are theoretical reasons or at least 'stories you could tell' to expect a link to outcome.
@@ -148,19 +152,19 @@ These aren't explicitly designed to measure constructs we are concerned about, b
  - Regulatory Mode Questionnaire - N- no rubric
  - Responses to Failure Scale - N- no rubric
  - Perceived Competence Scale - N- no rubric
- 
 
-## scramble
 
-```{r}
-#get a scrambled dataset we can use to test the pipeline without revealing any results
-scored_dummy <- scored
-scored_dummy$score <-sample(scored_dummy$score,length(scored_dummy$score))
-scored <- scored_dummy
+<!-- ## scramble -->
 
-ppt_health_outcomes$bmi_0<-sample(ppt_health_outcomes$bmi_0,nrow(ppt_health_outcomes))
-ppt_health_outcomes$bf_1<-sample(ppt_health_outcomes$bf_1,nrow(ppt_health_outcomes))
-```
+<!-- ```{r} -->
+<!-- #get a scrambled dataset we can use to test the pipeline without revealing any results -->
+<!-- scored_dummy <- scored -->
+<!-- scored_dummy$score <-sample(scored_dummy$score,length(scored_dummy$score)) -->
+<!-- scored <- scored_dummy -->
+
+<!-- ppt_health_outcomes$bmi_0<-sample(ppt_health_outcomes$bmi_0,nrow(ppt_health_outcomes)) -->
+<!-- ppt_health_outcomes$bf_1<-sample(ppt_health_outcomes$bf_1,nrow(ppt_health_outcomes)) -->
+<!-- ``` -->
 
 
 
@@ -180,6 +184,8 @@ scored_fs <- scored %>%
 
 print("survey used for each scale:")
 print(first_survey_for_scale)
+
+sapply(unique(scored_fs$scale_name),function(sn){list(sn=unique(scored_fs[scored_fs$scale_name==sn,"scored_scale"]))})
 ```
 
 
@@ -210,11 +216,11 @@ promote_minus_prevent <- scored_fs %>%
     "cancer_promoting_minus_preventing_liked")
     )
 
-single_scale_predictors <- c("BSCS","EDM")
+single_scale_predictors_mean <- c("BSCS","EDM","cSES")
 
-single_scale_values <- scored_fs %>% 
-  #filter for FFQ
-  filter(scale_name %in% single_scale_predictors) %>%
+single_scale_values_mean <- scored_fs %>% 
+    #filter for FFQ
+  filter(scale_name %in% single_scale_predictors_mean) %>%
   #filter for the two cols we're interested in
   #filter(scored_scale %in% c("mean")) %>%#unnecessary
   #throw it out wide
@@ -226,6 +232,22 @@ single_scale_values <- scored_fs %>%
                      values_from=c("mean")
     )
 
+
+single_scale_predictors_sum <- c("TESQ_E","TRSQ","BIS_11","RS")
+
+single_scale_values_sum <- scored_fs %>% 
+  #filter for FFQ
+  filter(scale_name %in% single_scale_predictors_sum) %>%
+  #throw it out wide
+  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,SID,sum) %>% 
+  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
+                     names_from=scale_name,
+                     values_from=c("sum")
+    )
+single_scale_values<- merge(single_scale_values_mean,single_scale_values_sum,by=c("SID","survey_name"),all=TRUE)
+
 #now merge these
 
 scales_wide<-merge(promote_minus_prevent,single_scale_values,by=c("SID","survey_name"),all=TRUE)
@@ -234,12 +256,42 @@ ppt_data_wide_raw_1 <- merge(scales_wide,ppt_health_outcomes,by.x="SID",by.y="de
 
 ```
 
+```{r}
+scored_fs %>% filter(scale_name=="DEMO") %>% .$scored_scale %>% unique
+
+scored_fs_demo_zscored <- scored_fs %>% filter(scale_name=="DEMO")
+ses_grouped<-c("zipcode_median_income_acs", "household_income_per_person","household_income_level_medamount","education_own")
+
+scored_fs_demo_zscored <- scored_fs_demo_zscored %>% data.frame %>% group_by(scored_scale) %>% 
+  filter(scored_scale %in% ses_grouped) %>% 
+  mutate(
+  score_zscore=(score-mean(score,na.rm=TRUE))/sd(score,na.rm=TRUE),
+  score_mean = mean(score,na.rm=TRUE),
+  score_sd =sd(score,na.rm=TRUE)) %>% ungroup
+#get a zscore of each
+
+scored_fs_demo_zscored$score<- scored_fs_demo_zscored$score_zscore
+
+scored_fs_demo_zscored_wide <- scored_fs_demo_zscored %>% 
+  select(SID,survey_name,score,scored_scale) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  rowwise() %>%
+  mutate(ses_aggregate=mean(c(education_own,zipcode_median_income_acs,household_income_per_person,household_income_level_medamount)))
+
+
+```
+
 
 ```{r}
 #Now do multi-scale predictors
 #Big5, Planfulness
 multi_scale_predictor_list <- list(BFI =c("agreeableness","conscientiousness","extraversion","neuroticism","openness"),
-                           PLAN = c("cognitive_strategies","mental_forecasting","temporal_orientation"))
+                           PLAN = c("cognitive_strategies","mental_forecasting","temporal_orientation"),
+                           ACES = c("sum","abuse","divorced_separated","household_dysfunction","neglectful_parenting"),
+                           RTFS = c("factor_1", "factor_2"),
+                           SRHI = c("healthy","unhealthy","sum"),
+                           DEMO = c("mcarthur_social_standing")
+                           
+                           )
 
 #go through the table and label every subscale that we want to keep
 scored_fs$INCLUDE_SUBSCALE <- FALSE
@@ -259,20 +311,41 @@ multi_scale_values <- scored_multi %>%
   #throw it out wide
   select(SID,survey_name,score,scale_subscale_name) %>% tidyr::pivot_wider(names_from = scale_subscale_name,values_from = score)
 
-ppt_data_wide <- merge(ppt_data_wide_raw_1,multi_scale_values,by=c("SID","survey_name"),all=TRUE)
-```
+ppt_data_wide_raw_2 <- merge(ppt_data_wide_raw_1,multi_scale_values,by=c("SID","survey_name"),all=TRUE)
 
+
+ppt_data_wide <- merge(ppt_data_wide_raw_2,scored_fs_demo_zscored_wide,by=c("SID","survey_name"),all=TRUE)
+```
 
 
 ```{r}
-ppt_data_wide_dummy <- ppt_data_wide
+#grabs the FIRST score for each item per participant.
+col_list <- lapply(colnames(ppt_data_wide %>% select(-survey_name,-SID)), function(col){
+  return(ppt_data_wide %>% select(-survey_name) %>% .[,c("SID",col)] %>% filter(!is.na(.[col])) %>% group_by(SID) %>% summarise("{col}":=first(.data[[col]])))
+})
+data_by_ppt <- purrr::reduce(col_list, left_join,by="SID")
 
-for (cn in colnames(ppt_data_wide_dummy)[3:length(colnames(ppt_data_wide_dummy))]){
-  print(cn)
-  ppt_data_wide_dummy[,cn]<-sample(ppt_data_wide_dummy[,cn],length(ppt_data_wide_dummy[,cn]))
-}
-rm(ppt_data_wide)
+
+
 ```
+
+Now we do some contrasts we haven't done yet...
+
+```{r}
+data_by_ppt$SRHI_healthy_minus_unhealthy <- data_by_ppt$SRHI_healthy-data_by_ppt$SRHI_unhealthy
+```
+
+Now we need to get the non-scale social values in here.
+
+<!-- ```{r} -->
+<!-- ppt_data_wide_dummy <- ppt_data_wide -->
+
+<!-- for (cn in colnames(ppt_data_wide_dummy)[3:length(colnames(ppt_data_wide_dummy))]){ -->
+<!--   print(cn) -->
+<!--   ppt_data_wide_dummy[,cn]<-sample(ppt_data_wide_dummy[,cn],length(ppt_data_wide_dummy[,cn])) -->
+<!-- } -->
+<!-- rm(ppt_data_wide) -->
+<!-- ``` -->
 
 ### Exploratory analysis for health special issue
 
@@ -281,65 +354,73 @@ Here we'll follow a few basic steps:
  - Loop through each source and do these analyses. This might occur several times because we'll need to arrange different sources in unique ways.
  - Add each test of interest to a grand table of findings, storing the label, effect, and the p-value
  - Do FWE test on the findings to determine the end result
- 
- 
-For each set, we'll need to loop through the three outcome measures, and then loop through the relevant predictor variables. We do two-way correlations to understand which should be followed up.
 
+
+For each set, we'll need to loop through the three outcome measures, and then loop through the relevant predictor variables. We do two-way correlations to understand which should be followed up.
 
 
 
 label the variables
 ```{r}
 IVs <- c("cancer_promoting_minus_preventing_craved_FCI","cancer_promoting_minus_preventing_liked_FCI",
-         "EDM","BSCS",
-         'BSCS', 'EDM', 
-         'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
-         'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation'
+         "EDM","BSCS","ACES_sum",
+         "SRHI_sum","SRHI_healthy_minus_unhealthy","TESQ_E","TRSQ","RS","RTFS_factor_1","RTFS_factor_2","BIS_11",
+         "ses_aggregate","DEMO_mcarthur_social_standing","cSES"
+         
+         #'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
+         #'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation'
          )
-DVs <- c("cancer_promoting_minus_preventing_FFQ","bmi_0","bf_1")
+DVs <- c("cancer_promoting_minus_preventing_FFQ","bf_1")
 ```
 
-THESE ARE DUMMY RESULTS ONLY. NEED TO REMOVE THE RANDOMIZATION AND CHANGE DUMMY VALUES TO REAL ONES.
 
+Can we merge across surveys to only include the first survey taken? For each of these scales, participants may have only done a selection of the surveys
+
+This would look like:
+
+ - For each participant and column, merge across surveys and only include the FIRST result in each survey.
+ 
 
 ```{r}
 
 
 #now we estimate R^2....
-draw_names <- unique(ppt_data_wide_dummy$survey_name)
 correlation_df <- data.frame()
 for (DV in DVs){
   for(IV in IVs){
-    for (dn in draw_names){
-      pairwise_not_na <- (is.na(ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,IV])==FALSE) &  (is.na(ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,DV])==FALSE)
-      if(sum(pairwise_not_na)>0){
-        print(paste0(DV,",", IV, " (",as.character(sum(pairwise_not_na)) , " values in ",dn,")"))
-          cor_res <-cor.test(
-            ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,IV],
-            ppt_data_wide_dummy %>% filter(survey_name==dn) %>% .[,DV],
-            use = "complete.obs"
-          )
-          #print(paste0("r value of ", as.character(cor_res$estimate)))
-          cat(".")
-          cor_df <- data.frame(
-            "v1"=DV,
-            "v2"=IV,
-            "n"=sum(pairwise_not_na),
-            "survey"=dn,
-            "statistic" = cor_res$statistic,
-            "df" = cor_res$parameter,
-            "p.value" = cor_res$p.value,
-            "estimate"=cor_res$estimate,
-            "ci_lower" = cor_res$conf.int[[1]],
-            "ci_upper" = cor_res$conf.int[[2]]
-            
-            
-          )
-          correlation_df <-rbind(correlation_df,cor_df)
+    #for (dn in draw_names){
+      #pairwise_not_na <- (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,DV])==FALSE)
+    pairwise_not_na <- (is.na(data_by_ppt %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% .[,DV])==FALSE)
+    if(sum(pairwise_not_na)>0){
+      print(paste0(DV,",", IV, " (",as.character(sum(pairwise_not_na)) , " values)"))
+        cor_res <-cor.test(
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,IV],
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,DV],
+          data_by_ppt[[IV]],
+          data_by_ppt[[DV]],
+          use = "complete.obs"
+        )
+        #print(paste0("r value of ", as.character(cor_res$estimate)))
+        cat(".")
+        cor_df <- data.frame(
+          "v1"=DV,
+          "v2"=IV,
+          "n"=sum(pairwise_not_na),
+#          "survey"=dn,
+          "statistic" = cor_res$statistic,
+          "df" = cor_res$parameter,
+          "p.value" = cor_res$p.value,
+          "estimate"=cor_res$estimate,
+          "ci_lower" = cor_res$conf.int[[1]],
+          "ci_upper" = cor_res$conf.int[[2]]
+          
+          
+        )
+        correlation_df <-rbind(correlation_df,cor_df)
           #correlation_list <- correlation_list %>% add_stats(cor_res)
           
 
-      }#else{
+     # }#else{
         #print(paste("no valid column pair for:",IV,",", DV, " (",dn,")"))
       #}
    }
@@ -351,11 +432,121 @@ for (DV in DVs){
 
 
 ```
+```{r}
+data_by_ppt %>% group_by(DEMO_mcarthur_social_standing) %>% summarise(mean_ffq=mean(cancer_promoting_minus_preventing_FFQ,na.rm=TRUE))
+
+cor.test(data_by_ppt$DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_liked_FCI)
+cor.test(data_by_ppt$DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_craved_FCI)
+cor.test(data_by_ppt$DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_FFQ)
+```
 
 
+```{r}
+ggplot(data_by_ppt,aes(DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_FFQ))+geom_point()
+```
+
+## Result
 
 ```{r}
 View(correlation_df)
 ```
 
 
+Now, let's split these up into their families of predictions based on https://osf.io/gvus3:
+
+
+```{r}
+mcc <- function(cor_df){
+  cor_df$p.value_adjusted <- p.adjust(cor_df$p.value,method="fdr")
+  return(cor_df)
+}
+```
+
+## Pre-registered predictions
+
+### 1. Food valuation
+
+### 2. Craving
+
+```{r}
+craving_ivs <- c("cancer_promoting_minus_preventing_craved_FCI")
+craving_cors <- mcc(correlation_df[correlation_df$v2 %in% craving_ivs,])
+
+craving_cors[c("v1","v2","n","p.value","p.value_adjusted")]
+```
+
+the Food Craving Inventory is rleated to the Food Frequency Questionnaire but not body fat percentage.
+
+### 3. Habit
+
+```{r}
+
+habit_ivs <- c("SRHI_sum","SRHI_healthy_minus_unhealthy")
+habit_cors <- mcc(correlation_df[correlation_df$v2 %in% habit_ivs,])
+
+habit_cors[c("v1","v2","n","p.value","p.value_adjusted")]
+```
+The Self Report Habit Index is related to the Food Frequency Questionnaire but not body fat percentage.
+
+overall habit score is not related to health outcomes.
+
+
+### 4. Inhibitory control and self regulation
+
+```{r}
+inhibitory_ivs <- c("TESQ_E","TRSQ",
+         "BIS_11","BSCS",
+         "EDM","RS")
+inhibitory_cors <- mcc(correlation_df[correlation_df$v2 %in% inhibitory_ivs,])
+
+inhibitory_cors[c("v1","v2","n","p.value","p.value_adjusted")]
+```
+
+The Tempest Self-Regulation Questionnaire for Eating is related to the Food Frequency Questionnaire. 
+
+No other inhibitory control measure relates to the Food Frequency Questionnaire before or after controlling for multiple comparisons. While we still need to add planned behavioral measures I do not expect this will affect the adjusted significance of any of the existing findings. The TESQ_E is strongly relqted to FFQ in a way that will survive a lot more multiple comparisons than this.
+
+It would be useful to examine the breakdown of the TESQ_E subscales and their relationship to the food frequency questionnaire.
+
+There are some items that were significant when not adjusted for the multiple comparison, but not significant after adjusting:
+
+ - BIS_11 * FFQ
+ - Body Fat % * RS
+ 
+ 
+It might be worth using these findings to guide neural investigation even as we acknowledge the evidence is not strong for them as main effects.
+
+### 5. Socioeconomic
+
+```{r}
+ses_ivs <- c("ACES_sum","ses_aggregate","DEMO_mcarthur_social_standing","cSES")
+ses_cors <- mcc(correlation_df[correlation_df$v2 %in% ses_ivs,])
+
+ses_cors[c("v1","v2","n","p.value","p.value_adjusted","estimate")]
+```
+There is one relationship that is significant before but not after adjusting for multiple comparisons FFQ * the mcarthur ladder appears significant (p=0.02); however the estimate is in the reverse direction of that anticipated. 
+
+
+## Supplementary analysis
+
+Of the above I have already examined one outcome, Responses to Failure Scale. This appears to be a fairly robust finding:
+
+
+```{r}
+rtfs_ivs <- c("RTFS_factor_1","RTFS_factor_2")
+rtfs_cors <- mcc(correlation_df[correlation_df$v2 %in% rtfs_ivs,])
+
+rtfs_cors[c("v1","v2","n","p.value","p.value_adjusted","estimate")]
+```
+It isn't clear that it fits into any of the above categories.
+
+There are additional items we might examine:
+
+ - Big Five
+ - Planfulness
+ - Regulatory Mode Questionnaire
+ - Perceived Competence Scale
+ - Mother and/or father education
+ - All the individual levels of income that we only tested in aggregate for this analysis ((a) zipcode typical income, (b) total household income, (c) household per capita income, (d) education level)
+
+Seems cheeky to go and do a _second_ pre-registration for these so I recommend just going ahead with a further analysis; however I want to seek input from others first.
