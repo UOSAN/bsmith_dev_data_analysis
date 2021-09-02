@@ -198,7 +198,8 @@ promote_minus_prevent <- scored_fs %>%
   #filter for FFQ
   filter(scale_name %in% c("FFQ","FCI")) %>%
   #filter for the two cols we're interested in
-  filter(scored_scale %in% c("cancer_promoting","cancer_preventing","craved_cancer_promoting","liked_cancer_promoting","craved_cancer_preventing","liked_cancer_preventing")) %>%
+  filter(scored_scale %in% c(
+    "cancer_promoting","cancer_preventing","craved_cancer_promoting","liked_cancer_promoting","craved_cancer_preventing","liked_cancer_preventing")) %>%
   #throw it out wide
   select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
   #create a composite measure
@@ -207,13 +208,18 @@ promote_minus_prevent <- scored_fs %>%
          "cancer_promoting_minus_preventing_liked"=liked_cancer_promoting-liked_cancer_preventing
          ) %>%
   #wide across the surveys so that we can compare the surveys
-  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing,cancer_promoting_minus_preventing_craved,cancer_promoting_minus_preventing_liked) %>% 
+  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing,
+         cancer_promoting_minus_preventing_craved,cancer_promoting_minus_preventing_liked,
+         cancer_promoting,cancer_preventing
+         ) %>% 
   tidyr::pivot_wider(id_cols=c("SID","survey_name"),
                      names_from=scale_name,
                      values_from=c(
     "cancer_promoting_minus_preventing",
     "cancer_promoting_minus_preventing_craved",
-    "cancer_promoting_minus_preventing_liked")
+    "cancer_promoting_minus_preventing_liked",
+    "cancer_promoting","cancer_preventing"
+    )
     )
 
 single_scale_predictors_mean <- c("BSCS","EDM","cSES")
@@ -432,6 +438,10 @@ for (DV in DVs){
 
 
 ```
+
+
+
+
 ```{r}
 data_by_ppt %>% group_by(DEMO_mcarthur_social_standing) %>% summarise(mean_ffq=mean(cancer_promoting_minus_preventing_FFQ,na.rm=TRUE))
 
@@ -490,6 +500,35 @@ The Self Report Habit Index is related to the Food Frequency Questionnaire but n
 
 overall habit score is not related to health outcomes.
 
+```{r}
+summary(lm(cancer_promoting_minus_preventing_FFQ~SRHI_healthy+SRHI_unhealthy,data_by_ppt))
+
+summary(lm(cancer_promoting_FFQ~SRHI_healthy+SRHI_unhealthy,data_by_ppt))
+
+summary(lm(cancer_preventing_FFQ~SRHI_healthy+SRHI_unhealthy,data_by_ppt))
+
+cor(data_by_ppt[,c("cancer_promoting_FFQ","cancer_preventing_FFQ","SRHI_healthy","SRHI_unhealthy")],use = "pairwise.complete.obs")
+
+
+cor(data_by_ppt[,c("cancer_promoting_FFQ","cancer_preventing_FFQ","SRHI_healthy","SRHI_unhealthy", "bf_1")],use = "pairwise.complete.obs")
+
+
+cor.test(data_by_ppt$SRHI_unhealthy,data_by_ppt$bf_1,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_promoting_FFQ,data_by_ppt$bf_1,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$bf_1,use = "pairwise.complete.obs")
+#OK nahhhh
+
+cor.test(data_by_ppt$cancer_promoting_FFQ,data_by_ppt$SRHI_healthy,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_promoting_FFQ,data_by_ppt$SRHI_unhealthy,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$SRHI_healthy,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$SRHI_unhealthy,use = "pairwise.complete.obs")
+```
+
+
+
+```{r}
+
+```
 
 ### 4. Inhibitory control and self regulation
 
@@ -500,11 +539,17 @@ inhibitory_ivs <- c("TESQ_E","TRSQ",
 inhibitory_cors <- mcc(correlation_df[correlation_df$v2 %in% inhibitory_ivs,])
 
 inhibitory_cors[c("v1","v2","n","p.value","p.value_adjusted")]
+
+cor.test(data_by_ppt$cancer_promoting_FFQ,data_by_ppt$TESQ_E,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$TESQ_E,use = "pairwise.complete.obs")
+
+
+ 
 ```
 
 The Tempest Self-Regulation Questionnaire for Eating is related to the Food Frequency Questionnaire. 
 
-No other inhibitory control measure relates to the Food Frequency Questionnaire before or after controlling for multiple comparisons. While we still need to add planned behavioral measures I do not expect this will affect the adjusted significance of any of the existing findings. The TESQ_E is strongly relqted to FFQ in a way that will survive a lot more multiple comparisons than this.
+No other inhibitory control measure relates to the Food Frequency Questionnaire before or after controlling for multiple comparisons. While we still need to add planned behavioral measures I do not expect this will affect the adjusted significance of any of the existing findings. The TESQ_E is strongly related to FFQ in a way that will survive a lot more multiple comparisons than this.
 
 It would be useful to examine the breakdown of the TESQ_E subscales and their relationship to the food frequency questionnaire.
 
@@ -525,6 +570,83 @@ ses_cors <- mcc(correlation_df[correlation_df$v2 %in% ses_ivs,])
 ses_cors[c("v1","v2","n","p.value","p.value_adjusted","estimate")]
 ```
 There is one relationship that is significant before but not after adjusting for multiple comparisons FFQ * the mcarthur ladder appears significant (p=0.02); however the estimate is in the reverse direction of that anticipated. 
+
+## Effects definitely worth a closer look
+
+Craving: Food Craving Inventory is related to the Food Frequency Questionnaire
+
+Habits: The Self-report habit index (healthy minus unhealthy contrast) is strongly related to the Food Frequency Questionnaire, although not to the BF%.
+
+Inhibitory control: The Tempest Self-Regulation Questionnaire for Eating is related to the Food Frequency Questionnaire. 
+
+For each of these we can look at neural mediators. If we wanted to, we could tie this up into a single pretty powerful paper that demonstrates a trifecta of craving, habits, and inhibitory control all contributing to eating.
+
+No relationships were found between socioeconomic measures and health outcomes.
+
+### Investigating possible relationships with the values we found.
+
+All of the variables that correlated with FFQ are very specifically food-related. Only explicitly-food-related versions of these constructs relate to FFQ, and none really relate to BF%.
+
+I wonder how much _they_ correlate with the more generic measures of their constructs? For instance, how does TESQ-E relate to other measures of inhibitory control?
+
+```{r}
+cor.test(data_by_ppt$TESQ_E,data_by_ppt$cancer_promoting_minus_preventing_FFQ)
+cor.test(data_by_ppt$TESQ_E,data_by_ppt$BIS_11)
+cor.test(data_by_ppt$TESQ_E,data_by_ppt$BSCS)
+cor.test(data_by_ppt$TESQ_E,data_by_ppt$BFI_conscientiousness)
+cor.test(data_by_ppt$TESQ_E,data_by_ppt$BFI_conscientiousness)
+```
+
+hmm--nothing very strong!
+
+No other habit measures to look at but what about craving?
+
+
+```{r}
+cor.test(data_by_ppt$cancer_promoting_minus_preventing_craved_FCI,data_by_ppt$BIS_11)
+```
+
+## broad look at correlation plot
+
+
+```{r}
+vars_of_interest <- c("TESQ_E","cancer_promoting_minus_preventing_craved_FCI","SRHI_healthy_minus_unhealthy","cancer_promoting_minus_preventing_FFQ")
+
+cor(data_by_ppt[,vars_of_interest],use = "pairwise.complete.obs")
+```
+
+So these three measures are just very strongly correlated generally; likely capturing the same underlying thing?
+
+
+```{r}
+print(summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt)))
+print(summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E,data_by_ppt)))
+print(summary(lm(cancer_promoting_minus_preventing_FFQ~cancer_promoting_minus_preventing_craved_FCI,data_by_ppt)))
+print(summary(lm(cancer_promoting_minus_preventing_FFQ~SRHI_healthy_minus_unhealthy,data_by_ppt)))
+
+null_rows <- apply(is.na(data_by_ppt[,vars_of_interest]),1,any)
+print(anova(
+  lm(cancer_promoting_minus_preventing_FFQ~cancer_promoting_minus_preventing_craved_FCI,data_by_ppt[null_rows==FALSE,]),
+lm(cancer_promoting_minus_preventing_FFQ~TESQ_E+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,])
+))
+
+print(anova(
+  lm(cancer_promoting_minus_preventing_FFQ~cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,]),
+lm(cancer_promoting_minus_preventing_FFQ~TESQ_E+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,])
+))
+
+
+```
+
+So...FCI alone predicts 31% of variance of FFQ; all three combined predicts 35% of variance; including TESQ_E in the model does NOT improve model fit, though the SRHI does.
+
+So: SHRI has some extra predictive power.
+
+We might also extend this with an ML approach: apply a learning approach to classify subjects into groups. Can't expect this to give us too much because there'll only be ~150 subjects or so in the model.
+
+
+
+let's leave this until we have the behavioral data but I will get to it!
 
 
 ## Supplementary analysis
@@ -550,3 +672,5 @@ There are additional items we might examine:
  - All the individual levels of income that we only tested in aggregate for this analysis ((a) zipcode typical income, (b) total household income, (c) household per capita income, (d) education level)
 
 Seems cheeky to go and do a _second_ pre-registration for these so I recommend just going ahead with a further analysis; however I want to seek input from others first.
+
+Also, what about considering more granular measures in the FFQ and FCI?
