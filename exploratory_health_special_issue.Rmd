@@ -12,6 +12,7 @@ library(stringr)
 library(dplyr)
 library(ggplot2)
 library(rstatix)
+data_path <- "../../../files/data/"
 
 load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_w_demographics.RData")
 scored<-scored_with_demographics
@@ -36,12 +37,54 @@ Now get BMI
 ```{r}
 load("../../../files/data/ppt_list_w_data.RData")
 #our primary health outcome measure
-ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bf_1) %>% filter(!is.na(bf_1))
+ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bf_1,weight_0) %>% filter(!is.na(bf_1))
 rm(ppt_list_w_data)
 
 ```
 
+
+
+
+Now get behavioral measures.
+
+```{r}
+
+
+
+#should be wave 1 by default.
+sst_data <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
+roc_data <- readr::read_csv(file=paste0(data_path,"roc_summary_stats.csv"))
+load(file=paste0(data_path,"wtp_summary_stats_across_runs.Rdata"))
+
+sst_w1 <- sst_data%>%filter(runid==1)%>% select(-runid)
+
+#need to group across run
+roc_data_across_runs<- roc_data %>% select(-run) %>% group_by(subjectID,wave) %>% summarise(across(everything(), mean))
+roc_data_across_runs_w1 <- roc_data_across_runs %>%filter(wave==1)%>% select(-wave)
+
+wtp_across_runs_wide <- wtp_across_runs %>% select(subject, value_level_mean, health_cond,wave) %>% group_by(subject,wave) %>% spread("health_cond","value_level_mean") %>% ungroup
+wtp_across_runs_wide$unhealthy_minus_healthy <- wtp_across_runs_wide$unhealthy - wtp_across_runs_wide$healthy
+wtp_across_runs_wide_w1 <- wtp_across_runs_wide%>%filter(wave==1) %>% select(-wave)
+colnames(wtp_across_runs_wide_w1) <- paste0("WTP_",colnames(wtp_across_runs_wide_w1))
+
+
+
+#sst_data$wave <- 1
+colnames(sst_w1) <- paste0("SST_",colnames(sst_w1))
+roc_data_across_runs_w1 <- rename(roc_data_across_runs_w1,c(subid=subjectID))
+colnames(roc_data_across_runs_w1) <- paste0("ROC_",colnames(roc_data_across_runs_w1))
+#roc_data_across_runs$runid <- as.double(stringr::str_match(roc_data_across_runs$run,"run(\\d)")[,2])
+
+behavioral_data <- merge(sst_w1,roc_data_across_runs_w1,by.x=c("SST_subid"),by.y="ROC_subid",all = TRUE)
+behavioral_data <- rename(behavioral_data,c(subid=SST_subid))
+behavioral_data <- merge(behavioral_data,wtp_across_runs_wide_w1,by.x = "subid",by.y="WTP_subject",all=TRUE)
+
+
+
+```
 ## Health measures include:
+
+
  - Percent Body Fat (`bf_1`)
  - BMI (`bmi_0`)
  
@@ -185,8 +228,13 @@ scored_fs <- scored %>%
 print("survey used for each scale:")
 print(first_survey_for_scale)
 
+
+```
+```{r}
 sapply(unique(scored_fs$scale_name),function(sn){list(sn=unique(scored_fs[scored_fs$scale_name==sn,"scored_scale"]))})
 ```
+
+
 
 
 ```{r}
@@ -239,7 +287,10 @@ single_scale_values_mean <- scored_fs %>%
     )
 
 
-single_scale_predictors_sum <- c("TESQ_E","TRSQ","BIS_11","RS")
+
+
+
+single_scale_predictors_sum <- c("TRSQ","BIS_11","RS","PCS")
 
 single_scale_values_sum <- scored_fs %>% 
   #filter for FFQ
@@ -287,6 +338,7 @@ scored_fs_demo_zscored_wide <- scored_fs_demo_zscored %>%
 ```
 
 
+
 ```{r}
 #Now do multi-scale predictors
 #Big5, Planfulness
@@ -295,8 +347,16 @@ multi_scale_predictor_list <- list(BFI =c("agreeableness","conscientiousness","e
                            ACES = c("sum","abuse","divorced_separated","household_dysfunction","neglectful_parenting"),
                            RTFS = c("factor_1", "factor_2"),
                            SRHI = c("healthy","unhealthy","sum"),
-                           DEMO = c("mcarthur_social_standing")
-                           
+                           DEMO = c("mcarthur_social_standing"),
+                           IPAQ = c("sittinghours", "moderateminutes", "vigorousminutes", "walkingminutes"),
+                           RMQ = c("assessment", "lie",        "locomotion"),
+                           IMI = c("value_usefulness", "perceived_choice", "perceived_competence", "effort_importance", "interest_enjoyment"),
+                           NCS = c("get_job_done","intellectual_task", "abstract_thinking", "like_responsibility", "thinking_not_exciting",
+                                   "think_minimally", "thinking_not_fun", "avoid_depth", "deliberating_issues", "prefer_little_thought",
+                                   "relief_not_satisfaction", "satisfaction_in_deliberating", "thought_appealing", "total", "tasks_little_thought",
+                                   "solve_puzzles", "small_daily_projects", "new_solutions_to_problems", "prefer_complex"
+                                   ),
+                           TESQ_E = unique(scored_fs[scored_fs$scale_name=="TESQ_E","scored_scale"])
                            )
 
 #go through the table and label every subscale that we want to keep
@@ -304,7 +364,7 @@ scored_fs$INCLUDE_SUBSCALE <- FALSE
 for (scale_x in names(multi_scale_predictor_list)){
   print(scale_x)
   for(subscale_x in multi_scale_predictor_list[[scale_x]]){
-    print(subscale_x)
+    cat(subscale_x)
     scored_fs[scored_fs$scale_name==scale_x & scored_fs$scored_scale==subscale_x,"INCLUDE_SUBSCALE"] <- TRUE
   }
 }
@@ -335,10 +395,31 @@ data_by_ppt <- purrr::reduce(col_list, left_join,by="SID")
 
 ```
 
+
+Now get the behavioral data
+
+
+```{r}
+data_by_ppt <- merge(data_by_ppt,behavioral_data,by.x="SID",by.y="subid",all.x = TRUE,all.y=FALSE)
+```
+
 Now we do some contrasts we haven't done yet...
 
 ```{r}
 data_by_ppt$SRHI_healthy_minus_unhealthy <- data_by_ppt$SRHI_healthy-data_by_ppt$SRHI_unhealthy
+data_by_ppt$RTFS_f1_minus_f2 <- data_by_ppt$RTFS_factor_1-data_by_ppt$RTFS_factor_2
+#Craig CL,Marshall A , Sjostrom M et al. International Physical Activity Questionnaire: 12 country reliability and validity Med Sci Sports Exerc 2003;August
+#also available on the IPAQ scoring protocol in the DEV Dropbox, page 5
+#Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/Measures/Measures_Questionnaires/IPAQ Scoring Protocol.pdf
+data_by_ppt$IPAQ_walkingMETminutes <- data_by_ppt$IPAQ_walkingminutes* 3.3
+data_by_ppt$IPAQ_moderateMETminutes <- data_by_ppt$IPAQ_moderateminutes* 4.0
+data_by_ppt$IPAQ_vigorousMETminutes <- data_by_ppt$IPAQ_vigorousminutes* 8.0
+data_by_ppt$IPAQ_total_METminutes <-data_by_ppt$IPAQ_walkingMETminutes + data_by_ppt$IPAQ_moderateMETminutes+ data_by_ppt$IPAQ_vigorousMETminutes
+weight_in_kg <- data_by_ppt$weight_0* 0.453592 #convert from pounds to kg
+data_by_ppt$IPAQ_MET_kCal <- data_by_ppt$IPAQ_total_METminutes * weight_in_kg/60
+
+
+
 ```
 
 Now we need to get the non-scale social values in here.
@@ -352,6 +433,8 @@ Now we need to get the non-scale social values in here.
 <!-- } -->
 <!-- rm(ppt_data_wide) -->
 <!-- ``` -->
+
+Now we get the behaivoral data
 
 ### Exploratory analysis for health special issue
 
@@ -369,9 +452,13 @@ For each set, we'll need to loop through the three outcome measures, and then lo
 label the variables
 ```{r}
 IVs <- c("cancer_promoting_minus_preventing_craved_FCI","cancer_promoting_minus_preventing_liked_FCI",
+         "ROC_Crave_Minus_Neutral",
          "EDM","BSCS","ACES_sum",
-         "SRHI_sum","SRHI_healthy_minus_unhealthy","TESQ_E","TRSQ","RS","RTFS_factor_1","RTFS_factor_2","BIS_11",
-         "ses_aggregate","DEMO_mcarthur_social_standing","cSES"
+         "SST_prop_successful_stops","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
+         "WTP_healthy","WTP_unhealthy","WTP_unhealthy_minus_healthy",
+         "SRHI_sum","SRHI_healthy_minus_unhealthy","TRSQ","RS","RTFS_factor_1","RTFS_factor_2","RTFS_f1_minus_f2","BIS_11",
+         "ses_aggregate","DEMO_mcarthur_social_standing","cSES",
+         paste0("TESQ_E_",unique(scored_fs[scored_fs$scale_name=="TESQ_E","scored_scale"]))
          
          #'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
          #'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation'
@@ -474,12 +561,27 @@ mcc <- function(cor_df){
 
 ## Pre-registered predictions
 
+
 ### 1. Food valuation
+
+
+```{r}
+         
+
+value_ivs <- c("WTP_unhealthy_minus_healthy","WTP_unhealthy","WTP_healthy")
+value_cors <- mcc(correlation_df[correlation_df$v2 %in% value_ivs,])
+
+value_cors[c("v1","v2","n","p.value","p.value_adjusted","estimate")]
+
+
+```
 
 ### 2. Craving
 
 ```{r}
-craving_ivs <- c("cancer_promoting_minus_preventing_craved_FCI")
+         
+
+craving_ivs <- c("cancer_promoting_minus_preventing_craved_FCI","ROC_Crave_Minus_Neutral")
 craving_cors <- mcc(correlation_df[correlation_df$v2 %in% craving_ivs,])
 
 craving_cors[c("v1","v2","n","p.value","p.value_adjusted")]
@@ -525,24 +627,24 @@ cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$SRHI_unhealthy,use = "pai
 ```
 
 
-
-```{r}
-
-```
-
 ### 4. Inhibitory control and self regulation
 
 ```{r}
-inhibitory_ivs <- c("TESQ_E","TRSQ",
+
+inhibitory_ivs <- c(paste0("TESQ_E_",unique(scored_fs[scored_fs$scale_name=="TESQ_E","scored_scale"])),"TRSQ",
          "BIS_11","BSCS",
+         "SST_prop_successful_stops","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
          "EDM","RS")
 inhibitory_cors <- mcc(correlation_df[correlation_df$v2 %in% inhibitory_ivs,])
 
-inhibitory_cors[c("v1","v2","n","p.value","p.value_adjusted")]
+inhibitory_cors[c("v1","v2","n","p.value","p.value_adjusted","estimate")] %>% arrange(v2,desc(v1))
 
-cor.test(data_by_ppt$cancer_promoting_FFQ,data_by_ppt$TESQ_E,use = "pairwise.complete.obs")
-cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$TESQ_E,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_promoting_FFQ,data_by_ppt$TESQ_E_sum,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_promoting_minus_preventing_FFQ,data_by_ppt$TESQ_E_sum,use = "pairwise.complete.obs")
+cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$TESQ_E_sum,use = "pairwise.complete.obs")
 
+summary(print(lm(cancer_preventing_FFQ~TESQ_E_controlling_temptations,data_by_ppt)))
+summary(print(lm(cancer_preventing_FFQ~bf_1+TESQ_E_controlling_temptations,data_by_ppt)))
 
  
 ```
@@ -590,11 +692,11 @@ All of the variables that correlated with FFQ are very specifically food-related
 I wonder how much _they_ correlate with the more generic measures of their constructs? For instance, how does TESQ-E relate to other measures of inhibitory control?
 
 ```{r}
-cor.test(data_by_ppt$TESQ_E,data_by_ppt$cancer_promoting_minus_preventing_FFQ)
-cor.test(data_by_ppt$TESQ_E,data_by_ppt$BIS_11)
-cor.test(data_by_ppt$TESQ_E,data_by_ppt$BSCS)
-cor.test(data_by_ppt$TESQ_E,data_by_ppt$BFI_conscientiousness)
-cor.test(data_by_ppt$TESQ_E,data_by_ppt$BFI_conscientiousness)
+cor.test(data_by_ppt$TESQ_E_sum,data_by_ppt$cancer_promoting_minus_preventing_FFQ)
+cor.test(data_by_ppt$TESQ_E_sum,data_by_ppt$BIS_11)
+cor.test(data_by_ppt$TESQ_E_sum,data_by_ppt$BSCS)
+cor.test(data_by_ppt$TESQ_E_sum,data_by_ppt$BFI_conscientiousness)
+cor.test(data_by_ppt$TESQ_E_sum,data_by_ppt$BFI_conscientiousness)
 ```
 
 hmm--nothing very strong!
@@ -644,8 +746,6 @@ So: SHRI has some extra predictive power.
 
 We might also extend this with an ML approach: apply a learning approach to classify subjects into groups. Can't expect this to give us too much because there'll only be ~150 subjects or so in the model.
 
-
-
 let's leave this until we have the behavioral data but I will get to it!
 
 
@@ -655,7 +755,7 @@ Of the above I have already examined one outcome, Responses to Failure Scale. Th
 
 
 ```{r}
-rtfs_ivs <- c("RTFS_factor_1","RTFS_factor_2")
+rtfs_ivs <- c("RTFS_factor_1","RTFS_factor_2","RTFS_f1_minus_f2")
 rtfs_cors <- mcc(correlation_df[correlation_df$v2 %in% rtfs_ivs,])
 
 rtfs_cors[c("v1","v2","n","p.value","p.value_adjusted","estimate")]
@@ -674,3 +774,468 @@ There are additional items we might examine:
 Seems cheeky to go and do a _second_ pre-registration for these so I recommend just going ahead with a further analysis; however I want to seek input from others first.
 
 Also, what about considering more granular measures in the FFQ and FCI?
+
+
+### Personality etc
+
+These aren't explicitly designed to measure constructs we are concerned about, but there are theoretical reasons or at least 'stories you could tell' to expect a link to outcome.
+
+ - Big Five - Y
+ - Planfulness -Y
+ - Regulatory Mode Questionnaire - N- no rubric
+ - Responses to Failure Scale - N- no rubric
+ - Perceived Competence Scale - N- no rubric
+ 
+
+```{r}
+
+IVs <- c(
+         'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
+         'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation',
+         'RTFS_factor_1','RTFS_factor_2',
+         'RMQ_assessment', 'RMQ_lie','RMQ_locomotion',
+         'RS'
+         
+         )
+DVs <- c("cancer_promoting_minus_preventing_FFQ","bf_1")
+```
+
+
+```{r}
+
+#now we estimate R^2....
+correlation_df <- data.frame()
+for (DV in DVs){
+  for(IV in IVs){
+    #for (dn in draw_names){
+      #pairwise_not_na <- (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,DV])==FALSE)
+    pairwise_not_na <- (is.na(data_by_ppt %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% .[,DV])==FALSE)
+    if(sum(pairwise_not_na)>0){
+      print(paste0(DV,",", IV, " (",as.character(sum(pairwise_not_na)) , " values)"))
+        cor_res <-cor.test(
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,IV],
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,DV],
+          data_by_ppt[[IV]],
+          data_by_ppt[[DV]],
+          use = "complete.obs"
+        )
+        cat(".")
+        cor_df <- data.frame(
+          "v1"=DV,
+          "v2"=IV,
+          "n"=sum(pairwise_not_na),
+          "statistic" = cor_res$statistic,
+          "df" = cor_res$parameter,
+          "p.value" = cor_res$p.value,
+          "estimate"=cor_res$estimate,
+          "ci_lower" = cor_res$conf.int[[1]],
+          "ci_upper" = cor_res$conf.int[[2]]
+          
+          
+        )
+        correlation_df <-rbind(correlation_df,cor_df)
+   }
+  }
+}
+
+
+```
+
+
+```{r}
+correlation_df
+```
+
+
+Now, how much can we predict using all these factors? I have to say this is starting to be very p-hacked...
+
+```{r}
+print(summary(lm(bf_1~PLAN_temporal_orientation+RS+RMQ_locomotion+RTFS_factor_1+cancer_promoting_FFQ,data_by_ppt)))
+print(summary(lm(bf_1~PLAN_temporal_orientation+RS+RTFS_factor_1,data_by_ppt)))
+print(summary(lm(bf_1~PLAN_temporal_orientation+RS,data_by_ppt)))
+```
+
+
+
+
+
+```{r}
+standardize<-function(x,na.rm=TRUE){
+  (x-mean(x,na.rm=na.rm))/sd(x,na.rm=na.rm)
+}
+data_by_ppt$PTO_RS <- standardize(data_by_ppt$PLAN_temporal_orientation) - standardize(data_by_ppt$RS)
+
+print(summary(lm(bf_1~PTO_RS,data_by_ppt)))
+
+```
+
+
+```{r}
+print(summary(lm(bf_1~IPAQ_combined,data_by_ppt)))
+print(summary(lm(bf_1~PTO_RS+IPAQ_combined,data_by_ppt)))
+print(summary(lm(bf_1~PTO_RS+cancer_promoting_FFQ,data_by_ppt)))
+print(summary(lm(bf_1~PTO_RS+cancer_promoting_FFQ,data_by_ppt)))
+```
+
+
+```{r}
+#ripe for a mediation effect?
+print(summary(lm(bf_1~RS+cancer_promoting_FFQ,data_by_ppt)))
+```
+
+```{r}
+data_by_ppt$PLAN_mean <- rowMeans(data_by_ppt[,c('PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation')])
+print(cor.test(data_by_ppt$bf_1,data_by_ppt$PLAN_mean)) #not fucking quite. :/ 
+```
+
+
+
+### extra scales
+
+
+ - Need for Cognition Scale
+ - Vividness of Visual Imagery Questionnaire
+ - Intrinsic Motivation Inventory
+ - Adverse Childhood Experiences
+
+
+```{r}
+data_cols <- colnames(data_by_ppt)
+
+IVs <- c(
+  data_cols[grepl("IMI_",data_cols)],
+  data_cols[grepl("NCS_",data_cols)],
+  data_cols[grepl("ACES_",data_cols)]
+         )
+DVs <- c("cancer_promoting_minus_preventing_FFQ","bf_1")
+```
+
+
+```{r}
+
+#now we estimate R^2....
+correlation_df <- data.frame()
+for (DV in DVs){
+  for(IV in IVs){
+    #for (dn in draw_names){
+      #pairwise_not_na <- (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,DV])==FALSE)
+    pairwise_not_na <- (is.na(data_by_ppt %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% .[,DV])==FALSE)
+    if(sum(pairwise_not_na)>0){
+      print(paste0(DV,",", IV, " (",as.character(sum(pairwise_not_na)) , " values)"))
+        cor_res <-cor.test(
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,IV],
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,DV],
+          data_by_ppt[[IV]],
+          data_by_ppt[[DV]],
+          use = "complete.obs"
+        )
+        cat(".")
+        cor_df <- data.frame(
+          "v1"=DV,
+          "v2"=IV,
+          "n"=sum(pairwise_not_na),
+          "statistic" = cor_res$statistic,
+          "df" = cor_res$parameter,
+          "p.value" = cor_res$p.value,
+          "estimate"=cor_res$estimate,
+          "ci_lower" = cor_res$conf.int[[1]],
+          "ci_upper" = cor_res$conf.int[[2]]
+          
+          
+        )
+        correlation_df <-rbind(correlation_df,cor_df)
+   }
+  }
+}
+
+
+```
+```{r}
+correlation_df %>% arrange(p.value)
+```
+
+OK--nothing here in any of these scales.
+
+### Stress scale
+
+No stress scale available.
+
+
+
+### Predicting weight with IPAQ
+
+```{r}
+cor.test(data_by_ppt$bf_1,data_by_ppt$cancer_promoting_FFQ)
+cor.test(data_by_ppt$bf_1,data_by_ppt$cancer_preventing_FFQ)
+nrow(data_by_ppt)
+cor.test(data_by_ppt$bf_1,data_by_ppt$IPAQ_total_METminutes)
+cor.test(data_by_ppt$bf_1,data_by_ppt$IPAQ_sittinghours)
+cor.test(data_by_ppt$bf_1,data_by_ppt$IPAQ_MET_kCal)#conflates because the IPAQ_MET_kCal is scaled by weight.
+print(summary(lm(bf_1~cancer_promoting_FFQ+cancer_preventing_FFQ,data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ*cancer_preventing_FFQ,data_by_ppt)))
+
+print(summary(lm(bf_1~IPAQ_walkingMETminutes,data_by_ppt)))
+print(summary(lm(bf_1~IPAQ_moderateMETminutes,data_by_ppt)))
+print(summary(lm(bf_1~IPAQ_vigorousMETminutes,data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ+cancer_preventing_FFQ+IPAQ_total_METminutes+IPAQ_sittinghours,data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ+cancer_preventing_FFQ+IPAQ_total_METminutes,data_by_ppt)))
+
+print(summary(lm(bf_1~cancer_promoting_FFQ+cancer_preventing_FFQ+IPAQ_MET_kCal,data_by_ppt)))
+
+print(summary(lm(bf_1~cancer_promoting_minus_preventing_FFQ+IPAQ_total_METminutes,data_by_ppt)))
+
+print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_total_METminutes,data_by_ppt)))
+data_by_ppt$IPAQ_total_METminutes_norm<-(data_by_ppt$IPAQ_total_METminutes - mean(data_by_ppt$IPAQ_total_METminutes,na.rm=TRUE))/sd(data_by_ppt$IPAQ_total_METminutes,na.rm=TRUE)
+data_by_ppt$IPAQ_sittinghours_norm<-(data_by_ppt$IPAQ_sittinghours - mean(data_by_ppt$IPAQ_sittinghours,na.rm=TRUE))/sd(data_by_ppt$IPAQ_sittinghours,na.rm=TRUE)
+data_by_ppt$IPAQ_combined <- data_by_ppt$IPAQ_total_METminutes_norm - data_by_ppt$IPAQ_sittinghours_norm
+print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_total_METminutes+IPAQ_sittinghours,data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_total_METminutes_norm+IPAQ_sittinghours,data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_combined,data_by_ppt)))
+print(summary(lm(bf_1~IPAQ_combined,data_by_ppt)))
+
+```
+
+```{r}
+hist(data_by_ppt$IPAQ_combined)
+hist(data_by_ppt$IPAQ_total_METminutes)
+hist(data_by_ppt$IPAQ_sittinghours)
+hist(data_by_ppt$bf_1)
+hist(data_by_ppt$cancer_promoting_FFQ)
+```
+OK, there could be a good case for getting the log of IPAQ_total_METminutes:
+
+
+```{r}
+hist(log(data_by_ppt$IPAQ_total_METminutes))
+data_by_ppt$IPAQ_total_METminutes_log <- log(data_by_ppt$IPAQ_total_METminutes+1)
+data_by_ppt$IPAQ_sittinghours_log <- log(data_by_ppt$IPAQ_sittinghours+1)
+```
+
+```{r}
+print(summary(lm(bf_1~cancer_promoting_FFQ + IPAQ_total_METminutes + IPAQ_sittinghours, data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ + IPAQ_total_METminutes_log + IPAQ_sittinghours_log, data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ + IPAQ_total_METminutes_log, data_by_ppt)))
+```
+
+### Correlating SHRI with other things
+
+```{r}
+IVs <- c("cancer_promoting_minus_preventing_craved_FCI",
+                 "TESQ_E","TRSQ",
+         "BIS_11","BSCS",
+         "EDM","RS",
+         'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
+         'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation',
+         'RTFS_factor_1','RTFS_factor_2',
+         'RMQ_assessment', 'RMQ_lie','RMQ_locomotion',
+         'RS',
+  data_cols[grepl("IMI_",data_cols)],
+  data_cols[grepl("NCS_",data_cols)],
+  data_cols[grepl("ACES_",data_cols)]
+         )
+DVs <- c("SRHI_sum","SRHI_healthy_minus_unhealthy")
+```
+
+
+Can we merge across surveys to only include the first survey taken? For each of these scales, participants may have only done a selection of the surveys
+
+This would look like:
+
+ - For each participant and column, merge across surveys and only include the FIRST result in each survey.
+ 
+
+```{r}
+
+
+#now we estimate R^2....
+correlation_df <- data.frame()
+for (DV in DVs){
+  for(IV in IVs){
+    #for (dn in draw_names){
+      #pairwise_not_na <- (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,DV])==FALSE)
+    pairwise_not_na <- (is.na(data_by_ppt %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% .[,DV])==FALSE)
+    if(sum(pairwise_not_na)>0){
+      print(paste0(DV,",", IV, " (",as.character(sum(pairwise_not_na)) , " values)"))
+        cor_res <-cor.test(
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,IV],
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,DV],
+          data_by_ppt[[IV]],
+          data_by_ppt[[DV]],
+          use = "complete.obs"
+        )
+        #print(paste0("r value of ", as.character(cor_res$estimate)))
+        cat(".")
+        cor_df <- data.frame(
+          "v1"=DV,
+          "v2"=IV,
+          "n"=sum(pairwise_not_na),
+#          "survey"=dn,
+          "statistic" = cor_res$statistic,
+          "df" = cor_res$parameter,
+          "p.value" = cor_res$p.value,
+          "estimate"=cor_res$estimate,
+          "ci_lower" = cor_res$conf.int[[1]],
+          "ci_upper" = cor_res$conf.int[[2]]
+          
+          
+        )
+        correlation_df <-rbind(correlation_df,cor_df)
+          #correlation_list <- correlation_list %>% add_stats(cor_res)
+          
+
+     # }#else{
+        #print(paste("no valid column pair for:",IV,",", DV, " (",dn,")"))
+      #}
+   }
+  }
+}
+
+#correlation_df <-  tidy_stats_to_data_frame(correlation_list)
+
+
+
+```
+
+
+```{r}
+
+correlation_df$p.value.adj <- p.adjust(correlation_df$p.value, method="fdr")
+correlation_df %>% arrange(p.value)
+```
+
+### Model of BFI and food consumption and IPAQ
+
+Maybe a calories in, calories out model should be something like
+
+```
+bfi ~ max(0,food consumption-healthy level) - ipac
+```
+
+where you only get a health penalty if your food consumption is over a healthy level
+
+But it's very difficult to define that on FFQ
+
+```{r}
+print(summary(lm(bf_1~cancer_promoting_FFQ + IPAQ_total_METminutes, data_by_ppt)))
+
+
+cancer_promoting_FFQ
+```
+
+```{r}
+load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/raw_survey_data.RData")
+surveys_long_clean %>% filter(grepl("FFQ_",item)) %>% select(SID,item,value)
+
+# ffq_detailed <- surveys_long_clean %>% 
+#   filter(grepl("FFQ_",item) & survey_name=="DEV Session 1 Surveys") %>% 
+#   select(SID,item,value) %>% pivot_wider(id_cols="SID",names_from="item",values_from="value")
+
+ffq_scoring_rubric <- readr::read_csv("/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/DEV_scoring_rubrics/FFQ_scoring_rubric.csv")
+
+cancer_promoting_items <- ffq_scoring_rubric %>% filter(`Cancer Promoting`==1) %>% .$`Column Name`
+
+
+ffq_cancer_promoting_detailed <- surveys_long_clean %>% 
+  filter(grepl("FFQ_",item) & survey_name=="DEV Session 1 Surveys") %>% 
+  select(SID,item,value) %>% filter(item %in% cancer_promoting_items)
+  
+
+ffq_cancer_promoting_detailed$value <- as.integer(ffq_cancer_promoting_detailed$value)
+
+```
+
+
+
+
+```{r fig.width=12}
+ggplot(ffq_cancer_promoting_detailed,aes(value))+geom_histogram()+
+  facet_wrap(~item, ncol=6)
+```
+
+
+
+```{r}
+hist(log(data_by_ppt$cancer_promoting_FFQ))
+
+data_by_ppt$cancer_promoting_FFQ_custom<- data_by_ppt$cancer_promoting_FFQ-1
+print(summary(lm(bf_1~cancer_promoting_FFQ + IPAQ_total_METminutes, data_by_ppt)))
+print(summary(lm(bf_1~cancer_promoting_FFQ_custom + IPAQ_total_METminutes, data_by_ppt)))
+data_by_ppt$cancer_promoting_FFQ_custom<- log(data_by_ppt$cancer_promoting_FFQ)
+
+data_by_ppt$cancer_promoting_FFQ_custom<- data_by_ppt$cancer_promoting_FFQ^2
+print(summary(lm(bf_1~cancer_promoting_FFQ_custom + IPAQ_total_METminutes, data_by_ppt)))
+```
+
+
+```{r}
+library(dplyr)
+library(tidyr)
+ffq_detailed_wide <- ffq_cancer_promoting_detailed %>% pivot_wider(id_cols="SID",names_from="item",values_from="value")
+ffq_detailed_w_extra<-merge(ffq_detailed_wide,data_by_ppt %>% select(SID,bf_1,IPAQ_total_METminutes,cancer_promoting_FFQ))
+
+```
+
+
+```{r fig.width=12}
+library(corrplot)
+
+ffq_detailed_w_extra <- ffq_detailed_w_extra %>% rename(IPAQ = IPAQ_total_METminutes) %>% rename(cpFFQ = cancer_promoting_FFQ)
+corrplot(cor(ffq_detailed_w_extra %>% select(-SID),use = "pairwise.complete.obs"),method="number")
+
+summary(lm(as.formula(paste0("bf_1 ~ ",paste(colnames(ffq_detailed_w_extra)[grepl("FFQ_",colnames(ffq_detailed_w_extra))],collapse = " + "))),ffq_detailed_w_extra))
+
+```
+
+look at all items and look at the suqres...
+
+```{r}
+ffq_detailed <- surveys_long_clean %>% 
+  filter(grepl("FFQ_",item) & survey_name=="DEV Session 1 Surveys") %>% 
+  select(SID,item,value)
+ffq_detailed$value<-as.integer(ffq_detailed$value)
+
+#get raw data
+ffq_detailed_wide <- ffq_detailed %>% pivot_wider(id_cols="SID",names_from="item",values_from="value")
+
+#ffq_detailed_w_extra<-merge(ffq_detailed_wide,data_by_ppt %>% select(SID,bf_1,IPAQ_total_METminutes,cancer_promoting_FFQ))
+
+# square it
+ffq_items_only <- ffq_detailed_wide %>% select(-SID)
+ffq_detailed_squared_all_items <- cbind(SID=ffq_detailed_wide$SID, ffq_items_only^2)
+
+#get the summarized vals
+cancer_promoting_items <- ffq_scoring_rubric %>% filter(`Cancer Promoting`==1) %>% .$`Column Name`
+cancer_preventing_items <- ffq_scoring_rubric %>% filter(`Cancer Preventing`==1) %>% .$`Column Name`
+cancer_promoting_sq<-rowMeans(ffq_detailed_squared_all_items[cancer_promoting_items])
+cancer_preventing_sq<-rowMeans(ffq_detailed_squared_all_items[,cancer_preventing_items])
+
+sq_data_by_sid <-data.frame(SID=ffq_detailed_squared_all_items$SID,
+      FFQ_cancer_promoting_sq=cancer_promoting_sq,
+      FFQ_cancer_preventing_sq=cancer_preventing_sq)
+
+#merge back in.
+data_by_ppt<-merge(data_by_ppt,sq_data_by_sid,by="SID")
+```
+
+
+```{r}
+summary(lm(bf_1~FFQ_cancer_preventing_sq+IPAQ_total_METminutes,data_by_ppt))
+summary(lm(bf_1~FFQ_cancer_promoting_sq+IPAQ_total_METminutes,data_by_ppt))
+summary(lm(bf_1~FFQ_cancer_preventing_sq+FFQ_cancer_promoting_sq+IPAQ_total_METminutes,data_by_ppt))
+
+#https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4739486/
+library(gtools)
+
+data_by_ppt$IPAQ_quartiles <- quantcut(data_by_ppt$IPAQ_total_METminutes/60,4)
+data_by_ppt$IPAQ_quartiles_int <- as.integer(data_by_ppt$IPAQ_quartiles)
+
+
+summary(lm(bf_1~FFQ_cancer_preventing_sq+FFQ_cancer_promoting_sq+IPAQ_quartiles,data_by_ppt))
+summary(lm(bf_1~FFQ_cancer_preventing_sq+FFQ_cancer_promoting_sq+IPAQ_quartiles_int,data_by_ppt))
+summary(lm(bf_1~FFQ_cancer_promoting_sq+IPAQ_quartiles_int,data_by_ppt))
+summary(lm(bf_1~FFQ_cancer_promoting_sq+IPAQ_MET_kCal+a,data_by_ppt))
+
+data_by_ppt$age
+
+```
+

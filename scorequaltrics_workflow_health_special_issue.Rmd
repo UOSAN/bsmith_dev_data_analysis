@@ -176,12 +176,77 @@ head(scoring_data_long[, -1], 10)
 ```
 
 ### Cleaning
+* modify IPAQ data (it's not in standard form)
 * remove responses after the cut-off date
 * exclude non-sub responses
 * convert missing values to NA
 * duplicates
 
+
+IPAQ data
+
+```{r}
+ipaq_item_pairs <- list(c("IPAQ_1","IPAQ_2_1_TEXT"),
+                        c("IPAQ_3","IPAQ_4_1_TEXT"),
+                        c("IPAQ_5","IPAQ_6_1_TEXT"))
+
+responses <- unique(surveys_long$ResponseId)
+x=0
+extra_rows <- list()
+for (resp in responses){
+  x=x+1
+  for (iip in ipaq_item_pairs){
+    days <- surveys_long[surveys_long$ResponseId==resp & surveys_long$item==iip[[1]],]
+    minutes <- surveys_long[surveys_long$ResponseId==resp & surveys_long$item==iip[[2]],]
+    if(nrow(days)==1){
+      if(!is.na(days$value)){
+        #print(days)
+        if(days$value=="0"){
+          if(nrow(minutes)>0){
+              if (is.na(minutes$value)){
+                minutes$value<-0
+                cat("*")
+              }else{
+                #this row exists and has a value, do nothing.
+              }
+          }else{#there is no existing 'minutes' row
+            #copy the days row
+            new_zero_row <- surveys_long[surveys_long$ResponseId==resp & surveys_long$item==iip[[1]],]
+            #modify it to look like a minutes row
+            new_zero_row$item <- iip[[2]]
+            #set its value
+            new_zero_row$value <- "0"
+            #add to the append list
+            extra_rows <- c(extra_rows,list(new_zero_row))
+            cat("+")
+          }
+        }          
+      }
+    }
+
+    
+    #if(surveys_long[surveys_long$ResponseId==resp & surveys_long$item==iip[[1]]])
+  }
+  if((x%%10)==0){
+    cat(". ")
+  }
+  
+}
+
+extra_row_table <-do.call(rbind,extra_rows)
+
+
+
+```
+
+```{r}
+surveys_long <- rbind(surveys_long %>% ungroup(),extra_row_table)
+```
+
+
 Remove items that are after the cut-off date
+
+
 
 ```{r}
 survey_timing <- (
@@ -352,8 +417,11 @@ head(scored, 200)
 Now let's save it so it can be used in other analyses.
 
 ```{r}
-#save(scored,file=paste0(output_file_dir,"/scored_data.RData"))
+
+save(surveys_long_clean,file=paste0(output_file_dir,"/raw_survey_data.RData"))
+save(scored,file=paste0(output_file_dir,"/scored_data.RData"))
 ```
+
 
 
 ## get some of the demographic data
@@ -643,3 +711,23 @@ scored %>%
           panel.border = element_blank(),
           panel.background = element_blank())
 ```
+
+
+
+# explore IPAQ
+
+
+```{r}
+ipaq_items <- unlist(unique(surveys_long[grepl("IPAQ",surveys_long$item),"item"]))
+
+for (ii in ipaq_items){
+  print(ii)
+  print(table(surveys_long[surveys_long$item==ii,"value"]))
+  print("na:")
+  print(table(is.na(surveys_long[surveys_long$item==ii,"value"])))
+}
+```
+
+If "how much time" is NA:
+  If "number of days doing activity" is zero then mark "how much time" as zero
+  Otherwise, leave "how much time" as NA.

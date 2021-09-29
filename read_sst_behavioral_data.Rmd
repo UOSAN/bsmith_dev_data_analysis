@@ -1,0 +1,174 @@
+---
+title: "read SST behavioral data"
+author: "Ben Smith"
+date: "9/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(R.matlab)#install.packages("R.matlab")
+library(dplyr)
+data_path <- "../../../files/data/"
+```
+
+
+
+Now create a function to do one run
+
+```{r}
+get_run_df <- function(run_mat_file){
+  conditions <- unlist(run_mat_file$names)
+  run_df <- NULL
+  for (c_i in 1:length(conditions)){
+    print(paste(length(run_mat_file$duration[[c_i]][[1]]),length(run_mat_file$onsets[[c_i]][[1]])))
+    #need to handle cases where the lengths are zero
+    if(length(run_mat_file$duration[[c_i]][[1]])!=length(run_mat_file$onsets[[c_i]][[1]])){
+      stop("found different length duration and onset. these should be the same.")
+    }
+    if(length(run_mat_file$duration[[c_i]][[1]])==0){
+      #no items for this condition  
+      print(paste("no events found for condition",conditions[[c_i]]))
+      next
+    }
+
+    
+    condition_df <- data.frame(onset=run_mat_file$onsets[[c_i]][[1]],duration=run_mat_file$duration[[c_i]][[1]],condition=conditions[[c_i]])
+    if (is.null(run_df)){
+      run_df <- condition_df
+    }else{
+      run_df <- rbind(run_df,condition_df)
+    }
+  }
+  
+  run_df <- run_df %>% arrange(onset)
+  return(run_df)
+}
+```
+
+```{r}
+#now loop through the mat files.
+behavioral_data_filepath <- paste0(data_path,"DEV_behavioral_data/")
+fname_list <- list.files(behavioral_data_filepath,pattern = "DEV.*\\.mat")
+library(stringi)
+library(stringr)
+#finfo <- str_match(fname_list[[1]],"(DEV\\d{3})_(\\d)_SST(\\d)")
+study_df <- NULL
+for (fname in fname_list){
+  print(fname)
+  run_mat_file <- readMat(paste0(behavioral_data_filepath,fname))
+  run_df <- get_run_df(run_mat_file)
+  finfo <- str_match(fname,"(DEV\\d{3})_(\\d)_SST(\\d)")
+  subid <- finfo[,2]
+  waveid <- finfo[,3]
+  runid <- finfo[,4]
+  #need to market the run and subject ID
+  run_df$subid <- subid
+  run_df$waveid <- waveid
+  run_df$runid <- runid
+  
+  #now rbind
+  if (is.null(study_df)){
+      study_df <- run_df
+    }else{
+      study_df <- rbind(study_df,run_df)
+    }
+}
+
+
+
+```
+
+
+```{r}
+readr::write_csv(study_df,file = paste0(data_path,"sst_behavioral_data_all.csv"))
+```
+
+
+```{r}
+fname <- "DEV004_3_SST1.mat"
+run_mat_file <- readMat(paste0(behavioral_data_filepath,fname))
+```
+
+```{r}
+#now we get summary statistics for each subject:
+#direction errors, proportion of successful stops, reaction time on Go trials, and stop signal reaction time (SSRT).
+#add runid to the group_by clause to group by run; but for our purposes we are happy to count across run!
+
+condition_count <- study_df %>% group_by(subid,condition) %>% count() %>% ungroup()
+go_trial_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectGo" | condition=="FailedGo") %>% summarise(go_trial_reaction_time = mean(duration)) %>% ungroup()
+
+stop_signal_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectStop") %>% summarise(stop_signal_reaction_time = mean(duration)) %>% ungroup()
+
+prop_successful_stops <- condition_count %>% group_by(subid) %>% 
+  tidyr::spread(key = "condition",value="n") %>%
+  mutate(prop_successful_stops=CorrectStop/(CorrectStop+FailedStop)) %>% ungroup()
+
+for(cname in c("CorrectGo","CorrectStop","FailedGo","FailedStop")){
+  prop_successful_stops[is.na(prop_successful_stops[[cname]]),cname]<-0
+}
+
+summary_stats <- prop_successful_stops %>% merge(stop_signal_mean_reaction_time) %>% merge(go_trial_mean_reaction_time)
+
+
+
+```
+
+```{r}
+summary_stats
+```
+
+```{r}
+
+readr::write_csv(summary_stats,file=paste0(data_path,"sst_summary_stats.csv"))
+
+```
+
+```{r}
+#now we get summary statistics for each subject:
+#direction errors, proportion of successful stops, reaction time on Go trials, and stop signal reaction time (SSRT).
+#add runid to the group_by clause to group by run; but for our purposes we are happy to count across run!
+
+condition_count <- study_df %>% group_by(runid,subid,condition) %>% count() %>% ungroup()
+go_trial_mean_reaction_time <- study_df %>% group_by(runid,subid) %>% filter(condition=="CorrectGo" | condition=="FailedGo") %>% summarise(go_trial_reaction_time = mean(duration)) %>% ungroup()
+
+stop_signal_mean_reaction_time <- study_df %>% group_by(runid,subid) %>% filter(condition=="CorrectStop") %>% summarise(stop_signal_reaction_time = mean(duration)) %>% ungroup()
+
+prop_successful_stops <- condition_count %>% group_by(runid,subid) %>% 
+  tidyr::spread(key = "condition",value="n") %>%
+  mutate(prop_successful_stops=CorrectStop/(CorrectStop+FailedStop)) %>% ungroup()
+
+for(cname in c("CorrectGo","CorrectStop","FailedGo","FailedStop")){
+  prop_successful_stops[is.na(prop_successful_stops[[cname]]),cname]<-0
+}
+
+summary_stats_by_run <- prop_successful_stops %>% merge(stop_signal_mean_reaction_time) %>% merge(go_trial_mean_reaction_time)
+
+
+```
+
+
+```{r}
+
+readr::write_csv(summary_stats_by_run,file=paste0(data_path,"sst_summary_stats_by_run.csv"))
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+

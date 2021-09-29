@@ -1,0 +1,80 @@
+---
+title: "wtp_behavioral_summary_stats"
+output: html_notebook
+---
+
+```{r}
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE)
+data_path <- "../../../files/data/"
+```
+
+
+
+```{r}
+wtp_raw <- readr::read_csv(paste0(data_path, "wtp_behavdesign_clean.csv"))
+wtp_raw <- wtp_raw[,2:ncol(wtp_raw)]
+```
+What behavioral measures do we want here? we could do something with duration, but we're primarily interested in response rating
+We can divide that into healthy and unhealthy conditions
+
+Could also do disliked and liked but I'm not interested in that.
+
+So--is the measure just healthy minus unhealthy willingness to pay?
+
+yep
+
+```{r}
+#ggplot(wtp_raw$liking_rating,wtp_raw$response)
+```
+
+
+```{r}
+#wtp_raw<-wtp_raw[1:1000,]
+wtp_raw[wtp_raw$response=="NULL","response"] <- NA
+wtp_raw$response<-as.numeric(wtp_raw$response)
+wtp_raw <- wtp_raw%>% group_by(subject,run,wave) %>% mutate(min_response=min(response,na.rm=TRUE),max_response=max(response,na.rm=TRUE)) %>% ungroup()
+wtp_raw$response_range <- wtp_raw$max_response - wtp_raw$min_response
+stopifnot(max(wtp_raw$response_range)==3)#max of the max range should be 3 exactly, the range from the max response minus the min response
+#there are two groups of responses here grouped by run
+#some use range 1,2,3,4; others use range 5,6,7,8
+#we need to combine those for value.
+value_adjustment <- 0 - 4*(wtp_raw$min_response>4)
+wtp_raw$value_level <- wtp_raw$response + value_adjustment
+#wtp_raw$value <- factor(wtp_raw$value_level,levels = c(1,2,3,4),labels="$0.00","$0.50","$1.00","$1.50")
+
+
+```
+
+
+
+```{r}
+
+wtp_by_run <- wtp_raw %>% select(subject,run,wave,health_cond,value_level) %>% 
+  group_by(subject,run,wave,health_cond) %>% 
+  summarise(
+    value_level_mean=mean(value_level,na.rm=TRUE),
+    value_level_max=max(value_level,na.rm=TRUE),
+    value_level_min=min(value_level,na.rm=TRUE),
+    value_level_sd=sd(value_level,na.rm=TRUE)
+    )
+```
+
+```{r}
+
+wtp_across_runs <- wtp_raw %>% select(subject,wave,health_cond,value_level) %>% 
+  group_by(subject,wave,health_cond) %>% 
+  summarise(
+    value_level_mean=mean(value_level,na.rm=TRUE),
+    value_level_max=max(value_level,na.rm=TRUE),
+    value_level_min=min(value_level,na.rm=TRUE),
+    value_level_sd=sd(value_level,na.rm=TRUE)
+    )
+
+```
+
+```{r}
+save(wtp_by_run,file=paste0(data_path,"wtp_summary_stats.RData"))
+save(wtp_across_runs,file=paste0(data_path,"wtp_summary_stats_across_runs.RData"))
+```
+

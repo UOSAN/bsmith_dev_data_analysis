@@ -1,0 +1,93 @@
+---
+title: "roc_behavioral_summary_stats"
+author: "Ben Smith"
+date: "9/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE)
+data_path <- "../../../files/data/"
+```
+
+
+```{r}
+roc_events_raw <- readr::read_csv("/Users/benjaminsmith/Google Drive/oregon/preprocessing/DEV_scripts/fMRI/fx/multiconds/ROC/betaseries/events.csv")
+```
+
+
+codes:
+
+1 = look neutral, 2 = look no crave, 3 = look crave, 4 = regulate crave
+# https://uosanlab.slack.com/archives/C1K1SEA3T/p1631229602021000?thread_ts=1630105278.004000&cid=C1K1SEA3T
+See also https://raw.githubusercontent.com/UOSAN/ROC/00d0628e488c7a95697d44bc8db9d4cf472590a7/ROC_R1scan.txt
+```{r}
+
+roc_events_raw$instruction <- ""
+roc_events_raw[roc_events_raw$condition %in% c(1,2,3),"instruction"] <- "Look"
+roc_events_raw[roc_events_raw$condition==4,"instruction"] <- "Regulate"
+
+```
+
+```{r}
+
+roc_events_raw$stimulus <- ""
+roc_events_raw[roc_events_raw$condition==1,"stimulus"] <- "Neutral"
+roc_events_raw[roc_events_raw$condition==2,"stimulus"] <- "No Crave"
+roc_events_raw[roc_events_raw$condition %in% c(3,4),"stimulus"] <- "Crave"
+roc_events_raw$condition_label<-paste0(roc_events_raw$stimulus,"_",roc_events_raw$instruction)
+```
+
+```{r}
+table(roc_events_raw$condition_label)
+```
+
+
+```{r}
+readr::write_csv(roc_events_raw,file = paste0(data_path,"roc_behavioral_data_all.csv"))
+```
+
+
+Now get the summary stats.
+
+What summary statistics do we want?
+
+Basic: 
+ - ratings in each condition
+ - Basic inhibitory control: look-regulate
+ - Unhealthy food-related inhibitory control: [unhealthy] look-regulate (pre-reg)
+ - Unhealthy food-related inhibitory control: [unhealthy] look-regulate - [healthy] [look-regulate] (pre-reg)
+ 
+That'll do.
+
+```{r}
+roc_events_raw.1<-roc_events_raw
+roc_events_raw.1[roc_events_raw.1$rt==0,"rt"]<-NA #these are actually NA
+roc_events_raw.1$rating <-as.double(roc_events_raw.1$rating)
+
+condition_ratings <- roc_events_raw.1 %>% select(-file) %>% group_by(subjectID,wave,run,instruction,stimulus,condition_label) %>% 
+        summarise(mean_rating=mean(rating,na.rm = TRUE),mean_rt=mean(rt,na.rm=TRUE),
+                  non_response_count = sum(is.na(rating))) %>% ungroup()
+```
+```{r}
+mean_ratings <- condition_ratings %>% select(subjectID,wave,run,condition_label,mean_rating) %>% group_by(subjectID,wave,run) %>% 
+        tidyr::spread(key = "condition_label",value="mean_rating")
+
+mean_rts <- condition_ratings %>% select(subjectID,wave,run,condition_label,mean_rt) %>% group_by(subjectID,wave,run) %>% 
+        tidyr::spread(key = "condition_label",value="mean_rt")
+
+
+mean_ratings$Crave_Regulate_Minus_Look <- mean_ratings$Crave_Regulate - mean_ratings$Crave_Look
+mean_ratings$Crave_Minus_Neutral <- mean_ratings$Crave_Look -mean_ratings$Neutral_Look
+mean_ratings$Crave_Minus_NoCrave <- mean_ratings$Crave_Look -mean_ratings$`No Crave_Look`
+```
+
+```{r}
+mean_ratings
+```
+
+```{r}
+readr::write_csv(mean_ratings,file=paste0(data_path,"roc_summary_stats.csv"))
+```
+

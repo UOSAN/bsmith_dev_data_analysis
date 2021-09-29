@@ -1,0 +1,79 @@
+---
+title: "sst_post_error_slowing"
+output: html_notebook
+---
+
+Steps:
+
+ - load file
+ - number each trial consecutively based on the onset time
+ - number the following trial for each trial
+ - merge the file with itself, merging each trial with its following trial
+ - for each measure the post-trial time for a correct result
+ 
+
+ 
+ 
+ This paper probably has a good method, 'How to measure post-error slowing: A confound and a simple solution',
+ 
+ Look at their "simple solution", and follow the method there. https://www.sciencedirect.com/science/article/abs/pii/S0022249612000454
+ https://www.sciencedirect.com/science/article/pii/S0022249612000454
+ 
+ https://www.frontiersin.org/articles/10.3389/fpsyg.2014.00119/full
+ 
+ 
+ 
+## load file
+
+```{r}
+sst_all_data_filepath <- "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/sst_behavioral_data_all.csv"
+
+sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+```
+
+For each trial,
+
+Do plus or minus three (all trials)
+
+then filter the trials to only view go trials
+
+then take the average of those
+
+To get the pre-error trials you do the same thing
+
+
+
+## number each trial consecutively based on the onset time
+
+```{r}
+
+
+#View(sst_all_data_raw)
+sst_all_data_raw <- sst_all_data_raw%>%group_by(subid,waveid,runid) %>% mutate(trial_id = seq_along(duration))
+
+
+```
+
+
+
+## number the following trial for each trial
+```{r}
+sst_all_data_raw$next_trial_id <- sst_all_data_raw$trial_id + 1
+```
+
+
+
+## merge the file with itself, merging each trial with its following trial
+
+```{r}
+run_config_cols <- c("subid","waveid", "runid")
+sst_merged<-merge(sst_all_data_raw,sst_all_data_raw,by.x=c(run_config_cols,"next_trial_id"),by.y=c(run_config_cols,"trial_id"),
+                  suffixes = c("_this_trial","_next_trial"),all = TRUE)
+```
+
+```{r}
+View(sst_merged)
+```
+
+## for each measure the post-trial time for a correct result
+test

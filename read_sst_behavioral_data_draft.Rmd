@@ -1,0 +1,124 @@
+---
+title: "read SST behavioral data"
+author: "Ben Smith"
+date: "9/14/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+library(R.matlab)#install.packages("R.matlab")
+library(dplyr)
+data_path <- "../../../files/data/"
+```
+
+
+```{r}
+DEV154_SST_w1_r1 <- readMat(paste0(data_path,"DEV_behavioral_data/","DEV154_1_SST1.mat"),drop = )
+```
+
+
+```{r}
+
+DEV154_SST_w1_r1[[1]]
+```
+
+```{r}
+sapply(DEV154_SST_w1_r1$names,function(x){drop(drop(drop(x)))})
+
+```
+
+OK. What format do we need this in?
+```{r}
+
+
+print(DEV154_SST_w1_r1$onsets[[1]][[1]])
+
+DEV154_SST_w1_r1$duration[[1]][[1]]
+
+DEV154_SST_w1_r1$duration[[2]][[1]]
+
+DEV154_SST_w1_r1$onsets[[1]]
+
+
+```
+
+```{r}
+conditions <- unlist(DEV154_SST_w1_r1$names)
+run_df <- NULL
+for (c_i in 1:length(conditions)){
+  print(conditions[[c_i]])
+  print(length(DEV154_SST_w1_r1$duration[[c_i]][[1]]))
+  print(length(DEV154_SST_w1_r1$onsets[[c_i]][[1]]))
+  
+  condition_df <- data.frame(onset=DEV154_SST_w1_r1$onsets[[c_i]][[1]],duration=DEV154_SST_w1_r1$duration[[c_i]][[1]],condition=conditions[[c_i]])
+  if (is.null(run_df)){
+    run_df <- condition_df
+  }else{
+    run_df <- rbind(run_df,condition_df)
+  }
+}
+
+run_df <- run_df %>% arrange(onset)
+```
+
+Now create a function to do one run
+
+```{r}
+get_run_df <- function(run_mat_file){
+  conditions <- unlist(DEV154_SST_w1_r1$names)
+  run_df <- NULL
+  for (c_i in 1:length(conditions)){
+    print(conditions[[c_i]])
+    print(length(DEV154_SST_w1_r1$duration[[c_i]][[1]]))
+    print(length(DEV154_SST_w1_r1$onsets[[c_i]][[1]]))
+    
+    condition_df <- data.frame(onset=DEV154_SST_w1_r1$onsets[[c_i]][[1]],duration=DEV154_SST_w1_r1$duration[[c_i]][[1]],condition=conditions[[c_i]])
+    if (is.null(run_df)){
+      run_df <- condition_df
+    }else{
+      run_df <- rbind(run_df,condition_df)
+    }
+  }
+  
+  run_df <- run_df %>% arrange(onset)
+  return(run_df)
+}
+```
+
+```{r}
+#now loop through the mat files.
+behavioral_data_filepath <- paste0(data_path,"DEV_behavioral_data/")
+fname_list <- list.files(behavioral_data_filepath,pattern = "DEV.*\\.mat")
+library(stringi)
+library(stringr)
+finfo <- str_match(fname_list[[1]],"(DEV\\d{3})_(\\d)")
+study_df <- NULL
+for (fname in fname_list){
+  pritn(fname)
+  run_mat_file <- readMat(behavioral_data_filepath,fname)
+  run_df <- get_run_df(run_mat_file)
+  finfo <- str_match(fname,"(DEV\\d{3})_(\\d)")
+  subid <- finfo[,2]
+  runid <- finfo[,3]
+  #need to market the run and subject ID
+  run_df$subid <- subid
+  run_df$runid <- runid
+  
+  #now rbind
+  if (is.null(study_df)){
+      study_df <- run_df
+    }else{
+      study_df <- rbind(study_df,run_df)
+    }
+}
+
+
+
+```
+
