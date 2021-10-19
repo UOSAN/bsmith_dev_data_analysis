@@ -14,9 +14,14 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 library(R.matlab)#install.packages("R.matlab")
 library(dplyr)
+library(stringr)
 data_path <- "../../../files/data/"
+dropbox_path <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab"
+sst_on_dropbox <- paste0(dropbox_path, "/Berkman Lab/Devaluation/Tasks/SST_DEV")
 ```
 
+
+### Grabbing and summarizing from the raw data
 
 
 Now create a function to do one run
@@ -103,7 +108,7 @@ run_mat_file <- readMat(paste0(behavioral_data_filepath,fname))
 condition_count <- study_df %>% group_by(subid,condition) %>% count() %>% ungroup()
 go_trial_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectGo" | condition=="FailedGo") %>% summarise(go_trial_reaction_time = mean(duration)) %>% ungroup()
 
-stop_signal_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectStop") %>% summarise(stop_signal_reaction_time = mean(duration)) %>% ungroup()
+stop_signal_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectStop") %>% summarise(raw_stop_signal_duration = mean(duration)) %>% ungroup()
 
 prop_successful_stops <- condition_count %>% group_by(subid) %>% 
   tidyr::spread(key = "condition",value="n") %>%
@@ -137,7 +142,7 @@ readr::write_csv(summary_stats,file=paste0(data_path,"sst_summary_stats.csv"))
 condition_count <- study_df %>% group_by(runid,subid,condition) %>% count() %>% ungroup()
 go_trial_mean_reaction_time <- study_df %>% group_by(runid,subid) %>% filter(condition=="CorrectGo" | condition=="FailedGo") %>% summarise(go_trial_reaction_time = mean(duration)) %>% ungroup()
 
-stop_signal_mean_reaction_time <- study_df %>% group_by(runid,subid) %>% filter(condition=="CorrectStop") %>% summarise(stop_signal_reaction_time = mean(duration)) %>% ungroup()
+stop_signal_mean_reaction_time <- study_df %>% group_by(runid,subid) %>% filter(condition=="CorrectStop") %>% summarise(reaction_time = mean(duration)) %>% ungroup()
 
 prop_successful_stops <- condition_count %>% group_by(runid,subid) %>% 
   tidyr::spread(key = "condition",value="n") %>%
@@ -160,13 +165,59 @@ readr::write_csv(summary_stats_by_run,file=paste0(data_path,"sst_summary_stats_b
 ```
 
 
+## now read the SSRT data
+
+Data presummarized by Krista, Bryan, and Dani.
+
+```{r}
+
+
+presummarized_sst_filepath <- paste0(sst_on_dropbox,"/compiledResults/upToDEV228/varMats/resultVars16.mat")
+
+presummarized_sst_data <-  readMat(presummarized_sst_filepath)
+```
 
 
 
 
 
+```{r}
+
+all_table_longer <- NULL
+for (result_item_name in names(presummarized_sst_data)){
+  subj_by_wave_table <- data.frame(presummarized_sst_data[[result_item_name]])
+  wave_colnames<- paste0("wave",1:ncol(subj_by_wave_table))
+  colnames(subj_by_wave_table)<-wave_colnames
+  subj_by_wave_table$SubjectLabel <- paste0("DEV",str_pad(as.character(1:nrow(subj_by_wave_table)),3,pad="0"))
+  
+  table_longer <- subj_by_wave_table %>% tidyr::pivot_longer(cols=wave_colnames,names_to="wave")
+  table_longer$value_type <- result_item_name
+  if(is.null(all_table_longer)){
+    all_table_longer <- table_longer
+  }else{
+    all_table_longer <- rbind(all_table_longer,table_longer)
+  }
+}
+
+all_table_longer$value_type <- sub(".results","",all_table_longer$value_type)
+
+presummarized_data_all_raw <- all_table_longer %>% tidyr::pivot_wider(id_cols=c("SubjectLabel","wave"),values_from="value",names_from="value_type")
+
+row_na_count<-apply(presummarized_data_all_raw,1,function(r){sum(is.na(r))})
+row_without_values <- max(row_na_count)==row_na_count
+
+presummarized_data_all <- presummarized_data_all_raw[row_without_values==FALSE,]
+
+presummarized_data_all$wave <-as.integer(sub("wave","",presummarized_data_all$wave))
+```
 
 
+
+```{r}
+
+readr::write_csv(presummarized_data_all,file=paste0(data_path,"sst_pre_analyzed_stats.csv"))
+
+```
 
 
 

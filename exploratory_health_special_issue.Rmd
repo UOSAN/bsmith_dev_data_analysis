@@ -52,11 +52,17 @@ Now get behavioral measures.
 
 
 #should be wave 1 by default.
-sst_data <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
+sst_data_1 <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
+sst_data_2 <- readr::read_csv(file=paste0(data_path,"sst_pre_analyzed_stats.csv"))
+sst_data_1_w1 <- sst_data_1%>%filter(runid==1)%>% select(-runid)
+sst_data_2_w1 <- sst_data_2 %>% filter(wave==1) %>% select(-wave)
+sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE)
+
 roc_data <- readr::read_csv(file=paste0(data_path,"roc_summary_stats.csv"))
 load(file=paste0(data_path,"wtp_summary_stats_across_runs.Rdata"))
 
-sst_w1 <- sst_data%>%filter(runid==1)%>% select(-runid)
+
+
 
 #need to group across run
 roc_data_across_runs<- roc_data %>% select(-run) %>% group_by(subjectID,wave) %>% summarise(across(everything(), mean))
@@ -434,8 +440,70 @@ Now we need to get the non-scale social values in here.
 <!-- rm(ppt_data_wide) -->
 <!-- ``` -->
 
-Now we get the behaivoral data
 
+### remove outliers
+
+https://www.active.com/fitness/calculators/bodyfat
+
+Classification	Women (% Fat)	Men (% Fat)
+Essential Fat	10-12%	2-4%
+Athletes	14-20%	6-13%
+Fitness	21-24%	14-17%
+Acceptable	25-31%	18-25%
+Obese	32% +	25% +
+
+
+
+With ~200 subjects, how often would we expect subjects 2 or 3 or 4 SD outside the mean?
+
+```{r}
+
+for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
+  class(data_by_ppt[[coln]])
+  if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
+    na_row <- is.na(unlist(data_by_ppt[coln]))
+    col_vals <- unlist(data_by_ppt[!na_row,coln])
+    col_sids <- data_by_ppt[!na_row,"SID"]
+    col_mean<-mean(col_vals)
+    col_sd<-sd(col_vals)
+    outliers_4sigma <- (col_vals < col_mean - col_sd * 4) | (col_vals > col_mean + col_sd * 4)
+    outliers_5sigma <- (col_vals < col_mean - col_sd * 5) | (col_vals > col_mean + col_sd * 5)
+    if(sum(outliers_4sigma)+sum(outliers_5sigma)>0){
+      print(paste(coln, ": 4 sigma outliers are:",paste(data_by_ppt[outliers_4sigma,"SID"],collapse = ","), "; 5 sigma outliers are:",paste(data_by_ppt[outliers_5sigma,"SID"],collapse = ",")))
+    }
+    
+  }
+}
+
+```
+
+```{r}
+
+
+
+
+for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
+  print(coln)
+  class(data_by_ppt[[coln]])
+  if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
+    hist(unlist(data_by_ppt[coln]),breaks=20,main = coln)
+  }
+  
+}
+```
+
+```{r}
+#remove data of implausible bf_1 values
+data_by_ppt$bf_1[data_by_ppt$bf_1<13]<-NA
+data_by_ppt$TRSQ[data_by_ppt$TRSQ<5]<-NA
+```
+
+
+```{r}
+readr::write_csv(data_by_ppt, file = paste0(data_path,"data_by_ppt.csv"))
+```
+
+Should probably remove a few more outliers, and consider transforming non-normal data or using rank test for it, but that'll do for now.
 ### Exploratory analysis for health special issue
 
 Here we'll follow a few basic steps:
@@ -454,7 +522,7 @@ label the variables
 IVs <- c("cancer_promoting_minus_preventing_craved_FCI","cancer_promoting_minus_preventing_liked_FCI",
          "ROC_Crave_Minus_Neutral",
          "EDM","BSCS","ACES_sum",
-         "SST_prop_successful_stops","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
+         "SST_SSRT","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
          "WTP_healthy","WTP_unhealthy","WTP_unhealthy_minus_healthy",
          "SRHI_sum","SRHI_healthy_minus_unhealthy","TRSQ","RS","RTFS_factor_1","RTFS_factor_2","RTFS_f1_minus_f2","BIS_11",
          "ses_aggregate","DEMO_mcarthur_social_standing","cSES",
@@ -633,7 +701,7 @@ cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$SRHI_unhealthy,use = "pai
 
 inhibitory_ivs <- c(paste0("TESQ_E_",unique(scored_fs[scored_fs$scale_name=="TESQ_E","scored_scale"])),"TRSQ",
          "BIS_11","BSCS",
-         "SST_prop_successful_stops","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
+         "SST_SSRT","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
          "EDM","RS")
 inhibitory_cors <- mcc(correlation_df[correlation_df$v2 %in% inhibitory_ivs,])
 
@@ -646,6 +714,24 @@ cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$TESQ_E_sum,use = "pairwis
 summary(print(lm(cancer_preventing_FFQ~TESQ_E_controlling_temptations,data_by_ppt)))
 summary(print(lm(cancer_preventing_FFQ~bf_1+TESQ_E_controlling_temptations,data_by_ppt)))
 
+summary(print(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_controlling_temptations,data_by_ppt)))
+summary(print(lm(cancer_promoting_minus_preventing_FFQ~SST_SSRT,data_by_ppt)))
+
+summary(print(lm(bf_1~SST_SSRT+cancer_promoting_minus_preventing_FFQ,data_by_ppt)))
+summary(print(lm(bf_1~SST_SSRT,data_by_ppt)))
+
+
+summary(print(lm(bf_1~SST_SSRT,data_by_ppt)))
+cor.test(data_by_ppt$SST_SSRT,data_by_ppt$bf_1,method="spearman")
+plot(data_by_ppt$SST_SSRT,data_by_ppt$bf_1)
+data_by_ppt$SST_SSRT_ranked <- rank(data_by_ppt$SST_SSRT)
+
+
+hist(data_by_ppt$cancer_promoting_minus_preventing_FFQ)
+hist(data_by_ppt$bf_1)
+hist(data_by_ppt$SST_SSRT)
+hist(data_by_ppt$SST_SSRTint)
+hist(data_by_ppt$SST_SSRTquant)
  
 ```
 
