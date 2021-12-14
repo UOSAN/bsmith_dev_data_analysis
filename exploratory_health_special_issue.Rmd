@@ -36,12 +36,77 @@ Now get BMI
 
 ```{r}
 load("../../../files/data/ppt_list_w_data.RData")
+
+ppt_list_w_data$date_0<-as.Date(ppt_list_w_data$date_0)
+ppt_list_w_data$dob<-as.Date(ppt_list_w_data$dob)
+ppt_list_w_data$age365<- as.numeric((ppt_list_w_data$date_0-ppt_list_w_data$dob)/365)
+
 #our primary health outcome measure
-ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bf_1,weight_0) %>% filter(!is.na(bf_1))
+ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bf_1,weight_0,height_0,birthsex,age365,bmi_0,bmi_1) %>% filter(!is.na(bf_1))
+
+ppt_health_outcomes$bmi <- ifelse(!is.na(ppt_health_outcomes$bmi_0),ppt_health_outcomes$bmi_0,ppt_health_outcomes$bmi_1)
 rm(ppt_list_w_data)
+
+#remove data of implausible bf_1 values
+ppt_health_outcomes$bf_1[ppt_health_outcomes$bf_1<13]<-NA
+
+
+#get a bf_1 score with sex regressed out
+#do we want to regress out height as well???
+
+#plot(ppt_health_outcomes$height_0,ppt_health_outcomes$bf_1)
+
+#hmm that's fairly strong. 
+#but does it hold after controlling for sex?
+#I think it would be good to regress out height as well.
+#so we will use a linear model to predict bf_1 from height and sex. 
+cor.test(ppt_health_outcomes[birthsex==1, height_0],ppt_health_outcomes[birthsex==1,bf_1])
+cor.test(ppt_health_outcomes[birthsex==2, height_0],ppt_health_outcomes[birthsex==2,bf_1])
+#it does not.
+
+#what about age?
+cor.test(ppt_health_outcomes[birthsex==1, age365],ppt_health_outcomes[birthsex==1,bf_1])
+cor.test(ppt_health_outcomes[birthsex==2, age365],ppt_health_outcomes[birthsex==2,bf_1])
+#might be a moderate correlation within birth sex levels of age. so it is worth norming for age too
+#if we were just controlling for a single variable we could z-score
+#but now we're doing age as well.
+#which would imply not z-scoring, we should use a linear model.
+
+bf_model <- lm(bf_1~birthsex+age365, ppt_health_outcomes)
+summary(bf_model)
+#ppt_health_outcomes$bf_1_controlled <-NULL <- bf_model$residuals
+ppt_health_outcomes$bf_1_controlled[as.numeric(rownames(bf_model$model))] <- bf_model$residuals
+
+#simple model just zscoring within sex
+#that allows for a more inuitive interpretation than errors from a linear model.
+ppt_health_outcomes %<>% group_by(birthsex) %>% mutate(
+  bf_1_bsexnormedzs = (bf_1-mean(bf_1,na.rm = TRUE))/sd(bf_1,na.rm = TRUE),
+  
+)
+
+
+#cor.test(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1)
+plot(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1)
+#cor.test(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1_bsexnormedzs)
+#plot(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1_bsexnormedzs)
+
+#plot(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1_controlled)
+
+plot(ppt_health_outcomes$bf_1,ppt_health_outcomes$bf_1_controlled)
+
+
+
 
 ```
 
+
+```{r}
+min(ppt_health_outcomes$age365)
+
+max(ppt_health_outcomes$age365)
+
+table(ppt_health_outcomes$birthsex)
+```
 
 
 
@@ -49,7 +114,7 @@ Now get behavioral measures.
 
 ```{r}
 
-
+sst_pes <- readr::read_csv("https://www.dropbox.com/s/vaubgp23y5j0m5g/post_error_slowing.csv?dl=0")
 
 #should be wave 1 by default.
 sst_data_1 <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
@@ -236,6 +301,10 @@ print(first_survey_for_scale)
 
 
 ```
+
+
+
+
 ```{r}
 sapply(unique(scored_fs$scale_name),function(sn){list(sn=unique(scored_fs[scored_fs$scale_name==sn,"scored_scale"]))})
 ```
@@ -425,6 +494,10 @@ weight_in_kg <- data_by_ppt$weight_0* 0.453592 #convert from pounds to kg
 data_by_ppt$IPAQ_MET_kCal <- data_by_ppt$IPAQ_total_METminutes * weight_in_kg/60
 
 
+data_by_ppt$birthsex_factor<-""
+data_by_ppt$birthsex_factor[data_by_ppt$birthsex==1]<-"Female"
+data_by_ppt$birthsex_factor[data_by_ppt$birthsex==2]<-"Male"
+data_by_ppt$birthsex_factor<-factor(data_by_ppt$birthsex_factor,levels=c("Female","Male"))
 
 ```
 
@@ -461,17 +534,19 @@ With ~200 subjects, how often would we expect subjects 2 or 3 or 4 SD outside th
 for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
   class(data_by_ppt[[coln]])
   if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
+    
     na_row <- is.na(unlist(data_by_ppt[coln]))
     col_vals <- unlist(data_by_ppt[!na_row,coln])
-    col_sids <- data_by_ppt[!na_row,"SID"]
-    col_mean<-mean(col_vals)
-    col_sd<-sd(col_vals)
-    outliers_4sigma <- (col_vals < col_mean - col_sd * 4) | (col_vals > col_mean + col_sd * 4)
-    outliers_5sigma <- (col_vals < col_mean - col_sd * 5) | (col_vals > col_mean + col_sd * 5)
-    if(sum(outliers_4sigma)+sum(outliers_5sigma)>0){
-      print(paste(coln, ": 4 sigma outliers are:",paste(data_by_ppt[outliers_4sigma,"SID"],collapse = ","), "; 5 sigma outliers are:",paste(data_by_ppt[outliers_5sigma,"SID"],collapse = ",")))
+    if(class(col_vals)!="factor"){
+      col_sids <- data_by_ppt[!na_row,"SID"]
+      col_mean<-mean(col_vals)
+      col_sd<-sd(col_vals)
+      outliers_4sigma <- (col_vals < col_mean - col_sd * 4) | (col_vals > col_mean + col_sd * 4)
+      outliers_5sigma <- (col_vals < col_mean - col_sd * 5) | (col_vals > col_mean + col_sd * 5)
+      if(sum(outliers_4sigma)+sum(outliers_5sigma)>0){
+        print(paste(coln, ": 4 sigma outliers are:",paste(data_by_ppt[outliers_4sigma,"SID"],collapse = ","), "; 5 sigma outliers are:",paste(data_by_ppt[outliers_5sigma,"SID"],collapse = ",")))
+      }      
     }
-    
   }
 }
 
@@ -480,21 +555,20 @@ for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
 ```{r}
 
 
-
-
-for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
-  print(coln)
-  class(data_by_ppt[[coln]])
-  if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
-    hist(unlist(data_by_ppt[coln]),breaks=20,main = coln)
-  }
-  
-}
+# 
+# 
+# for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
+#   print(coln)
+#   class(data_by_ppt[[coln]])
+#   if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
+#     hist(unlist(data_by_ppt[coln]),breaks=20,main = coln)
+#   }
+#   
+# }
 ```
 
 ```{r}
-#remove data of implausible bf_1 values
-data_by_ppt$bf_1[data_by_ppt$bf_1<13]<-NA
+#remove implausible TRSQ score
 data_by_ppt$TRSQ[data_by_ppt$TRSQ<5]<-NA
 ```
 
@@ -531,7 +605,7 @@ IVs <- c("cancer_promoting_minus_preventing_craved_FCI","cancer_promoting_minus_
          #'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
          #'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation'
          )
-DVs <- c("cancer_promoting_minus_preventing_FFQ","bf_1")
+DVs <- c("cancer_promoting_minus_preventing_FFQ","bf_1","bf_1_controlled")
 ```
 
 
@@ -626,6 +700,27 @@ mcc <- function(cor_df){
   return(cor_df)
 }
 ```
+
+
+## Relationship between predictors
+
+```{r}
+
+print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt)))
+print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==1))))
+
+print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==2))))
+```
+
+
+```{r}
+
+print(summary(lm(bmi~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt)))
+print(summary(lm(bmi~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==1))))
+
+print(summary(lm(bmi~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==2))))
+```
+
 
 ## Pre-registered predictions
 
@@ -794,11 +889,28 @@ No other habit measures to look at but what about craving?
 cor.test(data_by_ppt$cancer_promoting_minus_preventing_craved_FCI,data_by_ppt$BIS_11)
 ```
 
+
+
+```{r}
+
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_sum,data_by_ppt))
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_sum*birthsex_factor,data_by_ppt))
+
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_controlling_temptations*birthsex_factor,data_by_ppt))
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_distraction*birthsex_factor,data_by_ppt))
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_goal_and_rule_setting*birthsex_factor,data_by_ppt))
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_goal_deliberation*birthsex_factor,data_by_ppt))
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_suppression*birthsex_factor,data_by_ppt))
+summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_suppression,data_by_ppt%>% filter(birthsex_factor=="Male")))
+```
+
+
+
 ## broad look at correlation plot
 
 
 ```{r}
-vars_of_interest <- c("TESQ_E","cancer_promoting_minus_preventing_craved_FCI","SRHI_healthy_minus_unhealthy","cancer_promoting_minus_preventing_FFQ")
+vars_of_interest <- c("TESQ_E_sum","cancer_promoting_minus_preventing_craved_FCI","SRHI_healthy_minus_unhealthy","cancer_promoting_minus_preventing_FFQ")
 
 cor(data_by_ppt[,vars_of_interest],use = "pairwise.complete.obs")
 ```
@@ -807,20 +919,20 @@ So these three measures are just very strongly correlated generally; likely capt
 
 
 ```{r}
-print(summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt)))
-print(summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E,data_by_ppt)))
+print(summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_sum+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt)))
+print(summary(lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_sum,data_by_ppt)))
 print(summary(lm(cancer_promoting_minus_preventing_FFQ~cancer_promoting_minus_preventing_craved_FCI,data_by_ppt)))
 print(summary(lm(cancer_promoting_minus_preventing_FFQ~SRHI_healthy_minus_unhealthy,data_by_ppt)))
 
 null_rows <- apply(is.na(data_by_ppt[,vars_of_interest]),1,any)
 print(anova(
   lm(cancer_promoting_minus_preventing_FFQ~cancer_promoting_minus_preventing_craved_FCI,data_by_ppt[null_rows==FALSE,]),
-lm(cancer_promoting_minus_preventing_FFQ~TESQ_E+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,])
+lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_sum+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,])
 ))
 
 print(anova(
   lm(cancer_promoting_minus_preventing_FFQ~cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,]),
-lm(cancer_promoting_minus_preventing_FFQ~TESQ_E+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,])
+lm(cancer_promoting_minus_preventing_FFQ~TESQ_E_sum+cancer_promoting_minus_preventing_craved_FCI+SRHI_healthy_minus_unhealthy,data_by_ppt[null_rows==FALSE,])
 ))
 
 
@@ -862,6 +974,12 @@ Seems cheeky to go and do a _second_ pre-registration for these so I recommend j
 Also, what about considering more granular measures in the FFQ and FCI?
 
 
+```{r}
+summary(lm(cancer_promoting_minus_preventing_FFQ~RTFS_factor_1*birthsex, data_by_ppt))
+```
+
+
+
 ### Personality etc
 
 These aren't explicitly designed to measure constructs we are concerned about, but there are theoretical reasons or at least 'stories you could tell' to expect a link to outcome.
@@ -883,7 +1001,8 @@ IVs <- c(
          'RS'
          
          )
-DVs <- c("cancer_promoting_minus_preventing_FFQ","bf_1")
+DVs <- c("cancer_promoting_minus_preventing_FFQ",#"bf_1",
+         "bf_1_controlled")
 ```
 
 
@@ -941,6 +1060,9 @@ print(summary(lm(bf_1~PLAN_temporal_orientation+RS+RTFS_factor_1,data_by_ppt)))
 print(summary(lm(bf_1~PLAN_temporal_orientation+RS,data_by_ppt)))
 ```
 
+```{r}
+data_by_ppt$RTFS_f1_minus_f2
+```
 
 
 

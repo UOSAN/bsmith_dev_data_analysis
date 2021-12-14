@@ -412,6 +412,13 @@ scored = scorequaltrics::score_questionnaire(surveys_long_clean, scoring, SID = 
 head(scored, 200)
 ```
 
+Remove items which are all missing data
+added by ben 2021-12-04
+```{r}
+scored[scored$n_items==0,"score"]="NA"
+
+```
+
 
 
 Now let's save it so it can be used in other analyses.

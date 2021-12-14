@@ -30,6 +30,22 @@ sst_all_data_filepath <- "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman La
 
 sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
 ```
+```{r}
+library(dplyr)
+```
+
+
+```{r}
+table(sst_all_data_raw$condition)
+
+for (wid in unique(sst_all_data_raw$waveid)){
+        for (cond in unique(sst_all_data_raw$condition)){
+                print(paste(wid,cond))
+                print(length(unique(sst_all_data_raw %>% filter(waveid==wid & condition==cond) %>% .$duration)))
+        }
+}
+```
+
 
 For each trial,
 
