@@ -1,0 +1,209 @@
+---
+title: "DEV_FFQ_Nutrient Density"
+author: "Megan Lipsett"
+date: "1/19/2022"
+output: html_document
+---
+
+#CODE TO CREATE A NUTRIENT DENSITY DATABASE FOR THE ITEMS IN THE FFQ USED FOR THE DEVALUATION STUDY IN THE BERKMAN LAB. 
+
+# Description of common energy adjustment approaches using nutrient density: https://dietassessmentprimer.cancer.gov/learn/adjustment.html
+
+#Generate Dataframe 
+```{r}
+#Load in the nutrient density values for our FFQ items from the Berkman Lab Dropbox. 
+library(dplyr)
+FFQ_df <- read.csv(file = "https://www.dropbox.com/s/1j6bgp2xqiez16t/Nutrient_Database_%25DVs_DEV.csv?dl=1", stringsAsFactors = FALSE, header = TRUE, row.names = NULL) %>%
+  na_if("")
+
+#Remove the rows that are blank or were being used to calculate the average nutrient density when an FFQ item listed multiple items. 
+FFQ_df <- FFQ_df[!(is.na(FFQ_df$ITEM.NAME) | FFQ_df$ITEM.NAME==""), ] 
+
+#Re-naming items names so that FFQ_# is for females and FFQ_#.1 is for males 
+FFQ_df$ITEM.NAME <- make.unique(FFQ_df$ITEM.NAME)
+
+dropbox_path <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/Data"
+
+```
+
+#Adjust Nutrient Density and % Daily value nutrient scores for items very high in single nutrient.  
+```{r}
+FFQ_df <- FFQ_df[-c(73), ]
+
+#Cap the Nutrient Density for any single nutrient to 250 
+library(dplyr)
+FFQ_df <- FFQ_df %>%
+  dplyr::mutate_at(
+    vars((ends_with("USDA"))),
+    funs(case_when(
+    . >250 ~ 250, 
+    . <= 250 ~ .)))
+
+FFQ_df <- FFQ_df %>%
+  dplyr::mutate_at(
+    vars((ends_with("NDSR"))),
+    funs(ifelse(.>250,250,.)))
+
+#As some foods are excellent sources of a particular nutrient (but may contain few other nutrients), %daily value for nutrient values for any given nutrient will be capped at 100% so that any one nutrient will not contribute unduly to the total score.
+#install.packages("incase")
+
+FFQ_df <- FFQ_df %>%
+  dplyr::mutate_at(
+    vars((ends_with("DV"))),
+    funs(incase::in_case(
+    . >100 ~ 100, 
+    . <= 100 ~ .)))
+
+```
+
+#Calculate the Nutrient Density Score for each FFQ item - 
+#References https://www.cdc.gov/pcd/issues/2014/13_0390.htm  and https://www.sciencedirect.com/science/article/abs/pii/S000282230501552X
+
+#Calculate the mean of the NUTRIENT value of each item
+```{r}
+FFQ_df$overall_nutrient_mean <- rowMeans(FFQ_df[ , c(16, #Protein, PROTEIN_G_USDA 
+                                                       18, #Vegetable protein, VEGETABLE_PROTEIN_G_NDSR
+                                                    22, #Total dietary fiber, TOTAL_DIETARY_FIBER_G_NDSR
+                                                    24, #Retinol, RETINOL_MCG_USDA
+                                                    26, #Vitamin A, VITAMIN_A_RAE_MCG_USDA
+                                                    28, #Beta Carotene, BETA_CAROTENE_MCG_USDA
+                                                    30, #Alpha Carotene, ALPHA_CAROTENE_MCG_USDA
+                                                    32, #Beta-cryptoxanthin, BETA_CRYPTOXANTHIN_MCG_USDA
+                                                    34, #Lutein + zeaxanthin, LUTEIN_ZEAXANTHIN_MCG_USDA
+                                                    36, #Lycopene, LYCOPENE_MCG_USDA
+                                                    40, #Vitamin E (International Units), VITAMIN_E_IU_NDSR
+                                                    42, #Vitamin K, VITAMIN_K_MCG_USDA
+                                                    44, #Vitamin C, VITAMIN_C_MG_USDA
+                                                    46, #Thiamin (Vitamin B1),THIAMIN_VITAMIN_B1_MG_USDA
+                                                    48, #Riboflavin (Vitamin B2), RIBOFLAVIN_VITAMIN_B2_MG_USDA
+                                                    50, #Niacin, NIACIN_MG_USDA
+                                                    54, #Vitamin b6, VITAMIN_B6_MG_USDA
+                                                    56, #Total Folate, TOTAL_FOLATE_MCG_USDA
+                                                    62, #Folic acid, FOLIC_ACID_MCG_USDA
+                                                    64, #Calcium, CALCIUM_MG_USDA
+                                                    66, #Phosphorous, PHOSPHORUS_MG_USDA
+                                                    68, #Magnesium, MAGNESIUM_MG_USDA
+                                                    70, #Iron, IRON_MG_USDA
+                                                    72, #Zinc, ZINC_MG_USDA
+                                                    74, #Copper, COPPER_MG_USDA
+                                                    76, #Selenium, SELENIUM_MCG_USDA
+                                                    78, #Sodium, SODIUM_MG_USDA
+                                                    80, #Potassium, POTASSIUM_MG_USDA
+                                                    82, #Manganese, MANGANESE_MG_NDSR
+                                                    84 #Omega-3 fatty acids, OMEGA_3_FATTY_ACIDS_G_NDSR
+                                                    )], na.rm=TRUE)
+
+#Calculate the mean of the % daily values for ANTI-NUTRIENTS of each item
+FFQ_df$overall_antinutrient_mean <- rowMeans(FFQ_df[ , c(
+  98, 
+  104, #Added sugars teaspoon equivalents by total sugars, ADDED_SUGARS_BY_TOTAL_SUGARS_G_NDSR 
+  106, #FRUCTOSE_G_NDSR
+  108, #GALACTOSE_G_NDSR
+  110, #GLUCOSE_G_NDSR
+  112, #LACTOSE_G_NDSR
+  114, #MALTOSE_G_NDSR
+  116, #SUCROSE_G_NDSR
+  118, #STARCH_G_NDSR
+  120, #Total trans fatty acids, TOTAL_TRANS_FATTY_ACIDS_TRANS_G_NDSR
+  122, #ERYTHRITOL_G_NDSR
+  124,#Inositol, INOSITOL_G_NDSR
+  126, #ISOMALT_G_NDSR
+  128, #LACTITOL_G_NDSR
+  130,#MALTITOL_G_NDSR
+  132, #Mannitol, MANNITOL_G_NDSR?
+  134, #Pinitol, PINITOL_G_NDSR?
+  136, #Sorbitol, SORBITOL_G_NDSR
+  138, #Xylitol, XYLITOL_G_NDSR
+  140, #CAFFEINE_MG_USDA 
+  142 #Sucralose, SUCRALOSE_MG_NDSR 
+  )], na.rm=TRUE)
+
+#Create the Nutrient density numerator (Mean of nutrients - Mean of Anti-nutrients)
+FFQ_df$Nutrient_density_numerator <- FFQ_df$overall_nutrient_mean - FFQ_df$overall_antinutrient_mean
+
+#Create the Nutrient Density Score  (Mean % Daily Values / Calories)
+FFQ_df$Nutrient_Density_Score <- (FFQ_df$Nutrient_density_numerator/FFQ_df$ENERGY_KCAL_USDA)*100
+```
+
+#Calculate the Percent Daily Value Nutrient Density Score for each FFQ item
+```{r}
+#Calculate the mean of the % daily values for NUTRIENTS of each item
+FFQ_df$percent_daily_value_nutrient_mean <- rowMeans(FFQ_df[ , c(17, 19, 23, 25, 27, 29, 31, 33, 35, 37, 41, 43, 45, 47, 49, 51, 55, 57, 63, 65, 67, 69, 71, 73, 75, 77, 79, 81, 83, 85,87, 89, 91, 93, 95, 97)], na.rm=TRUE)
+
+#Calculate the mean of the % daily values for ANTI-NUTRIENTS of each item
+
+FFQ_df$percent_daily_value_antinutrient_mean <- rowMeans(FFQ_df[ , c(99,105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 127, 129, 131, 133, 135, 137, 139, 141,143)], na.rm=TRUE)
+
+#Create the Nutrient density numerator (Mean of nutrients - Mean of Anti-nutrients)
+FFQ_df$percent_daily_value_numerator <- FFQ_df$percent_daily_value_nutrient_mean - FFQ_df$percent_daily_value_antinutrient_mean
+
+#Create the Nutrient Density Score  (Mean % Daily Values / Calories)
+FFQ_df$percent_daily_value_Nutrient_Density_Score <- (FFQ_df$percent_daily_value_numerator/FFQ_df$ENERGY_KCAL_USDA)*100
+
+#get raw energy
+FFQ_df$ENERGY_KCAL_USDA <- FFQ_df$ENERGY_KCAL_USDA
+```
+
+#Export file of overall nutrient density scores for the DEV FFQ to add to the Berkman lab dropbox 
+```{r}
+utils::write.csv(FFQ_df,paste0(dropbox_path,"/FFQ Nutrient Density Analysis/DEV_FFQ_Nutrient_Density_Scores.csv"), row.names = FALSE)
+```
+
+#CODE TO CALCULATE THE NUTRIENT DENSITY SCORE & % PERCENT RECOMMENDED DAILY VALUE SCORE FOR DEV PARTICIPANTS
+```{r}
+#Load in raw DEV data from the Berkman Lab Dropbox 
+library(dplyr)
+DEV_df_long <- read.csv(file = "https://www.dropbox.com/s/6qvkql4cxt3xk83/raw_survey_data.csv?dl=1", stringsAsFactors = FALSE, header = TRUE, row.names = NULL) %>%
+  na_if("")
+
+#Filter the data to only view the completed FFQ for baseline session analysis (Session 1 only) 
+FFQ_data_long_clean <- DEV_df_long %>% filter(Finished==1) %>% filter(survey_name == c("DEV Session 1 Surveys")) %>% #Only looking at the baseline data (FFQ taken at Session 1)
+  filter(substr(item,1,3)=="FFQ") %>% mutate(value=as.numeric(value))
+
+#Load in data with gender identifier to reference for nutrient density scores
+DEV_df_gender <- read.csv(file = "https://www.dropbox.com/s/qcz39xo62f3yahe/DEV%20Gender%20data%20.csv?dl=1", stringsAsFactors = FALSE, header = TRUE, row.names = NULL) %>%
+  na_if("")
+
+#Merge datasets so that gender can be referenced 
+DEV_df_complete <- merge(FFQ_data_long_clean, DEV_df_gender, by.x = "SID", by.y = "SID_1")
+```
+
+#Create Nutrient Density Weighted Score for each participant
+```{r}
+
+#Create a new variable that specifies the name of the FFQ item based on gender - and that matches with the item name in the FFQ_df 
+DEV_df_complete <- DEV_df_complete %>% mutate (Item_Sex =
+  case_when(
+  Q14 == "Male" ~ paste(item, ".1", sep = ""),
+  Q14 == "Female" ~ item
+))
+  
+#Add the nutrient density scores to this dataframe 
+DEV_df_merged <- merge(DEV_df_complete, FFQ_df[,c("Nutrient_Density_Score","ITEM.NAME","percent_daily_value_Nutrient_Density_Score")], by.x="Item_Sex", by.y="ITEM.NAME") 
+
+#Remove FFQ items 75 (Tea), which was problematic in our nutrient density algorithm
+DEV_df_merged <- DEV_df_merged[!(DEV_df_merged$Item_Sex=="FFQ_75" | DEV_df_merged$Item_Sex=="FFQ_75.1"),]
+
+#Create weighted nutrient density scores 
+DEV_df_merged$Weighted_Nutrient_Density <- DEV_df_merged$Nutrient_Density_Score*DEV_df_merged$value
+
+DEV_df_merged$Weighted_Percent_Nutrient_DV <- DEV_df_merged$percent_daily_value_Nutrient_Density_Score*DEV_df_merged$value
+
+#Calculate each participants Average Nutrient Density over the past two weeks. 
+DEV_Weighted_Nutrient_Density_Scores <- DEV_df_merged %>% 
+  group_by(SID)%>%
+  summarise(Mean_Weighted_Nutrient_Density = mean(Weighted_Nutrient_Density, na.rm = T),
+            Mean_Weighted_percent_daily_value = mean(Weighted_Percent_Nutrient_DV, na.rm = T))
+
+#Get Descriptive Statistics for sample population 
+psych::describe(DEV_Weighted_Nutrient_Density_Scores$Mean_Weighted_percent_daily_value)
+psych::describe(DEV_Weighted_Nutrient_Density_Scores$Mean_Weighted_Nutrient_Density)
+```
+
+
+#Export csv of participant scores 
+```{r}
+
+```
+
+

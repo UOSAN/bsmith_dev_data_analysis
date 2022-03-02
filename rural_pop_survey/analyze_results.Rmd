@@ -413,7 +413,19 @@ print(summary(lm(BMI~FCI_cancer_promoting+FCI_craved_cancer_preventing+FCI_liked
                    aSES_02+RuralZIP+EDM_reversescored+FFQh_sum,preprocessed_data %>% filter(Gender3C=="Female"))))
 ```
 
-hmmm. There's some weird gender effect...
+hmmm. There's some weird gender effect.
+
+If we do the same model but include only men:
+
+
+```{r}
+print(summary(lm(BMI~FCI_cancer_promoting+FCI_craved_cancer_preventing+FCI_liked_cancer_preventing+FCI_liked_cancer_promoting+ MESA_healthyfoodavailability +DEMO_Age+RaceCategorical+
+                   aSES_02+RuralZIP+EDM_reversescored+FFQh_sum,preprocessed_data %>% filter(Gender3C=="Male"))))
+```
+
+Are men driving the effect then? It's rural men vs. urban men?
+
+Cutting it down to a simple model:
 
 
 ```{r}
@@ -422,9 +434,10 @@ hmmm. There's some weird gender effect...
 
 ```{r}
 print(summary(lm(BMI~MESA_healthyfoodavailability+RuralZIP+DEMO_Age+RaceCategorical,preprocessed_data %>% filter(Gender3C=="Female"))))
+print(summary(lm(BMI~MESA_healthyfoodavailability+RuralZIP+DEMO_Age+RaceCategorical,preprocessed_data %>% filter(Gender3C=="Male"))))
 ```
 
-
+It's come back, below, by including the interaction of FFQ and gender.
 ```{r}
 print(summary(lm(BMI~FFQ_cancer_promoting*Gender3C+ FFQ_cancer_preventing*Gender3C+FCI_craved_cancer_preventing+FCI_liked_cancer_preventing+FCI_liked_cancer_promoting+ MESA_healthyfoodavailability +PSS_sum+DEMO_Age+RaceCategorical+
                    aSES_02+RuralZIP+EAFH_fastfoodpast30days+EDM_forwardscore+EDM_reversescored+FFQh_sum+AFSM+MESA_neighborhoodconnectedness+MESA_safetyfromcrime,preprocessed_data)))
@@ -448,8 +461,44 @@ print(summary(lm(BMI~FFQ_cancer_promoting*Gender3C+ FFQ_cancer_preventing*Gender
 ```
 
 
+Trying that full model but only women:
+
+
+```{r}
+print(summary(lm(BMI~FFQ_cancer_promoting+ FFQ_cancer_preventing+FCI_craved_cancer_preventing+FCI_liked_cancer_preventing+FCI_liked_cancer_promoting+ MESA_healthyfoodavailability +PSS_sum+DEMO_Age+I(DEMO_Age^2)+RaceCategorical+
+                   aSES_02+RuralZIP+EAFH_fastfoodpast30days+EDM_forwardscore+EDM_reversescored+FFQh_sum+AFSM+MESA_neighborhoodconnectedness+MESA_safetyfromcrime,
+                 preprocessed_data %>% filter(Gender3C=="Female"))))
+```
+
+No effect at all.
+
+And only men:
 
 
 
+```{r}
+print(summary(lm(BMI~FFQ_cancer_promoting+ FFQ_cancer_preventing+FCI_craved_cancer_preventing+FCI_liked_cancer_preventing+FCI_liked_cancer_promoting+ MESA_healthyfoodavailability +PSS_sum+DEMO_Age+I(DEMO_Age^2)+RaceCategorical+
+                   aSES_02+RuralZIP+EAFH_fastfoodpast30days+EDM_forwardscore+EDM_reversescored+FFQh_sum+AFSM+MESA_neighborhoodconnectedness+MESA_safetyfromcrime,
+                 preprocessed_data %>% filter(Gender3C=="Male"))))
+```
 
+```{r}
+ggplot(preprocessed_data %>% filter(Gender3C %in% c("Male","Female")), aes(x=interaction(Gender3C,RuralZIP),y=BMI,group=interaction(RuralZIP,Gender3C), color=RuralZIP))+
+  geom_boxplot()+geom_jitter()
+```
+
+
+Yep we have a big difference.
+
+So:
+
+ - Models with only women in them and a limit set of explanatory variables have a weak rurality effect
+ - Models with only women in them and include the full set of variables I have available to me have no rurality effect at all
+ - Models with only men in them and a limited set of explanatory variables have a strong rurality effect
+ - Models with only men in them and include the full set of variables have an equally strong rurality effect.
+ 
+In other words, our rural-urban divide is mainly in men, not in women, and the smaller divide that exists in women can be largely explained (or explained into non-significance) by including a variety of explanatory measures.
+
+
+Perhaps we should follow-up with a further analysis aimed explicitly at explaining rural-urban divide in an exploratory way.
 

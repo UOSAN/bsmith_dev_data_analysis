@@ -571,7 +571,7 @@ data_by_ppt$TRSQ[data_by_ppt$TRSQ<5]<-NA
 
 
 ```{r}
-readr::write_csv(data_by_ppt, file = paste0(data_path,"data_by_ppt.csv"))
+readr::write_csv(data_by_ppt, file = paste0(data_path,"data_by_ppt_women.csv"))
 ```
 
 Should probably remove a few more outliers, and consider transforming non-normal data or using rank test for it, but that'll do for now.

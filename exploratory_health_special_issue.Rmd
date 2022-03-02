@@ -15,6 +15,7 @@ library(rstatix)
 data_path <- "../../../files/data/"
 
 load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_w_demographics.RData")
+dropbox_file_dir = "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
 scored<-scored_with_demographics
 rm(scored_with_demographics)
 scored$score <- as.numeric(scored$score)
@@ -114,14 +115,19 @@ Now get behavioral measures.
 
 ```{r}
 
-sst_pes <- readr::read_csv("https://www.dropbox.com/s/vaubgp23y5j0m5g/post_error_slowing.csv?dl=0")
-
+#sst_pes <- readr::read_csv("https://www.dropbox.com/s/vaubgp23y5j0m5g/post_error_slowing.csv?dl=0")
+sst_pes <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing.csv"))
+sst_pes_simple <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing_simple_approach.csv"))
 #should be wave 1 by default.
 sst_data_1 <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
 sst_data_2 <- readr::read_csv(file=paste0(data_path,"sst_pre_analyzed_stats.csv"))
 sst_data_1_w1 <- sst_data_1%>%filter(runid==1)%>% select(-runid)
 sst_data_2_w1 <- sst_data_2 %>% filter(wave==1) %>% select(-wave)
-sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE)
+sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE) %>%
+  merge(sst_pes[,2:ncol(sst_pes)],by="subid",all=TRUE) %>%
+  merge(sst_pes_simple[,2:ncol(sst_pes_simple)],by="subid",all=TRUE)
+
+
 
 roc_data <- readr::read_csv(file=paste0(data_path,"roc_summary_stats.csv"))
 load(file=paste0(data_path,"wtp_summary_stats_across_runs.Rdata"))
@@ -153,6 +159,11 @@ behavioral_data <- merge(behavioral_data,wtp_across_runs_wide_w1,by.x = "subid",
 
 
 ```
+
+
+
+
+
 ## Health measures include:
 
 
@@ -309,7 +320,18 @@ print(first_survey_for_scale)
 sapply(unique(scored_fs$scale_name),function(sn){list(sn=unique(scored_fs[scored_fs$scale_name==sn,"scored_scale"]))})
 ```
 
+### long-stage data cleaning
 
+
+For some reason there's a lot of participants with missing RTFS data. Participants don't really miss any other scales but they o miss RTFS. Is that because it's the only scale not marked out with compulsory entry?
+
+```{r}
+
+```
+
+
+
+### test correlations, transform
 
 
 ```{r}
@@ -471,11 +493,12 @@ data_by_ppt <- purrr::reduce(col_list, left_join,by="SID")
 ```
 
 
-Now get the behavioral data
+##Now get the behavioral data
 
 
 ```{r}
 data_by_ppt <- merge(data_by_ppt,behavioral_data,by.x="SID",by.y="subid",all.x = TRUE,all.y=FALSE)
+
 ```
 
 Now we do some contrasts we haven't done yet...
@@ -494,12 +517,56 @@ weight_in_kg <- data_by_ppt$weight_0* 0.453592 #convert from pounds to kg
 data_by_ppt$IPAQ_MET_kCal <- data_by_ppt$IPAQ_total_METminutes * weight_in_kg/60
 
 
-data_by_ppt$birthsex_factor<-""
-data_by_ppt$birthsex_factor[data_by_ppt$birthsex==1]<-"Female"
-data_by_ppt$birthsex_factor[data_by_ppt$birthsex==2]<-"Male"
-data_by_ppt$birthsex_factor<-factor(data_by_ppt$birthsex_factor,levels=c("Female","Male"))
+# data_by_ppt$birthsex_factor<-""
+# data_by_ppt$birthsex_factor[data_by_ppt$birthsex==1]<-"Female"
+# data_by_ppt$birthsex_factor[data_by_ppt$birthsex==2]<-"Male"
+# data_by_ppt$birthsex_factor<-factor(data_by_ppt$birthsex_factor,levels=c("Female","Male"))
+
+data_by_ppt <- data_by_ppt %>% mutate(
+  birthsex_factor =
+    factor(case_when(
+      birthsex==1 ~ "Female",
+      birthsex==2 ~ "Male"
+    ),levels=c("Female","Male"))
+)
+                                            
+```
+
+
+
+### get the modified FFQ
+
+This is done here, rather than earlier, because it needs gender.
+
+
+```{r}
+
+#we need two things here:
+#(1)  list of FFQ by individual item"
+      #Can't use "scored"
+      #need to use survey_long_clean from scorequaltrics_workflow. It's saved here:
+
+load(paste0(dropbox_file_dir,"/raw_survey_data.RData"))
+#(2)  list of birthsex. this is done easily enough with:
+birthsex_key <- data_by_ppt[c("SID","birthsex_factor")]
+
+#1=female, 2=male
+
+
+
+source("ffq_revision/get_ffq_v2.R")
+
+ffq_v2_values <- score_ffqv2(surveys_long_clean,birthsex_key)
+colnames(ffq_v2_values) <- paste0("FFQ_v2_",colnames(ffq_v2_values))
+
 
 ```
+
+```{r}
+data_by_ppt <- merge(data_by_ppt,ffq_v2_values,by.x="SID",by.y="FFQ_v2_SID",all.x = TRUE,all.y=FALSE)
+
+```
+
 
 Now we need to get the non-scale social values in here.
 
@@ -514,7 +581,9 @@ Now we need to get the non-scale social values in here.
 <!-- ``` -->
 
 
-### remove outliers
+### wide-stage data cleaning
+
+#### outlier removal
 
 https://www.active.com/fitness/calculators/bodyfat
 
@@ -575,6 +644,8 @@ data_by_ppt$TRSQ[data_by_ppt$TRSQ<5]<-NA
 
 ```{r}
 readr::write_csv(data_by_ppt, file = paste0(data_path,"data_by_ppt.csv"))
+
+
 ```
 
 Should probably remove a few more outliers, and consider transforming non-normal data or using rank test for it, but that'll do for now.
@@ -596,7 +667,7 @@ label the variables
 IVs <- c("cancer_promoting_minus_preventing_craved_FCI","cancer_promoting_minus_preventing_liked_FCI",
          "ROC_Crave_Minus_Neutral",
          "EDM","BSCS","ACES_sum",
-         "SST_SSRT","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
+         "SST_SSRT","SST_PostErrorSlowW1_median","SST_pes_mean_limited","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
          "WTP_healthy","WTP_unhealthy","WTP_unhealthy_minus_healthy",
          "SRHI_sum","SRHI_healthy_minus_unhealthy","TRSQ","RS","RTFS_factor_1","RTFS_factor_2","RTFS_f1_minus_f2","BIS_11",
          "ses_aggregate","DEMO_mcarthur_social_standing","cSES",
@@ -605,7 +676,7 @@ IVs <- c("cancer_promoting_minus_preventing_craved_FCI","cancer_promoting_minus_
          #'BFI_agreeableness', 'BFI_conscientiousness', 'BFI_extraversion', 'BFI_neuroticism', 'BFI_openness', 
          #'PLAN_cognitive_strategies', 'PLAN_mental_forecasting', 'PLAN_temporal_orientation'
          )
-DVs <- c("cancer_promoting_minus_preventing_FFQ","bf_1","bf_1_controlled")
+DVs <- c("cancer_promoting_minus_preventing_FFQ","FFQ_v2_Mean_Weighted_Nutrient_Density","FFQ_v2_Mean_Weighted_percent_daily_value","bf_1","bf_1_controlled")
 ```
 
 
@@ -707,9 +778,60 @@ mcc <- function(cor_df){
 ```{r}
 
 print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt)))
-print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==1))))
 
+
+
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_Nutrient_Density,data_by_ppt)))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_percent_daily_value,data_by_ppt)))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_Nutrient_Density+FFQ_v2_Mean_Weighted_percent_daily_value,data_by_ppt)))
+
+```
+```{r}
+print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==1))))
 print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==2))))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_Nutrient_Density,data_by_ppt %>% filter(birthsex==1))))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_Nutrient_Density,data_by_ppt %>% filter(birthsex==2))))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_percent_daily_value,data_by_ppt %>% filter(birthsex==1))))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_percent_daily_value,data_by_ppt %>% filter(birthsex==2))))
+```
+
+
+```{r}
+
+#try out a difference score.
+data_by_ppt$FFQ_v2_Mean_Nutrient_Minus_Energy_Density <- data_by_ppt$FFQ_v2_Mean_Weighted_Nutrient_Density - data_by_ppt$FFQ_v2_Mean_Energy_Density
+```
+
+
+
+```{r fig.width=12}
+corrplot::corrplot(cor(data_by_ppt[,c("bf_1","bmi","cancer_promoting_FFQ","cancer_preventing_FFQ","cancer_promoting_minus_preventing_FFQ","FFQ_v2_Mean_Energy_Density",
+"FFQ_v2_Mean_Nutrient_Minus_Energy_Density","FFQ_v2_Mean_Weighted_Nutrient_Density","FFQ_v2_Mean_Weighted_percent_daily_value","FFQ_v2_Mean_Dietary_Nutrient_Density")],use = "pairwise.complete.obs"),
+method="number",type="upper",diag=FALSE,tl.srt=35,tl.cex=0.8,cl.cex=0.8)
+```
+
+ 
+
+
+```{r, fig.width=14}
+corrplot::corrplot(cor(data_by_ppt[,c("bf_1","bmi","cancer_promoting_minus_preventing_FFQ","FFQ_v2_Mean_Energy","FFQ_v2_Mean_Energy_Density", "FFQ_v2_Mean_Weighted_Nutrient_Density","FFQ_v2_Mean_Weighted_percent_daily_value",
+                                      "FFQ_v2_Mean_Dietary_Nutrient_Density","FFQ_v2_Mean_Nutrient_Minus_Energy_Density",
+      "WTP_unhealthy_minus_healthy", #valuation
+      "cancer_promoting_minus_preventing_craved_FCI", "ROC_Crave_Minus_Neutral",#craving
+      "SRHI_healthy_minus_unhealthy",#habit
+      "TESQ_E_goal_and_rule_setting", "TESQ_E_sum", #self control
+      "ses_aggregate"                                #SES
+                                      )],use = "pairwise.complete.obs"),
+method="number",type="upper",diag=FALSE,tl.srt=40,tl.cex=0.7,cl.cex=0.8)
+```
+
+```{r}
+print(summary(lm(bf_1~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt)))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_Nutrient_Density,data_by_ppt)))
+print(summary(lm(bf_1~FFQ_v2_Mean_Energy,data_by_ppt)))
+print(summary(lm(bf_1~FFQ_v2_Mean_Energy_Density,data_by_ppt)))
+print(summary(lm(bf_1~FFQ_v2_Mean_Dietary_Nutrient_Density,data_by_ppt)))
+print(summary(lm(bf_1~FFQ_v2_Mean_Weighted_Nutrient_Density+FFQ_v2_Mean_Energy_Density,data_by_ppt)))
 ```
 
 
@@ -719,7 +841,23 @@ print(summary(lm(bmi~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt)))
 print(summary(lm(bmi~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==1))))
 
 print(summary(lm(bmi~cancer_preventing_FFQ+cancer_promoting_FFQ,data_by_ppt %>% filter(birthsex==2))))
+
+print(summary(lm(bmi~FFQ_v2_Mean_Weighted_Nutrient_Density,data_by_ppt %>% filter(birthsex==1))))
+print(summary(lm(bmi~FFQ_v2_Mean_Weighted_percent_daily_value,data_by_ppt %>% filter(birthsex==1))))
+print(summary(lm(bmi~FFQ_v2_Mean_Weighted_Nutrient_Density,data_by_ppt %>% filter(birthsex==2))))
+print(summary(lm(bmi~FFQ_v2_Mean_Weighted_percent_daily_value,data_by_ppt %>% filter(birthsex==2))))
 ```
+
+
+### Summary
+
+
+
+- All FFQ scales perform about equally well correlating with BF%, around 0.18 to 0.22, except dietary nutrient density and Cancer Promoting Preventing Difference (the original FFQ), which correlate less well.
+ - Energy Density correlates most with BMI, followed by Promoting Preventing Difference, and others don't relate to BMI much at all. Personally I think positively correlating with BF% is important, but a relationship with BMI is probably not at all important in the DEV context.
+ - For the two behavioral measures examined, based on WTP and ROC, Dietary Nutrient Density is the strongest correlate of all, followed by Cancer Promoting Minus Preventing, followed by Nutrient Density measures. Energy density measures don't perform well at all.
+ - For the self-report measures (SRHI, TESQ), Dietary Nutrient Density performs best of all, followed by the nutrient density measures. Energy density doesn't do well at all.
+ - For the SES measure, nurtrient density measures perform best, followed by cancer promoting preventing difference. 
 
 
 ## Pre-registered predictions
@@ -801,7 +939,9 @@ inhibitory_ivs <- c(paste0("TESQ_E_",unique(scored_fs[scored_fs$scale_name=="TES
 inhibitory_cors <- mcc(correlation_df[correlation_df$v2 %in% inhibitory_ivs,])
 
 inhibitory_cors[c("v1","v2","n","p.value","p.value_adjusted","estimate")] %>% arrange(v2,desc(v1))
+```
 
+```{r}
 cor.test(data_by_ppt$cancer_promoting_FFQ,data_by_ppt$TESQ_E_sum,use = "pairwise.complete.obs")
 cor.test(data_by_ppt$cancer_promoting_minus_preventing_FFQ,data_by_ppt$TESQ_E_sum,use = "pairwise.complete.obs")
 cor.test(data_by_ppt$cancer_preventing_FFQ,data_by_ppt$TESQ_E_sum,use = "pairwise.complete.obs")
@@ -951,6 +1091,23 @@ let's leave this until we have the behavioral data but I will get to it!
 
 Of the above I have already examined one outcome, Responses to Failure Scale. This appears to be a fairly robust finding:
 
+```{r}
+cor.test(data_by_ppt$SST_PostErrorSlowW1_median,data_by_ppt$RTFS_f1_minus_f2)
+cor.test(data_by_ppt$SST_PostErrorSlowW1_median,data_by_ppt$RTFS_factor_1)
+cor.test(data_by_ppt$SST_PostErrorSlowW1_median,data_by_ppt$RTFS_factor_2)
+cor.test(data_by_ppt$SST_PostErrorSlowW1_mean,data_by_ppt$RTFS_factor_2)
+cor.test(data_by_ppt$SST_pes_mean_limited,data_by_ppt$RTFS_f1_minus_f2)
+cor.test(data_by_ppt$SST_pes_mean_limited,data_by_ppt$RTFS_factor_1)
+cor.test(data_by_ppt$SST_pes_mean_limited,data_by_ppt$RTFS_factor_2)
+
+
+sst_pes_simple_old <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing_simple_approach_OLD.csv"))
+
+merge(data_by_ppt %>% select(SID, SST_PostErrorSlowW1_median,SST_PostErrorSlowW1_mean), 
+      sst_pes_simple_old %>% select(subid, PostErrorSlowW1)
+      ,by.x="SID",by.y="subid")
+```
+
 
 ```{r}
 rtfs_ivs <- c("RTFS_factor_1","RTFS_factor_2","RTFS_f1_minus_f2")
@@ -1079,6 +1236,11 @@ print(summary(lm(bf_1~PTO_RS,data_by_ppt)))
 
 
 ```{r}
+
+data_by_ppt$IPAQ_total_METminutes_norm<-(data_by_ppt$IPAQ_total_METminutes - mean(data_by_ppt$IPAQ_total_METminutes,na.rm=TRUE))/sd(data_by_ppt$IPAQ_total_METminutes,na.rm=TRUE)
+data_by_ppt$IPAQ_sittinghours_norm<-(data_by_ppt$IPAQ_sittinghours - mean(data_by_ppt$IPAQ_sittinghours,na.rm=TRUE))/sd(data_by_ppt$IPAQ_sittinghours,na.rm=TRUE)
+data_by_ppt$IPAQ_combined <- data_by_ppt$IPAQ_total_METminutes_norm - data_by_ppt$IPAQ_sittinghours_norm
+
 print(summary(lm(bf_1~IPAQ_combined,data_by_ppt)))
 print(summary(lm(bf_1~PTO_RS+IPAQ_combined,data_by_ppt)))
 print(summary(lm(bf_1~PTO_RS+cancer_promoting_FFQ,data_by_ppt)))
@@ -1193,9 +1355,7 @@ print(summary(lm(bf_1~cancer_promoting_FFQ+cancer_preventing_FFQ+IPAQ_MET_kCal,d
 print(summary(lm(bf_1~cancer_promoting_minus_preventing_FFQ+IPAQ_total_METminutes,data_by_ppt)))
 
 print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_total_METminutes,data_by_ppt)))
-data_by_ppt$IPAQ_total_METminutes_norm<-(data_by_ppt$IPAQ_total_METminutes - mean(data_by_ppt$IPAQ_total_METminutes,na.rm=TRUE))/sd(data_by_ppt$IPAQ_total_METminutes,na.rm=TRUE)
-data_by_ppt$IPAQ_sittinghours_norm<-(data_by_ppt$IPAQ_sittinghours - mean(data_by_ppt$IPAQ_sittinghours,na.rm=TRUE))/sd(data_by_ppt$IPAQ_sittinghours,na.rm=TRUE)
-data_by_ppt$IPAQ_combined <- data_by_ppt$IPAQ_total_METminutes_norm - data_by_ppt$IPAQ_sittinghours_norm
+
 print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_total_METminutes+IPAQ_sittinghours,data_by_ppt)))
 print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_total_METminutes_norm+IPAQ_sittinghours,data_by_ppt)))
 print(summary(lm(bf_1~cancer_promoting_FFQ+IPAQ_combined,data_by_ppt)))

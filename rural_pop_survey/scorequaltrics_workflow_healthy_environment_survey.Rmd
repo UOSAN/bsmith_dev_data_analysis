@@ -256,7 +256,8 @@ survey_timing <- (
    %>% select(ResponseId,survey_name,SID,startdatetime)
   )
 
-survey_timing$exclude <- survey_timing$startdatetime>= lubridate::parse_date_time("2021-08-17 00:00:00",orders = "Ymd HMS")
+#DO NOT EXCLUDE
+survey_timing$exclude <- FALSE#survey_timing$startdatetime>= lubridate::parse_date_time("2021-08-17 00:00:00",orders = "Ymd HMS")
 
 surveys_long <- (
   surveys_long %>% 
@@ -436,9 +437,6 @@ save(surveys_long_clean,file=paste0(output_file_dir,"/raw_survey_data.RData"))
 save(scored,file=paste0(output_file_dir,"/scored_data.RData"))
 ```
 
-```{r}
-readr::write_csv(surveys_long_clean,file=paste0(output_file_dir,"/raw_survey_data.RData"))
-```
 
 
 ## get some of the demographic data
@@ -590,166 +588,7 @@ scored_with_demographics <- data.frame(do.call(rbind,list(scored,demo_all)))
   
 ```{r}
 
-save(scored_with_demographics,file=paste0(output_file_dir,"/scored_data_w_demographics.RData"))
+save(scored_with_demographics,file=paste0(output_file_dir,"/scored_data_w_demographics_for_healthy_env_analysis.RData"))
 ```
 
 
-
-
-## Plots {.tabset}
-### Distributions {.tabset}
-#### Grouped by scale
-```{r plotdist}
-scored %>%
-  filter(!method == "I") %>% # filter out non-numeric data
-  mutate(score = as.numeric(score)) %>%
-  group_by(scale_name) %>%
-    do({
-      plot = ggplot(., aes(scored_scale, score)) +
-        geom_boxplot() +
-        geom_jitter(height = .01, width = .15, alpha = .5, color = "#2A908B") +
-        labs(x = "", y = "score\n", title = sprintf("%s\n", .$scale_name[[1]])) + 
-        theme_minimal(base_size = 16) +
-        theme(text = element_text(family = "Futura Medium", colour = "black"),
-              legend.text = element_text(size = 8),
-              axis.text = element_text(color = "black"),
-              axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank(),
-              panel.border = element_blank(),
-              panel.background = element_blank(),
-              plot.title = element_text(hjust = 0.5))
-      print(plot)
-      data.frame()
-    })
-```
-
-#### Grouped by scored scale
-```{r plotdist2}
-scored %>%
-  filter(!method == "I") %>% # filter out non-numeric data
-  mutate(score = as.numeric(score)) %>%
-  group_by(scale_name, scored_scale) %>%
-    do({
-      plot = ggplot(., aes(scored_scale, score)) +
-        geom_boxplot() +
-        geom_jitter(height = .01, width = .15, alpha = .5, color = "#2A908B") +
-        labs(x = "", y = "score\n", title = sprintf("%s %s\n", .$scale_name[[1]], .$scored_scale[[1]])) + 
-        theme_minimal(base_size = 16) +
-        theme(text = element_text(family = "Futura Medium", colour = "black"),
-              axis.text = element_text(color = "black"),
-              axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank(),
-              panel.border = element_blank(),
-              panel.background = element_blank(),
-              plot.title = element_text(hjust = 0.5))
-      print(plot)
-      data.frame()
-    })
-```
-
-### Proportion of missing data
-```{r plotmissing}
-scored %>%
-  filter(!method == "I") %>% # filter out non-numeric data
-  mutate(score = as.numeric(score)) %>%
-  group_by(scale_name) %>%
-    do({
-      plot = ggplot(., aes(scored_scale, n_missing)) +
-        geom_violin() +
-        geom_jitter(height = .01, width = .15, alpha = .5, color = "#2A908B") +
-        labs(title = sprintf("%s %s\n", .$scale_name[[1]], .$scored_scale[[1]])) + 
-        labs(x = "", y = "score\n") + 
-        theme_minimal(base_size = 16) +
-        theme(text = element_text(family = "Futura Medium", colour = "black"),
-              axis.text = element_text(color = "black"),
-              axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank(),
-              panel.border = element_blank(),
-              panel.background = element_blank(),
-              plot.title = element_text(hjust = 0.5))
-      print(plot)
-      data.frame()
-    })
-```
-
-### Changes across time
-For those variables that were measured more than once, plot changes.
-
-```{r plotchange}
-scored %>%
-  filter(!method == "I") %>% # filter out non-numeric data
-  mutate(score = as.numeric(score)) %>%
-  extract(survey_name, "wave", ".*([0-9]{1}).*", remove = FALSE) %>%
-  group_by(scale_name, scored_scale) %>%
-  mutate(nrow = n()) %>%
-  filter(nrow > 34) %>%
-    do({
-      plot = ggplot(., aes(wave, score)) +
-        geom_point(aes(group = SID), fill = "black", alpha = .05, size = 3) +
-        geom_line(aes(group = SID), color = "black", alpha = .05, size = 1) +
-        stat_summary(fun.data = "mean_cl_boot", size = 1.5, color = "#3B9AB2") +
-        stat_summary(aes(group = 1), fun.y = mean, geom = "line", size = 1.5, color = "#3B9AB2") +
-        labs(x = "\nwave", y = "score\n", title = sprintf("%s %s\n", .$scale_name[[1]], .$scored_scale[[1]])) + 
-        theme_minimal(base_size = 16) +
-        theme(text = element_text(family = "Futura Medium", colour = "black"),
-              axis.text = element_text(color = "black"),
-              axis.line = element_line(colour = "black"),
-              panel.grid.major = element_blank(),
-              panel.grid.minor = element_blank(),
-              panel.border = element_blank(),
-              panel.background = element_blank(),
-              plot.title = element_text(hjust = 0.5))
-      print(plot)
-      data.frame()
-    })
-```
-
-### Correlations
-```{r plotcorr, fig.height=10, fig.width=10}
-scored %>%
-  filter(!method == "I") %>% # filter out non-numeric data
-  mutate(score = as.numeric(score)) %>%
-  extract(survey_name, "wave", ".*([0-9]{1}).*", remove = FALSE) %>%
-  mutate(var.name = sprintf("%s %s T%s", scale_name, scored_scale, wave)) %>%
-  ungroup() %>%
-  select(var.name, score, SID) %>%
-  spread(var.name, score) %>%
-  filter(!is.na(SID)) %>%
-  select(-SID) %>%
-  cor(., use = "pairwise.complete.obs") %>%
-  ggcorrplot(hc.order = TRUE, outline.col = "white", colors = c("#3B9AB2", "white", "#E46726")) + 
-    geom_text(aes(label = round(value, 2)), size = 4, family = "Futura Medium") +
-    labs(x = "", y = "") + 
-    theme_minimal(base_size = 16) +
-    theme(text = element_text(family = "Futura Medium", colour = "black"),
-          legend.text = element_text(size = 8),
-          axis.text = element_text(color = "black"),
-          axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1),
-          panel.grid.major = element_blank(),
-          panel.grid.minor = element_blank(),
-          panel.border = element_blank(),
-          panel.background = element_blank())
-```
-
-
-
-# explore IPAQ
-
-
-```{r}
-ipaq_items <- unlist(unique(surveys_long[grepl("IPAQ",surveys_long$item),"item"]))
-
-for (ii in ipaq_items){
-  print(ii)
-  print(table(surveys_long[surveys_long$item==ii,"value"]))
-  print("na:")
-  print(table(is.na(surveys_long[surveys_long$item==ii,"value"])))
-}
-```
-
-If "how much time" is NA:
-  If "number of days doing activity" is zero then mark "how much time" as zero
-  Otherwise, leave "how much time" as NA.
