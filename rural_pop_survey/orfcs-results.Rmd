@@ -141,14 +141,14 @@ promote_minus_prevent <- scored %>%
   filter(scored_scale %in% c(
     "cancer_promoting","cancer_preventing","craved_cancer_promoting","liked_cancer_promoting","craved_cancer_preventing","liked_cancer_preventing")) %>%
   #throw it out wide
-  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  dplyr::select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
   #create a composite measure
   mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing,
          "cancer_promoting_minus_preventing_craved"=craved_cancer_promoting-craved_cancer_preventing,
          "cancer_promoting_minus_preventing_liked"=liked_cancer_promoting-liked_cancer_preventing
          ) %>%
   #wide across the surveys so that we can compare the surveys
-  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing,
+  dplyr::select(scale_name,survey_name,SID,cancer_promoting_minus_preventing,
          cancer_promoting_minus_preventing_craved,cancer_promoting_minus_preventing_liked,
          cancer_promoting,cancer_preventing
          ) %>% 
@@ -335,7 +335,12 @@ ppts_via_csv %<>%
   )
 
 ```
-
+Why so many NA zip codes? Can we get more subjects?
+```{r}
+full_merged_results[is.na(full_merged_results$PptZIPCode),]
+full_merged_results$Address_1[is.na(full_merged_results$PptZIPCode)]
+#don't think so.
+```
 
 ```{r}
 
@@ -371,7 +376,7 @@ ppts_via_csv$AFSM <- adult_food_security_scorer(ppts_via_csv_all_cols)
 ```{r}
 scored$score <- as.numeric(scored$score)
 scored$scale_subscale_name <- paste0(scored$scale_name,"_",scored$scored_scale)
-scored_wide <- scored %>% select(SID,scale_subscale_name,score) %>% 
+scored_wide <- scored %>% dplyr::select(SID,scale_subscale_name,score) %>% 
   tidyr::pivot_wider(names_from = scale_subscale_name,values_from = score)
 ```
  
@@ -385,13 +390,19 @@ scored_wide <- scored %>% select(SID,scale_subscale_name,score) %>%
 
 
 ppts_by_row <- merge(scored_wide,non_scale_data,by.x="SID",by.y="aid",all=TRUE) %>% 
-  merge(ppts_via_csv,by.x="SID",by.y="aid",all=TRUE) %>% 
-  merge(promote_minus_prevent,by="SID",all=TRUE)
+  merge(ppts_via_csv,by.x="SID",by.y="aid",all.x=FALSE,all.y=TRUE) %>% 
+  merge(promote_minus_prevent,by="SID",all.x=TRUE,all.y=FALSE)
 
 
 #ses_processed_data <- get_demo_data(surveys_long_clean,)
 ```
 
+Previous versions of this file accidentally introduced some extra subjects into the analysis here, but none of them will be included in the final analysis because they miss basic things like demographic variables that were part of all analyses.
+
+```{r}
+colnames(ppts_via_csv)
+
+```
 
 ## Post-merge processing
 
@@ -469,3 +480,92 @@ ppts_by_row$RuralZIP <- as.factor(ppts_by_row$RuralZIP)
 readr::write_csv(ppts_by_row,file = paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed_anon_by_subj.csv"))
 ```
 
+
+we have added a subsequent set of preprocessing that will be saved separately.
+```{r}
+
+library(magrittr)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(GGally)
+
+preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed_anon_by_subj.csv")
+
+preprocessed_data_raw <- readr::read_csv(preprocessed_data_filepath)
+
+
+rows_to_remove <- ((preprocessed_data_raw$EDM_forwardscore<2 & preprocessed_data_raw$EDM_reversescored>4) |
+  (preprocessed_data_raw$EDM_forwardscore>=4.5 & preprocessed_data_raw$EDM_reversescored<2))
+rows_to_remove[is.na(rows_to_remove)]<-FALSE
+sum(rows_to_remove)
+sub_ids_to_remove <- preprocessed_data_raw[rows_to_remove,"SID"]
+preprocessed_data <- preprocessed_data_raw %>% filter((SID %in% unlist(sub_ids_to_remove))==FALSE)
+preprocessed_data$BMI_c <- preprocessed_data$BMI - mean(preprocessed_data$BMI,na.rm=TRUE)
+
+preprocessed_data$DEMO_Age_c <- preprocessed_data$DEMO_Age-38 #using U.S. median age
+
+preprocessed_data$RaceCategorical<-factor(preprocessed_data$RaceCategorical,levels=unique(preprocessed_data$RaceCategorical))
+
+preprocessed_data$RuralZIP_i <- as.numeric(preprocessed_data$RuralZIP)
+preprocessed_data$RaceC2 <- as.character(preprocessed_data$RaceCategorical)
+preprocessed_data$RaceC2[preprocessed_data$RaceC2=="RaceNotReported"] <- "OtherRaceRaceNotReported"
+preprocessed_data$RaceC2[preprocessed_data$RaceC2=="OtherRace"] <- "OtherRaceRaceNotReported"
+preprocessed_data$RaceC2 <-factor(preprocessed_data$RaceC2,levels=names(sort(table(preprocessed_data$RaceC2),decreasing=TRUE)))
+preprocessed_data$RaceC2 <- preprocessed_data$RaceC2
+
+#need to remove this one data point for data quality issue.
+preprocessed_data[!is.na(preprocessed_data$WEIGHT) & preprocessed_data$WEIGHT>500,c("WEIGHT","WEIGHT_kg","BMI")] <- NA
+rm(preprocessed_data_raw)
+
+zscore <- function(x){
+  return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
+}
+
+preprocessed_data$FFQ_fruits_ln_z <- as.numeric(preprocessed_data$FFQ_fruits) %>% log %>% zscore
+preprocessed_data$FFQ_vegetables_ln_z <- as.numeric(preprocessed_data$FFQ_vegetables) %>% log %>% zscore
+preprocessed_data$FFQ_fruit_vegetables_z <- (as.numeric(preprocessed_data$FFQ_fruits) + as.numeric(preprocessed_data$FFQ_vegetables)) %>% log %>% zscore
+
+
+
+#11 is doctoral degree; 12+ are "other" and "decline to answer"
+preprocessed_data$DEMO_4[preprocessed_data$DEMO_4>11]<-NA
+
+preprocessed_data$Education_Categorical <- preprocessed_data$DEMO_4
+preprocessed_data$Education_Categorical <- preprocessed_data$DEMO_4
+preprocessed_data$Education_Categorical[preprocessed_data$DEMO_4<3] <- 3 #very few under three so we'll move them up
+#very few over 9, so we move them down
+preprocessed_data$Education_Categorical[preprocessed_data$DEMO_4>9] <- 9
+#now add descriptors
+preprocessed_data$Education_Categorical<-factor(
+  preprocessed_data$Education_Categorical,
+  levels=3:9,
+  labels=c("No high school diploma",
+           "High school diploma/GED",
+           "Some college credit, no degree",
+           "Trade, technical, or vocational training",
+           "Associate's degree",
+           "Bachelor's degree",
+           "Master's, Professional, or doctoral degree")
+)
+
+#put self-report items in z-score. It wont' change the estimate but it will make it easier to interpret
+
+preprocessed_data %<>% 
+  mutate(
+    MESA_healthyfoodavailability_z =zscore(MESA_healthyfoodavailability),
+    MESA_safetyfromcrime_z =zscore(MESA_safetyfromcrime),
+    PSS_z = zscore(PSS_sum),
+    cancer_promoting_minus_preventing_FFQ_z = zscore(cancer_promoting_minus_preventing_FFQ),
+    DEMO_Age_c = DEMO_Age - mean(DEMO_Age,na.rm=TRUE), #center age, but do not z-score it.
+    aSES_02_z = zscore(aSES_02)
+  )
+
+
+```
+
+
+
+```{r}
+readr::write_csv(preprocessed_data,file = paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv"))
+```

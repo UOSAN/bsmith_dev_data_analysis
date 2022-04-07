@@ -102,6 +102,7 @@ We'll do this iteratively--some are very easy cases, some less so. First partici
 
 ```{r}
 ppts_with_zip_ruca[(ppts_with_zip_ruca$`Duration (in seconds)` < 60 & ppts_with_zip_ruca$Finished==FALSE),"IncludeStatus"] <- "Exclude, Unfinished and less than 60 seconds"
+print(table(ppts_with_zip_ruca$IncludeStatus))
 ```
 
 Now, those who took less than 10 minutes and missed most questions--probably just take a sum NA across rows.
@@ -137,6 +138,9 @@ I'd like to exclude subjects who:
  
 There's a small group who had a lot of items missing but did take 5-30 minutes who we will give the benefit of the doubt.
 
+```{r}
+ppts_with_zip_ruca
+```
 
 ```{r}
 ppts_with_zip_ruca[(ppts_with_zip_ruca$IncludeStatus=="Include") & (ppts_with_zip_ruca$`Duration (in seconds)` < 60*5) & (ppts_with_zip_ruca$NA_Count>100),"IncludeStatus"]<-
@@ -145,7 +149,7 @@ ppts_with_zip_ruca[(ppts_with_zip_ruca$IncludeStatus=="Include") & (ppts_with_zi
 ppts_with_zip_ruca[ppts_with_zip_ruca$IncludeStatus=="Include" & ppts_with_zip_ruca$NA_Count>200,"IncludeStatus"]<-
   "Exclude, more than 200 missing columns"
 
-
+table(ppts_with_zip_ruca$IncludeStatus)
 
 ```
 
@@ -167,6 +171,13 @@ participant_exclusion_list <- ppts_with_zip_ruca %>% select(aid,survey,`Duration
 
 ```{r}
 table(ppts_with_zip_ruca$ClassifiedRural,ppts_with_zip_ruca$IncludeStatus,ppts_with_zip_ruca$survey)
+```
+
+```{r}
+table(participant_exclusion_list$IncludeStatus)
+table(is.na(participant_exclusion_list$IncludeStatus))
+
+
 ```
 
 ```{r}

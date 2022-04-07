@@ -9,7 +9,7 @@ Try executing this chunk by clicking the *Run* button within the chunk or by pla
 
 ```{r}
 source("HINTS_preprocessing.R")
-hines_cycle5 <-get_cycle5()
+hines_cycle5 <-get_hints5()
 ```
 
 ```{r}
@@ -26,7 +26,7 @@ mc <- lm(BMI~Age_c+I(Age_c^2)+Gender3C+HINESIsRural+RacePreprocessed+filename+Fr
 income_mediation <- mediate(mb,mc,sims=100,treat="HINESIsRural",mediator="HHInc_r")
 summary(income_mediation)
 plot(income_mediation)
-lm(HHInc_r~BMIdata_to_measure$,data_to_measure$)
+#lm(HHInc_r~BMIdata_to_measure$,data_to_measure$)
 cor.test(data_to_measure$HHInc_r,as.numeric(data_to_measure$HINESIsRural))
 
 summary(mc)

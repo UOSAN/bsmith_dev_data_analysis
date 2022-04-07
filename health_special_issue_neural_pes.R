@@ -14,7 +14,7 @@ for (dataset_filepath in c(
   print(dataset_filepath)
   neural_behavioral <- readr::read_csv(dataset_filepath)
   
-  print(colnames(neural_behavioral))
+  #print(colnames(neural_behavioral))
   colnames(neural_behavioral)<-stringr::str_replace_all(colnames(neural_behavioral)," ","_")
   
   

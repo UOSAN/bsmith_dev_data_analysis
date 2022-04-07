@@ -59,8 +59,13 @@ preprocessed_data$RaceCategorical2[preprocessed_data$RaceCategorical2=="OtherRac
 preprocessed_data$RaceCategorical2 <-factor(preprocessed_data$RaceCategorical2,levels=names(sort(table(preprocessed_data$RaceCategorical2),decreasing=TRUE)))
 ```
 ```{r}
-preprocessed_data$FFQ_fruits_ln_z <- as.numeric(preprocessed_data$FFQ_fruits) %>% log %>% (function(x){(x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE)})
-preprocessed_data$FFQ_vegetables_ln_z <- as.numeric(preprocessed_data$FFQ_vegetables) %>% log %>% (function(x){(x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE)})
+zscore <- function(x){
+  return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
+}
+
+preprocessed_data$FFQ_fruits_ln_z <- as.numeric(preprocessed_data$FFQ_fruits) %>% log %>% zscore
+preprocessed_data$FFQ_vegetables_ln_z <- as.numeric(preprocessed_data$FFQ_vegetables) %>% log %>% zscore
+preprocessed_data$FFQ_fruit_vegetables_z <- (as.numeric(preprocessed_data$FFQ_fruits) + as.numeric(preprocessed_data$FFQ_vegetables)) %>% log %>% zscore
 ```
 
 
@@ -1032,15 +1037,7 @@ summary(mc)
 
 ```{r}
 
-# mb <- lm(mediator~treat+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical,data_to_measure)
-# mc <- lm(predicted~treat+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical+mediator,data_to_measure)
-# 
-# mediate_result <- mediate(mb,mc,sims=100,treat="RuralZIP",mediator="MESA_healthyfoodavailability")
-# summary(mediate_result)
-# mb <- lm(Fruit_z~Age_c+I(Age_c^2)+Gender3C+HINESIsRural+RacePreprocessed+filename+HHInc_r,data_to_measure)
-# mc <- lm(BMI~Age_c+I(Age_c^2)+Gender3C+HINESIsRural+RacePreprocessed+filename+HHInc_r+Fruit_z,data_to_measure)
-# 
-# fruit_mediation <- mediate(mb,mc,sims=100,treat="HINESIsRural",mediator="Fruit_z")
+
 library(mediation)
 
 data_to_measure <- preprocessed_data %>% filter(!is.na(BMI) & !is.na(MESA_healthyfoodavailability) & !is.na(FFQ_fruits_ln_z) & !is.na(RuralZIP))
@@ -1049,6 +1046,26 @@ data_to_measure <- preprocessed_data %>% filter(!is.na(BMI) & !is.na(MESA_health
 
 mb <- lm(FFQ_fruits_ln_z~RuralZIP+MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical+aSES_02,data_to_measure)
 mc <- lm(BMI~            RuralZIP+MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical+aSES_02+FFQ_fruits_ln_z,data_to_measure)
+
+mediate_result <- mediate(mb,mc,sims=100,treat="RuralZIP",mediator="FFQ_fruits_ln_z")
+summary(mediate_result)
+summary(mb)
+summary(mc)
+
+```
+
+
+```{r}
+
+
+library(mediation)
+
+data_to_measure <- preprocessed_data %>% filter(!is.na(BMI) & !is.na(MESA_healthyfoodavailability) & !is.na(FFQ_fruits_ln_z) & !is.na(RuralZIP))
+
+
+
+mb <- lm(FFQ_fruits_ln_z~RuralZIP+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical,data_to_measure)
+mc <- lm(BMI~            RuralZIP+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical+FFQ_fruits_ln_z,data_to_measure)
 
 mediate_result <- mediate(mb,mc,sims=100,treat="RuralZIP",mediator="FFQ_fruits_ln_z")
 summary(mediate_result)
@@ -1572,5 +1589,102 @@ corrplot::corrplot(
 )
 
 
+```
+```{r,fig.width=16,fig.height=16}
+# install.packages("ggplot2")            # Packages need to be installed only once
+# install.packages("GGally")
+#  
+library("ggplot2")                     # Load ggplot2 package
+library("GGally")
+
+FFQ_cols <- colnames(preprocessed_data)[grepl("FFQ_",colnames(preprocessed_data))]
+corrplot::corrplot(
+  cor(preprocessed_data %>% dplyr::select(c("RuralZIP_i","aSES_02","MESA_healthyfoodavailability","BMI",FFQ_cols)),use = "pairwise.complete.obs")[1:4,],
+  method="number",
+  type="upper",
+  diag=FALSE,
+  tl.srt=30,
+  tl.cex=1,
+  number.cex=1,
+  #cl.lim=c(-0.3,0.3),
+  col=colorRampPalette(c("red","red","red","red","black","blue","blue","blue","blue"))(200),
+  insig="blank"
+)
+
+#ggpairs(preprocessed_data %>% dplyr::select(c("MESA_healthyfoodavailability","BMI",FFQ_cols)))
+```
+```{r,fig.width=16,fig.height=16}
+
+preprocessed_data %<>% group_by(Gender3C) %>% mutate(
+  BMI_bsexnormedzs = (BMI-mean(BMI,na.rm = TRUE))/sd(BMI,na.rm = TRUE)) %>% ungroup
+
+FFQ_cols <- colnames(preprocessed_data)[grepl("FFQ_",colnames(preprocessed_data))]
+corrplot::corrplot(
+  cor(preprocessed_data %>% dplyr::select(c("RuralZIP_i","aSES_02","MESA_healthyfoodavailability","BMI","BMI_bsexnormedzs",FFQ_cols)),use = "pairwise.complete.obs")[1:5,],
+  method="number",
+  type="upper",
+  diag=FALSE,
+  tl.srt=30,
+  tl.cex=1,
+  number.cex=1,
+  #cl.lim=c(-0.3,0.3),
+  col=colorRampPalette(c("red","red","red","red","black","blue","blue","blue","blue"))(200),
+  insig="blank"
+)
+```
+
+
+```{r,fig.width=16,fig.height=16}
+ffq_cormat <- cor(preprocessed_data %>% dplyr::select(c(FFQ_cols)),use = "pairwise.complete.obs")#[5,]
+corrplot::corrplot(
+  ffq_cormat,#[5:nrow(ffq_cormat),],
+  method="number",
+  type="upper",
+  diag=FALSE,
+  tl.srt=30,
+  tl.cex=1,
+  number.cex=1,
+  #cl.lim=c(-0.3,0.3),
+  col=colorRampPalette(c("pink","red","black","blue","cyan"))(200),
+  insig="blank"
+)
+```
+
+
+
+```{r}
+FFQ_cols <- colnames(preprocessed_data)[grepl("FFQ_",colnames(preprocessed_data))]
+for (ffqc in FFQ_cols){
+  print(ffqc)
+  print(mean(preprocessed_data[[ffqc]],na.rm=TRUE))
+  print(paste0(ffqc,"_ln_z"))
+  preprocessed_data[[paste0(ffqc,"_ln_z")]] <-preprocessed_data[[ffqc]] %>% as.numeric %>% log %>% zscore
+  #print(preprocessed_data[[ffqc]] %>% as.numeric %>% log %>% zscore %>% mean(na.rm=TRUE))
+}
+# preprocessed_data$FFQ_fruits_ln_z <- as.numeric(preprocessed_data$FFQ_fruits) %>% log %>% zscore
+# preprocessed_data$FFQ_vegetables_ln_z <- as.numeric(preprocessed_data$FFQ_vegetables) %>% log %>% zscore
+
+```
+
+```{r,fig.width=16,fig.height=16}
+FFQ_ln_z_cols <- colnames(preprocessed_data)[grepl("FFQ_.*_ln_z",colnames(preprocessed_data))]
+corrplot::corrplot(
+  cor(preprocessed_data %>% dplyr::select(c("RuralZIP_i","aSES_02","MESA_healthyfoodavailability","BMI","BMI_bsexnormedzs",FFQ_ln_z_cols[1:15])),use = "pairwise.complete.obs")[1:5,],
+  method="number",
+  type="upper",
+  diag=FALSE,
+  tl.srt=30,
+  tl.cex=1,
+  number.cex=1,
+  #cl.lim=c(-0.3,0.3),
+  col=colorRampPalette(c("red","red","red","red","black","blue","blue","blue","blue"))(200),
+  insig="blank"
+)
+```
+
+```{r}
+print(summary(lm(BMI~RuralZIP+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical,preprocessed_data )))
+print(summary(lm(BMI~RuralZIP+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical+FFQ_fruits_ln_z+FFQ_grains_ln_z+FFQ_vegetables_ln_z,preprocessed_data )))
+print(summary(lm(BMI~RuralZIP+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceCategorical+FFQ_fruits_ln_z+FFQ_grains_ln_z+FFQ_vegetables_ln_z+aSES_02,preprocessed_data )))
 ```
 

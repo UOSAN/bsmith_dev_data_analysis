@@ -4,7 +4,7 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 
-get_cycle5 <- function(location = "/Users/benjaminsmith/Google Drive/oregon/data/protected_HINTS_data/"){
+get_hints5 <- function(location = "/Users/benjaminsmith/Google Drive/oregon/data/protected_HINTS_data/"){
   hines_locations <- Sys.glob(file.path(location,"*/hints5*.sav"))
   
   raw_file_list <- vector(mode="list",length<-length(hines_locations))
@@ -48,7 +48,7 @@ get_cycle5 <- function(location = "/Users/benjaminsmith/Google Drive/oregon/data
     
   )
   
-  hines_cycle5 <- rbindlist(file_list_trimmed,fill=TRUE)
+  hints5 <- rbindlist(file_list_trimmed,fill=TRUE)
   # 
   # lapply(
   #   file_list_trimmed,
@@ -58,68 +58,106 @@ get_cycle5 <- function(location = "/Users/benjaminsmith/Google Drive/oregon/data
   #   }
   #   
   #preprocess
-  hines_cycle5$Age <- as.numeric(as.character(hines_cycle5$Age))
-  hines_cycle5$BMI <- as.numeric(as.character(hines_cycle5$BMI))
+  hints5$Age <- as.numeric(as.character(hints5$Age))
+  hints5$BMI <- as.numeric(as.character(hints5$BMI))
   
-  hines_cycle5$Age_c <- hines_cycle5$Age-38 #using U.S. median age
+  hints5$Age_c <- hints5$Age-38 #using U.S. median age
 
-  hines_cycle5$HINESIsRural <- grepl("Metropolitan",hines_cycle5$PR_RUCA_2010)==FALSE
+  hints5$HINTSIsRural <- grepl("Metropolitan",hints5$PR_RUCA_2010)==FALSE
+  hints5$HINTSIsRural_i <- as.numeric(hints5$HINTSIsRural)
   
   
-  hines_cycle5$RacePreprocessed<- stringr::str_replace(hines_cycle5$Race_Cat2," only","")
+  hints5$RacePreprocessed<- stringr::str_replace(hints5$Race_Cat2," only","")
   #replace small categories
-  hines_cycle5$RacePreprocessed[hines_cycle5$RacePreprocessed %in% c("Guamanian or Chamorro","Native Hawaiian","Other Pacific Islander")]<-"Pacific Islander"
-  
-  race_pp_levels <- names(sort(table(hines_cycle5$RacePreprocessed),decreasing = TRUE))
-  
+  hints5$RacePreprocessed[hints5$RacePreprocessed %in% c("Guamanian or Chamorro","Native Hawaiian","Other Pacific Islander")]<-"Pacific Islander"
+  race_pp_levels <- names(sort(table(hints5$RacePreprocessed),decreasing = TRUE))
   #make "white" category first, because it's the majority category
+  hints5$RacePreprocessed2<-hints5$RacePreprocessed #combine a few extra categories to enable processing in lavaan
+  hints5$RacePreprocessed2[hints5$RacePreprocessed2 %in% c("Missing data (Not Ascertained)","Missing data (Web partial - Question Never Seen)")]<-"(Missing Data)"
+  race_pp2_levels <- names(sort(table(hints5$RacePreprocessed2),decreasing = TRUE))
   
-  hines_cycle5$HHInc[hines_cycle5$HHInc=="Missing Data (Not Ascertained)"]<-NA
-  hines_cycle5$HHInc[hines_cycle5$HHInc=="Missing data (Web partial - Question Never Seen)"]<-NA
-  median_hh_inc<-median(as.integer(hines_cycle5$HHInc),na.rm=TRUE)
-  hines_cycle5$HHInc_r <- as.integer(hines_cycle5$HHInc)-median_hh_inc
   
-  hines_cycle5$Fruit[
-    hines_cycle5$Fruit %in% c("Missing data (Not Ascertained)","Multiple responses selected in error","Missing data (Web partial - Question Never Seen)")] <- NA
+  
+  hints5$HHInc[hints5$HHInc=="Missing Data (Not Ascertained)"]<-NA
+  hints5$HHInc[hints5$HHInc=="Missing data (Web partial - Question Never Seen)"]<-NA
+  median_hh_inc<-median(as.integer(hints5$HHInc),na.rm=TRUE)
+  hints5$HHInc_r <- as.integer(hints5$HHInc)-median_hh_inc
+  
+  hints5$IncomeRanges[hints5$IncomeRanges=="Missing Data"]<-NA
+  hints5$IncomeRanges[hints5$IncomeRanges=="Missing data (Web partial - Question Never Seen)"]<-NA
+  hints5$IncomeRanges[hints5$IncomeRanges=="Missing data (Not Ascertained)"]<-NA
+  median_income_range <- median(as.integer(hints5$IncomeRanges),na.rm=TRUE)
+  hints5$IncomeRanges_r <- as.integer(hints5$IncomeRanges) - median_income_range
+  
+  hints5$Fruit[
+    hints5$Fruit %in% c("Missing data (Not Ascertained)","Multiple responses selected in error","Missing data (Web partial - Question Never Seen)")] <- NA
   
   #some recoding now
-  hines_cycle5$Fruit[hines_cycle5$Fruit=="½ cup or less"]<-"1/2 cup or less"
-  hines_cycle5$Fruit[hines_cycle5$Fruit==" ½ cup to 1 cup"]<-"1/2 cup to 1 cup"
-  table(hines_cycle5$Fruit)
+  hints5$Fruit[hints5$Fruit=="½ cup or less"]<-"1/2 cup or less"
+  hints5$Fruit[hints5$Fruit==" ½ cup to 1 cup"]<-"1/2 cup to 1 cup"
+  table(hints5$Fruit)
   #now code factors into integers.
-  hines_cycle5$Fruit_i <- as.integer(NA)
-  hines_cycle5$Fruit_i[hines_cycle5$Fruit=="None"]<-0
-  hines_cycle5$Fruit_i[hines_cycle5$Fruit=="1/2 cup or less"]<-1
-  hines_cycle5$Fruit_i[hines_cycle5$Fruit=="1/2 cup to 1 cup"]<-2
-  hines_cycle5$Fruit_i[hines_cycle5$Fruit=="1 to 2 cups"]<-3
-  hines_cycle5$Fruit_i[hines_cycle5$Fruit=="2 to 3 cups"]<-4
-  hines_cycle5$Fruit_i[hines_cycle5$Fruit=="3 to 4 cups"]<-5
-  hines_cycle5$Fruit_i[hines_cycle5$Fruit=="4 or more cups"]<-6
-  table(hines_cycle5$Fruit_i,hines_cycle5$Fruit)
-  hines_cycle5$Fruit_z <- (hines_cycle5$Fruit_i - mean(hines_cycle5$Fruit_i,na.rm=TRUE))/sd(hines_cycle5$Fruit_i,na.rm=TRUE)
+  hints5$Fruit_i <- as.integer(NA)
+  hints5$Fruit_i[hints5$Fruit=="None"]<-0
+  hints5$Fruit_i[hints5$Fruit=="1/2 cup or less"]<-1
+  hints5$Fruit_i[hints5$Fruit=="1/2 cup to 1 cup"]<-2
+  hints5$Fruit_i[hints5$Fruit=="1 to 2 cups"]<-3
+  hints5$Fruit_i[hints5$Fruit=="2 to 3 cups"]<-4
+  hints5$Fruit_i[hints5$Fruit=="3 to 4 cups"]<-5
+  hints5$Fruit_i[hints5$Fruit=="4 or more cups"]<-6
+  table(hints5$Fruit_i,hints5$Fruit)
+  hints5$Fruit_z <- (hints5$Fruit_i - mean(hints5$Fruit_i,na.rm=TRUE))/sd(hints5$Fruit_i,na.rm=TRUE)
   
-  hines_cycle5$Vegetables[
-    hines_cycle5$Vegetables %in% c("Missing data (Not Ascertained)","Multiple responses selected in error","Missing data (Web partial - Question Never Seen)")] <- NA
+  hints5$Vegetables[
+    hints5$Vegetables %in% c("Missing data (Not Ascertained)","Multiple responses selected in error","Missing data (Web partial - Question Never Seen)")] <- NA
   
-  hines_cycle5$Vegetables[hines_cycle5$Vegetables=="½ cup or less"]<-"1/2 cup or less"
-  hines_cycle5$Vegetables[hines_cycle5$Vegetables==" ½ cup to 1 cup"]<-"1/2 cup to 1 cup"
-  table(hines_cycle5$Vegetables)
+  hints5$Vegetables[hints5$Vegetables=="½ cup or less"]<-"1/2 cup or less"
+  hints5$Vegetables[hints5$Vegetables==" ½ cup to 1 cup"]<-"1/2 cup to 1 cup"
+  table(hints5$Vegetables)
   #now code factors into integers.
-  hines_cycle5$Vegetables_i <- as.integer(NA)
-  hines_cycle5$Vegetables_i[hines_cycle5$Vegetables=="None"]<-0
-  hines_cycle5$Vegetables_i[hines_cycle5$Vegetables=="1/2 cup or less"]<-1
-  hines_cycle5$Vegetables_i[hines_cycle5$Vegetables=="1/2 cup to 1 cup"]<-2
-  hines_cycle5$Vegetables_i[hines_cycle5$Vegetables=="1 to 2 cups"]<-3
-  hines_cycle5$Vegetables_i[hines_cycle5$Vegetables=="2 to 3 cups"]<-4
-  hines_cycle5$Vegetables_i[hines_cycle5$Vegetables=="3 to 4 cups"]<-5
-  hines_cycle5$Vegetables_i[hines_cycle5$Vegetables=="4 or more cups"]<-6
-  table(hines_cycle5$Vegetables_i,hines_cycle5$Vegetables)
-  hines_cycle5$Vegetables_z <- (hines_cycle5$Vegetables_i - mean(hines_cycle5$Vegetables_i,na.rm=TRUE))/sd(hines_cycle5$Vegetables_i,na.rm=TRUE)
-  hines_cycle5$RacePreprocessed <- factor(hines_cycle5$RacePreprocessed,race_pp_levels)
+  hints5$Vegetables_i <- as.integer(NA)
+  hints5$Vegetables_i[hints5$Vegetables=="None"]<-0
+  hints5$Vegetables_i[hints5$Vegetables=="1/2 cup or less"]<-1
+  hints5$Vegetables_i[hints5$Vegetables=="1/2 cup to 1 cup"]<-2
+  hints5$Vegetables_i[hints5$Vegetables=="1 to 2 cups"]<-3
+  hints5$Vegetables_i[hints5$Vegetables=="2 to 3 cups"]<-4
+  hints5$Vegetables_i[hints5$Vegetables=="3 to 4 cups"]<-5
+  hints5$Vegetables_i[hints5$Vegetables=="4 or more cups"]<-6
+  table(hints5$Vegetables_i,hints5$Vegetables)
+  hints5$Vegetables_z <- (hints5$Vegetables_i - mean(hints5$Vegetables_i,na.rm=TRUE))/sd(hints5$Vegetables_i,na.rm=TRUE)
   
-  gender_text <- as.character(hines_cycle5$SelfGender)
-  hines_cycle5$Gender3C <- factor(gender_text,levels = c("Female","Male","MissingOrMultiple"))
-  hines_cycle5$Gender3C[is.na(hines_cycle5$Gender3C)]<- "MissingOrMultiple"
+  zscore <- function(x){
+    return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
+  }
   
-  return(hines_cycle5)
+  hints5$Fruit_vegetables_z <- zscore(hints5$Fruit_i + hints5$Vegetables_i)
+  hints5$RacePreprocessed <- factor(hints5$RacePreprocessed,race_pp_levels)
+  hints5$RacePP <- hints5$RacePreprocessed
+  hints5$RacePreprocessed2 <- factor(hints5$RacePreprocessed2,race_pp2_levels)
+  hints5$RacePP2 <- hints5$RacePreprocessed2
+  
+  gender_text <- as.character(hints5$SelfGender)
+  hints5$Gender3C <- factor(gender_text,levels = c("Female","Male","MissingOrMultiple"))
+  hints5$Gender3C[is.na(hints5$Gender3C)]<- "MissingOrMultiple"
+  
+  hints5$GeneralHealth <- stringr::str_replace(hints5$GeneralHealth,",","")
+  hints5$GeneralHealth <- stringr::str_replace(hints5$GeneralHealth,"\\?","")
+  hints5$GeneralHealth <- stringr::str_replace(hints5$GeneralHealth," or","")
+  hints5$GeneralHealth_of <- factor(hints5$GeneralHealth,levels=c("Excellent","Very good","Good","Fair","Poor"))
+  
+  hints5$GeneralHealth_i <- as.integer(hints5$GeneralHealth_of)
+  hints5$GeneralHealth_z <- zscore(hints5$GeneralHealth_i)
+ 
+  MedConditions_vars <- c("MedConditions_Diabetes", "MedConditions_HighBP", "MedConditions_HeartCondition")
+  for (var_to_factorize in c(MedConditions_vars,"EverHadCancer")){
+    hints5[[paste0(var_to_factorize,"_d")]]<-factor(hints5 %>% dplyr::select(var_to_factorize) %>% .[[1]],levels=c("No","Yes"))
+    hints5[[paste0(var_to_factorize,"_i")]]<-as.integer(hints5[[paste0(var_to_factorize,"_d")]]=="Yes")
+  }
+  #take the count of the number of these three med conditions in an aggregate variable.
+  #note we're note including hte cancer diagnosis, which was pre-registered separately.
+  hints5$MedConditionsAggregate <- rowSums(hints5 %>% dplyr::select(sapply(MedConditions_vars,function(x){paste0(x,"_i")})))
+  
+  
+  
+  return(hints5)
 }

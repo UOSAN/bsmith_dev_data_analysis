@@ -18,6 +18,8 @@ library(stringr)
 data_path <- "../../../files/data/"
 dropbox_path <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab"
 sst_on_dropbox <- paste0(dropbox_path, "/Berkman Lab/Devaluation/Tasks/SST_DEV")
+
+input_mat_path = "/Users/benjaminsmith/Google Drive/oregon/preprocessing/DEV_scripts/fMRI/fx/multiconds/SST/conditions/"
 ```
 
 
@@ -56,9 +58,29 @@ get_run_df <- function(run_mat_file){
 }
 ```
 
+
+```{r}
+get_run_def_from_mat_filepath <- function(filepath){
+  run_mat_file <- readMat(filepath)
+  run_df <- get_run_df(run_mat_file)
+  return(run_df)
+}
+```
+
+
+```{r}
+# get_run_def_from_mat_filepath(paste0(input_mat_path,"DEV116_1_SST1.mat"))[1:10,]
+
+
+```
+
+
+
+
+
 ```{r}
 #now loop through the mat files.
-behavioral_data_filepath <- paste0(data_path,"DEV_behavioral_data/")
+behavioral_data_filepath <- input_mat_path#paste0(data_path,"DEV_behavioral_data/")
 fname_list <- list.files(behavioral_data_filepath,pattern = "DEV.*\\.mat")
 library(stringi)
 library(stringr)

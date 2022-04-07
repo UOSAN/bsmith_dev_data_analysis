@@ -437,7 +437,7 @@ save(scored,file=paste0(output_file_dir,"/scored_data.RData"))
 ```
 
 ```{r}
-readr::write_csv(surveys_long_clean,file=paste0(output_file_dir,"/raw_survey_data.RData"))
+readr::write_csv(surveys_long_clean,file=paste0(output_file_dir,"/raw_survey_data.csv"))
 ```
 
 

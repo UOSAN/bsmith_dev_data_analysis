@@ -1,0 +1,93 @@
+lavaan 0.6-11 ended normally after 1 iterations
+
+  Estimator                                         ML
+  Optimization method                           NLMINB
+  Number of model parameters                        57
+                                                      
+                                                  Used       Total
+  Number of observations                          6341       16092
+                                                                  
+Model Test User Model:
+                                                      
+  Test statistic                                 0.000
+  Degrees of freedom                                 0
+
+Parameter Estimates:
+
+  Standard errors                            Bootstrap
+  Number of requested bootstrap draws               10
+  Number of successful bootstrap draws              10
+
+Regressions:
+                       Estimate    Std.Err  z-value  P(>|z|)
+  IncomeRanges_r ~                                          
+    HINTSIsR_ (ab)         -0.728    0.049  -14.724    0.000
+    Age_c                   0.011    0.002    4.976    0.000
+    Age_c_pw2              -0.001    0.000  -15.543    0.000
+    Gndr3C_Ml               0.459    0.068    6.761    0.000
+    Gnd3C_MOM              -0.745    0.138   -5.406    0.000
+    RPP2_A_I_              -1.231    0.514   -2.395    0.017
+    RcPP2_A_I               0.488    0.242    2.020    0.043
+    RcPP2_Blc              -1.463    0.045  -32.827    0.000
+    RcPP2_Chn               0.065    0.251    0.261    0.794
+    RcPP2_Flp               0.189    0.163    1.156    0.248
+    RcPP2_Jpn               0.876    0.214    4.099    0.000
+    RcPP2_Krn               0.213    0.404    0.527    0.598
+    RcPP2_M_D              -1.148    0.204   -5.635    0.000
+    RcPP2_M__              -0.858    0.118   -7.258    0.000
+    RcPP2_O_A              -0.561    0.279   -2.008    0.045
+    RcPP2_P_I              -2.199    0.344   -6.398    0.000
+    RcPP2_Vtn               0.287    0.305    0.939    0.348
+  Fruit_vegetables_z ~                                      
+    IncmRngs_ (bc)          0.081    0.005   16.466    0.000
+    HINTSIsR_ (ac)         -0.063    0.036   -1.763    0.078
+    Age_c                  -0.002    0.002   -0.969    0.333
+    Age_c_pw2               0.000    0.000    0.596    0.551
+    Gndr3C_Ml              -0.202    0.020  -10.031    0.000
+    Gnd3C_MOM              -0.005    0.046   -0.116    0.907
+    RPP2_A_I_               0.061    0.145    0.420    0.675
+    RcPP2_A_I              -0.200    0.119   -1.676    0.094
+    RcPP2_Blc               0.106    0.030    3.517    0.000
+    RcPP2_Chn               0.226    0.107    2.111    0.035
+    RcPP2_Flp              -0.211    0.115   -1.833    0.067
+    RcPP2_Jpn               0.200    0.296    0.675    0.500
+    RcPP2_Krn              -0.080    0.194   -0.411    0.681
+    RcPP2_M_D              -0.033    0.067   -0.488    0.625
+    RcPP2_M__               0.147    0.061    2.418    0.016
+    RcPP2_O_A              -0.157    0.153   -1.031    0.302
+    RcPP2_P_I               0.079    0.187    0.419    0.675
+    RcPP2_Vtn               0.218    0.240    0.909    0.363
+  EverHadCancer_i ~                                         
+    Frt_vgtb_ (cd)          0.005    0.005    0.882    0.378
+    IncmRngs_ (bd)          0.003    0.002    1.572    0.116
+    HINTSIsR_ (ad)         -0.009    0.017   -0.529    0.597
+    Age_c                   0.004    0.000    9.529    0.000
+    Age_c_pw2               0.000    0.000    3.250    0.001
+    Gndr3C_Ml               0.004    0.010    0.346    0.729
+    Gnd3C_MOM               0.005    0.028    0.166    0.868
+    RPP2_A_I_               0.047    0.048    0.992    0.321
+    RcPP2_A_I              -0.057    0.037   -1.521    0.128
+    RcPP2_Blc              -0.063    0.011   -6.023    0.000
+    RcPP2_Chn              -0.092    0.027   -3.462    0.001
+    RcPP2_Flp              -0.075    0.038   -1.957    0.050
+    RcPP2_Jpn               0.080    0.091    0.877    0.381
+    RcPP2_Krn              -0.124    0.041   -3.025    0.002
+    RcPP2_M_D              -0.077    0.013   -5.900    0.000
+    RcPP2_M__               0.029    0.025    1.163    0.245
+    RcPP2_O_A              -0.046    0.039   -1.176    0.239
+    RcPP2_P_I              -0.041    0.049   -0.847    0.397
+    RcPP2_Vtn              -0.037    0.064   -0.578    0.563
+
+Variances:
+                   Estimate    Std.Err  z-value  P(>|z|)
+   .IncomeRanges_r      4.425    0.078   56.885    0.000
+   .Fruit_vgtbls_z      0.945    0.016   58.924    0.000
+   .EverHadCancer_      0.117    0.003   39.701    0.000
+
+Defined Parameters:
+                   Estimate    Std.Err  z-value  P(>|z|)
+    indirect_effct     -0.000    0.000   -0.858    0.391
+    effct_v_nc_nly     -0.002    0.002   -1.450    0.147
+    effct_v_frt_v_     -0.000    0.000   -0.874    0.382
+    direct_effect      -0.009    0.018   -0.502    0.616
+

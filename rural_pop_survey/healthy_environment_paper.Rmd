@@ -44,10 +44,10 @@ preprocessed_data$DEMO_Age_c <- preprocessed_data$DEMO_Age-38 #using U.S. median
 preprocessed_data$RaceCategorical<-factor(preprocessed_data$RaceCategorical,levels=unique(preprocessed_data$RaceCategorical))
 
 preprocessed_data$RuralZIP_i <- as.numeric(preprocessed_data$RuralZIP)
-preprocessed_data$RaceCategorical2 <- as.character(preprocessed_data$RaceCategorical)
-preprocessed_data$RaceCategorical2[preprocessed_data$RaceCategorical2=="RaceNotReported"] <- "OtherRaceRaceNotReported"
-preprocessed_data$RaceCategorical2[preprocessed_data$RaceCategorical2=="OtherRace"] <- "OtherRaceRaceNotReported"
-preprocessed_data$RaceCategorical2 <-factor(preprocessed_data$RaceCategorical2,levels=names(sort(table(preprocessed_data$RaceCategorical2),decreasing=TRUE)))
+preprocessed_data$RaceC2 <- as.character(preprocessed_data$RaceCategorical)
+preprocessed_data$RaceC2[preprocessed_data$RaceC2=="RaceNotReported"] <- "OtherRaceRaceNotReported"
+preprocessed_data$RaceC2[preprocessed_data$RaceC2=="OtherRace"] <- "OtherRaceRaceNotReported"
+preprocessed_data$RaceC2 <-factor(preprocessed_data$RaceC2,levels=names(sort(table(preprocessed_data$RaceC2),decreasing=TRUE)))
 
 #need to remove this one data point for data quality issue.
 preprocessed_data[!is.na(preprocessed_data$WEIGHT) & preprocessed_data$WEIGHT>500,c("WEIGHT","WEIGHT_kg","BMI")] <- NA
@@ -121,6 +121,25 @@ summary(predict_ffq)
 
 In each of these analyses, MESA_healthyfoodavailability is important, and is related to lower BMIs (b=-0.7, p<0.05) and FFQ (b=-0.07, p<0.001). That is, for every 1 SD in healthy food availability, we get -0.7 points on the BMI scale and -0.13 points on the z-scored Food Frequency Questionnaire.
 
+We can also measures these while controlling for age as a quadratic variable:
+
+
+```{r}
+
+
+predict_bmi <- lm(BMI~
+                    MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
+                    DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceCategorical,
+                  orfcs_dataset)
+summary(predict_bmi)
+
+predict_ffq <- lm(cancer_promoting_minus_preventing_FFQ_z~
+                    MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
+                    DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceCategorical,
+                  orfcs_dataset)
+summary(predict_ffq)
+```
+
 ## Exploring overweight-obese subset
 
 <!--Because confounder effects are not well captured here, we explored post-hoc effects to try to identify ways we could explain more variance using data available.-->
@@ -180,8 +199,8 @@ Next, we wanted to establish whether food frequency mediates the relationship be
 data_to_measure <- orfcs_dataset %>% filter(!is.na(BMI) & Gender3C %in% c("Female","Male"))
 
 
-mb <- lm(cancer_promoting_minus_preventing_FFQ~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceCategorical2,data_to_measure)
-mc <- lm(BMI~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceCategorical2+cancer_promoting_minus_preventing_FFQ,data_to_measure)
+mb <- lm(cancer_promoting_minus_preventing_FFQ~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceC2,data_to_measure)
+mc <- lm(BMI~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceC2+cancer_promoting_minus_preventing_FFQ,data_to_measure)
 
 mediate_result <- mediate(mb,mc,boot=TRUE,sims=boot_times,treat="MESA_healthyfoodavailability",mediator="cancer_promoting_minus_preventing_FFQ")
 summary(mediate_result)
@@ -204,8 +223,8 @@ We can repeat the mediation effect for the over-25 BMI subjects:
 data_to_measure <- orfcs_dataset %>% filter(!is.na(BMI) & Gender3C %in% c("Female","Male") & BMI>25)
 
 
-mb <- lm(cancer_promoting_minus_preventing_FFQ~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceCategorical2,data_to_measure)
-mc <- lm(BMI~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceCategorical2+cancer_promoting_minus_preventing_FFQ,data_to_measure)
+mb <- lm(cancer_promoting_minus_preventing_FFQ~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceC2,data_to_measure)
+mc <- lm(BMI~MESA_healthyfoodavailability+Gender3C+DEMO_Age_c+RaceC2+cancer_promoting_minus_preventing_FFQ,data_to_measure)
 
 mediate_result <- mediate(mb,mc,boot=TRUE,sims=boot_times,treat="MESA_healthyfoodavailability",mediator="cancer_promoting_minus_preventing_FFQ")
 summary(mediate_result)
