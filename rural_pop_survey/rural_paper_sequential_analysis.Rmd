@@ -374,6 +374,12 @@ summarize_calculated_effect <- function(effect_vector){
     
     cat(paste("Estimate=",signif(effect_mean,4),", Std. Err=",signif(effect_se,4),", z-value=",signif(effect_z_value,4), ", p-value=",signif(effect_p_value,4)))
     cat("\n")
+    
+    return(data.frame(
+      "est"=effect_mean,
+      "se"=effect_se,
+      "pvalue"=effect_p_value
+    ))
     #print(t.test(hybrid_indirect_effect))
     #cat("\n")
   }
@@ -381,6 +387,8 @@ summarize_calculated_effect <- function(effect_vector){
 orfcs_boot<-extract_and_label_bootstrap_results(orfcs_fit,10)
 colnames(orfcs_boot)<-
   paste0("orfcs_",colnames(orfcs_boot))
+
+hybrid_effect_list <-list()
 for (effect_name in names(hints_fits_by_outcome)){
   cat(paste0("HYBRID INDIRECT EFFECT FOR: ",effect_name,"\n\n"))
   hints_boot <-extract_and_label_bootstrap_results(hints_fits_by_outcome[[effect_name]],6)
@@ -411,13 +419,14 @@ for (effect_name in names(hints_fits_by_outcome)){
   cat("Hybrid indirect effect:\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, orfcs_bc,orfcs_cd, hints_cd),1,prod)
     
-  summarize_calculated_effect(hybrid_indirect_effect)
-  
+  hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
+  hie_result$outcome<-effect_name
+  hybrid_effect_list<-append(hybrid_effect_list,list(hie_result))
   cat("---------\n\n\n")
 
 }
 
-
+hybrid_effect_df<-do.call(rbind,hybrid_effect_list)
 
 ```
 
@@ -426,20 +435,103 @@ for (effect_name in names(hints_fits_by_outcome)){
 ## Notes
 On its face, this "hybrid effect" shows that if we assume relationships between (a) household income and health food availability and (b) health food availability and fruit and veggie consumption are the same in the HINTS population as they are in the ORFCS population, then rurality has an indirect effect through health food availability in HINTS, too.
 
-# Summarizing the HITNS dataset results
+# Summarizing the HINTS dataset results
 
 Because there are quite a lot of results here, we should probably summarize them in a table.
 
+
 ```{r}
-lavaan_results_df %>% filter(label %in% c(
-  "indirect_effect",
-  "direct_effect",
-  "effect_via_inc_only",
-  "effect_via_fruit_vege_only")) %>%
-  select(label, outcome,est,se,pvalue) %>% arrange(label,outcome) %>% gt::gt() %>% gt::as_raw_html()
-  
+save.image(file="sequential_boot_10.Rdata")
 ```
 
 
 
 
+```{r}
+p_value_asterisks<-function(pvalue){
+  p_value_asterisks_by_scalar <- function(pvalue){
+    if (pvalue<0.001){
+    return("***")
+  }else if (pvalue<0.01){
+    return("**")
+  }else if (pvalue<0.05){
+    return("*")
+  }else if (pvalue<0.1){
+    return("+")
+  }
+  return("")
+  }
+  return(sapply(pvalue,p_value_asterisks_by_scalar))
+}
+library(papaja)
+library(kableExtra)
+```
+
+
+
+
+
+
+```{r}
+library(dplyr)
+```
+
+
+```{r}
+
+
+
+kable_input <- lavaan_results_df %>% filter(label %in% c(
+    "indirect_effect",
+  "direct_effect",
+  "effect_via_inc_only",
+  "effect_via_fruit_vege_only")) %>%
+  mutate(pv = p_value_asterisks(pvalue)) %>%
+  select(label, outcome,est,pv,se) %>% arrange(label,outcome)
+
+groups_df <- kable_input %>%
+  
+  group_by(label) %>% 
+    summarize(group_start=length(label))
+
+groups<-groups_df$group_start
+names(groups)<-groups_df$label
+
+kable_input %>% 
+  select(-label) %>%
+  knitr::kable(signif=3) %>% 
+  kable_classic(full_width = F,html_font="Times New Roman") %>%
+  pack_rows(index=groups)
+  
+
+
+
+
+```
+
+# Summarizing the hybrid dataset results
+
+
+
+
+
+
+```{r}
+
+
+
+kable_input <- hybrid_effect_df %>%
+  mutate(pv = p_value_asterisks(pvalue)) %>%
+  select(outcome,est,pv,se) %>% arrange(outcome)
+
+
+kable_input %>% 
+  knitr::kable(signif=3) %>% 
+  kable_classic(full_width = F,html_font="Times New Roman") %>%
+  pack_rows(index=c("indirect_effect"=nrow(kable_input)))
+  
+
+
+
+
+```
