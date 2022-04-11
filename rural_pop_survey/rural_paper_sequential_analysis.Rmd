@@ -9,7 +9,7 @@ output:
 library(dplyr)
 library(lavaan)
 source("HINTS_preprocessing.R")
-hints5 <-get_hints5()
+hints5 <-get_hints5(location="/Users/Ben/Dropbox (University of Oregon)/protected_files_ben_only")
 boot_times<-10
 
 zscore <- function(x){
