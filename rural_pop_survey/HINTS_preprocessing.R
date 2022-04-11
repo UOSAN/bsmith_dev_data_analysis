@@ -4,7 +4,7 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 
-get_hints5 <- function(location = "/Users/benjaminsmith/Google Drive/oregon/data/protected_HINTS_data/"){
+get_hints5 <- function(location = "/Users/benjaminsmith/Dropbox (University of Oregon)/protected_files_ben_only/protected_HINTS_data/"){
   hines_locations <- Sys.glob(file.path(location,"*/hints5*.sav"))
   
   raw_file_list <- vector(mode="list",length<-length(hines_locations))
