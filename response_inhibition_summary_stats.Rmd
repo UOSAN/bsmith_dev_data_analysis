@@ -1,0 +1,650 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Looking at basic exploratory analysis of the summary stats for response inhibition.
+
+
+
+```{r}
+#install.packages("tidystats")
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(rstatix)
+data_path <- "../../../files/data/"
+
+load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_w_demographics.RData")
+dropbox_file_dir = "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+scored<-scored_with_demographics
+rm(scored_with_demographics)
+scored$score <- as.numeric(scored$score)
+scored$scale_name <- sub("-","_",scored$scale_name)
+```
+
+```{r}
+
+#
+scored %>% filter(scale_name %in% c("FCI")) %>% select(scored_scale) %>% unique
+
+```
+```{r}
+scored$scale_name %>% unique
+```
+
+
+Now get BMI
+
+```{r}
+load("../../../files/data/ppt_list_w_data.RData")
+
+ppt_list_w_data$date_0<-as.Date(ppt_list_w_data$date_0)
+ppt_list_w_data$dob<-as.Date(ppt_list_w_data$dob)
+ppt_list_w_data$age365<- as.numeric((ppt_list_w_data$date_0-ppt_list_w_data$dob)/365)
+
+#our primary health outcome measure
+ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bf_1,weight_0,height_0,birthsex,age365,bmi_0,bmi_1) %>% filter(!is.na(bf_1))
+
+ppt_health_outcomes$bmi <- ifelse(!is.na(ppt_health_outcomes$bmi_0),ppt_health_outcomes$bmi_0,ppt_health_outcomes$bmi_1)
+rm(ppt_list_w_data)
+
+#remove data of implausible bf_1 values
+ppt_health_outcomes$bf_1[ppt_health_outcomes$bf_1<13]<-NA
+
+
+#get a bf_1 score with sex regressed out
+#do we want to regress out height as well???
+
+#plot(ppt_health_outcomes$height_0,ppt_health_outcomes$bf_1)
+
+#hmm that's fairly strong. 
+#but does it hold after controlling for sex?
+#I think it would be good to regress out height as well.
+#so we will use a linear model to predict bf_1 from height and sex. 
+cor.test(ppt_health_outcomes[birthsex==1, height_0],ppt_health_outcomes[birthsex==1,bf_1])
+cor.test(ppt_health_outcomes[birthsex==2, height_0],ppt_health_outcomes[birthsex==2,bf_1])
+#it does not.
+
+#what about age?
+cor.test(ppt_health_outcomes[birthsex==1, age365],ppt_health_outcomes[birthsex==1,bf_1])
+cor.test(ppt_health_outcomes[birthsex==2, age365],ppt_health_outcomes[birthsex==2,bf_1])
+#might be a moderate correlation within birth sex levels of age. so it is worth norming for age too
+#if we were just controlling for a single variable we could z-score
+#but now we're doing age as well.
+#which would imply not z-scoring, we should use a linear model.
+
+bf_model <- lm(bf_1~birthsex+age365, ppt_health_outcomes)
+summary(bf_model)
+#ppt_health_outcomes$bf_1_controlled <-NULL <- bf_model$residuals
+ppt_health_outcomes$bf_1_controlled[as.numeric(rownames(bf_model$model))] <- bf_model$residuals
+
+#simple model just zscoring within sex
+#that allows for a more inuitive interpretation than errors from a linear model.
+ppt_health_outcomes %<>% group_by(birthsex) %>% mutate(
+  bf_1_bsexnormedzs = (bf_1-mean(bf_1,na.rm = TRUE))/sd(bf_1,na.rm = TRUE),
+  
+)
+
+
+#cor.test(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1)
+plot(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1)
+#cor.test(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1_bsexnormedzs)
+#plot(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1_bsexnormedzs)
+
+#plot(ppt_health_outcomes$birthsex,ppt_health_outcomes$bf_1_controlled)
+
+plot(ppt_health_outcomes$bf_1,ppt_health_outcomes$bf_1_controlled)
+
+
+
+
+```
+
+
+```{r}
+min(ppt_health_outcomes$age365)
+
+max(ppt_health_outcomes$age365)
+
+table(ppt_health_outcomes$birthsex)
+```
+
+
+
+Now get behavioral measures.
+
+```{r}
+
+#sst_pes <- readr::read_csv("https://www.dropbox.com/s/vaubgp23y5j0m5g/post_error_slowing.csv?dl=0")
+sst_pes <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing.csv"))
+sst_pes_simple <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing_simple_approach.5.7.22.csv"))
+#should be wave 1 by default.
+sst_data_1 <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
+sst_data_2 <- readr::read_csv(file=paste0(data_path,"sst_pre_analyzed_stats.csv"))
+sst_data_1_w1 <- sst_data_1%>%filter(runid==1)%>% select(-runid)
+sst_data_2_w1 <- sst_data_2 %>% filter(wave==1) %>% select(-wave)
+sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE) %>%
+  merge(sst_pes[,2:ncol(sst_pes)],by="subid",all=TRUE) %>%
+  merge(sst_pes_simple[,2:ncol(sst_pes_simple)],by="subid",all=TRUE)
+
+
+
+roc_data <- readr::read_csv(file=paste0(data_path,"roc_summary_stats.csv"))
+load(file=paste0(data_path,"wtp_summary_stats_across_runs.Rdata"))
+
+
+
+
+#need to group across run
+roc_data_across_runs<- roc_data %>% select(-run) %>% group_by(subjectID,wave) %>% summarise(across(everything(), mean))
+roc_data_across_runs_w1 <- roc_data_across_runs %>%filter(wave==1)%>% select(-wave)
+
+wtp_across_runs_wide <- wtp_across_runs %>% select(subject, value_level_mean, health_cond,wave) %>% group_by(subject,wave) %>% spread("health_cond","value_level_mean") %>% ungroup
+wtp_across_runs_wide$unhealthy_minus_healthy <- wtp_across_runs_wide$unhealthy - wtp_across_runs_wide$healthy
+wtp_across_runs_wide_w1 <- wtp_across_runs_wide%>%filter(wave==1) %>% select(-wave)
+colnames(wtp_across_runs_wide_w1) <- paste0("WTP_",colnames(wtp_across_runs_wide_w1))
+
+
+
+#sst_data$wave <- 1
+colnames(sst_w1) <- paste0("SST_",colnames(sst_w1))
+roc_data_across_runs_w1 <- rename(roc_data_across_runs_w1,c(subid=subjectID))
+colnames(roc_data_across_runs_w1) <- paste0("ROC_",colnames(roc_data_across_runs_w1))
+#roc_data_across_runs$runid <- as.double(stringr::str_match(roc_data_across_runs$run,"run(\\d)")[,2])
+
+behavioral_data <- merge(sst_w1,roc_data_across_runs_w1,by.x=c("SST_subid"),by.y="ROC_subid",all = TRUE)
+behavioral_data <- rename(behavioral_data,c(subid=SST_subid))
+behavioral_data <- merge(behavioral_data,wtp_across_runs_wide_w1,by.x = "subid",by.y="WTP_subject",all=TRUE)
+
+
+
+```
+
+
+
+
+
+
+
+## analysis (left over from previous analysis)
+
+Get the first survey for each scale:
+```{r}
+scored$survey_num <- as.numeric(str_trim(str_match(scored$survey_name,"[DEV Session \\s][\\d+][\\sSurveys]")))
+first_survey_for_scale<-scored %>% group_by(scale_name) %>% dplyr::summarise("first_survey"=min(survey_num))
+
+#then select it.
+scored_fs <- scored %>%
+  merge(first_survey_for_scale,by="scale_name") %>%
+  filter(survey_num==first_survey)
+
+print("survey used for each scale:")
+print(first_survey_for_scale)
+
+
+```
+
+
+
+
+```{r}
+sapply(unique(scored_fs$scale_name),function(sn){list(sn=unique(scored_fs[scored_fs$scale_name==sn,"scored_scale"]))})
+```
+
+
+```{r}
+
+#iterate through each of our scales, and test their correlation with FCI and FFQ
+
+#scales where there's a promote-prevent
+promote_minus_prevent <- scored_fs %>% 
+  #filter for FFQ
+  filter(scale_name %in% c("FFQ","FCI")) %>%
+  #filter for the two cols we're interested in
+  filter(scored_scale %in% c(
+    "cancer_promoting","cancer_preventing","craved_cancer_promoting","liked_cancer_promoting","craved_cancer_preventing","liked_cancer_preventing")) %>%
+  #throw it out wide
+  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #create a composite measure
+  mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing,
+         "cancer_promoting_minus_preventing_craved"=craved_cancer_promoting-craved_cancer_preventing,
+         "cancer_promoting_minus_preventing_liked"=liked_cancer_promoting-liked_cancer_preventing
+         ) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing,
+         cancer_promoting_minus_preventing_craved,cancer_promoting_minus_preventing_liked,
+         cancer_promoting,cancer_preventing
+         ) %>% 
+  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
+                     names_from=scale_name,
+                     values_from=c(
+    "cancer_promoting_minus_preventing",
+    "cancer_promoting_minus_preventing_craved",
+    "cancer_promoting_minus_preventing_liked",
+    "cancer_promoting","cancer_preventing"
+    )
+    )
+
+single_scale_predictors_mean <- c("BSCS","EDM","cSES")
+
+single_scale_values_mean <- scored_fs %>% 
+    #filter for FFQ
+  filter(scale_name %in% single_scale_predictors_mean) %>%
+  #filter for the two cols we're interested in
+  #filter(scored_scale %in% c("mean")) %>%#unnecessary
+  #throw it out wide
+  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,SID,mean) %>% 
+  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
+                     names_from=scale_name,
+                     values_from=c("mean")
+    )
+
+
+
+
+
+single_scale_predictors_sum <- c("TRSQ","BIS_11","RS","PCS")
+
+single_scale_values_sum <- scored_fs %>% 
+  #filter for FFQ
+  filter(scale_name %in% single_scale_predictors_sum) %>%
+  #throw it out wide
+  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  #wide across the surveys so that we can compare the surveys
+  select(scale_name,survey_name,SID,sum) %>% 
+  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
+                     names_from=scale_name,
+                     values_from=c("sum")
+    )
+single_scale_values<- merge(single_scale_values_mean,single_scale_values_sum,by=c("SID","survey_name"),all=TRUE)
+
+#now merge these
+
+scales_wide<-merge(promote_minus_prevent,single_scale_values,by=c("SID","survey_name"),all=TRUE)
+
+ppt_data_wide_raw_1 <- merge(scales_wide,ppt_health_outcomes,by.x="SID",by.y="dev_id",all=TRUE)
+
+```
+
+```{r}
+scored_fs %>% filter(scale_name=="DEMO") %>% .$scored_scale %>% unique
+
+scored_fs_demo_zscored <- scored_fs %>% filter(scale_name=="DEMO")
+ses_grouped<-c("zipcode_median_income_acs", "household_income_per_person","household_income_level_medamount","education_own")
+
+scored_fs_demo_zscored <- scored_fs_demo_zscored %>% data.frame %>% group_by(scored_scale) %>% 
+  filter(scored_scale %in% ses_grouped) %>% 
+  mutate(
+  score_zscore=(score-mean(score,na.rm=TRUE))/sd(score,na.rm=TRUE),
+  score_mean = mean(score,na.rm=TRUE),
+  score_sd =sd(score,na.rm=TRUE)) %>% ungroup
+#get a zscore of each
+
+scored_fs_demo_zscored$score<- scored_fs_demo_zscored$score_zscore
+
+scored_fs_demo_zscored_wide <- scored_fs_demo_zscored %>% 
+  select(SID,survey_name,score,scored_scale) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
+  rowwise() %>%
+  mutate(ses_aggregate=mean(c(education_own,zipcode_median_income_acs,household_income_per_person,household_income_level_medamount)))
+
+
+```
+
+
+
+```{r}
+#Now do multi-scale predictors
+#Big5, Planfulness
+multi_scale_predictor_list <- list(BFI =c("agreeableness","conscientiousness","extraversion","neuroticism","openness"),
+                           PLAN = c("cognitive_strategies","mental_forecasting","temporal_orientation"),
+                           ACES = c("sum","abuse","divorced_separated","household_dysfunction","neglectful_parenting"),
+                           RTFS = c("factor_1", "factor_2"),
+                           SRHI = c("healthy","unhealthy","sum"),
+                           DEMO = c("mcarthur_social_standing"),
+                           IPAQ = c("sittinghours", "moderateminutes", "vigorousminutes", "walkingminutes"),
+                           RMQ = c("assessment", "lie",        "locomotion"),
+                           IMI = c("value_usefulness", "perceived_choice", "perceived_competence", "effort_importance", "interest_enjoyment"),
+                           NCS = c("get_job_done","intellectual_task", "abstract_thinking", "like_responsibility", "thinking_not_exciting",
+                                   "think_minimally", "thinking_not_fun", "avoid_depth", "deliberating_issues", "prefer_little_thought",
+                                   "relief_not_satisfaction", "satisfaction_in_deliberating", "thought_appealing", "total", "tasks_little_thought",
+                                   "solve_puzzles", "small_daily_projects", "new_solutions_to_problems", "prefer_complex"
+                                   ),
+                           TESQ_E = unique(scored_fs[scored_fs$scale_name=="TESQ_E","scored_scale"])
+                           )
+
+#go through the table and label every subscale that we want to keep
+scored_fs$INCLUDE_SUBSCALE <- FALSE
+for (scale_x in names(multi_scale_predictor_list)){
+  print(scale_x)
+  for(subscale_x in multi_scale_predictor_list[[scale_x]]){
+    cat(subscale_x)
+    scored_fs[scored_fs$scale_name==scale_x & scored_fs$scored_scale==subscale_x,"INCLUDE_SUBSCALE"] <- TRUE
+  }
+}
+
+scored_multi <- scored_fs[scored_fs$INCLUDE_SUBSCALE,]
+
+scored_multi$scale_subscale_name <- paste0(scored_multi$scale_name,"_",scored_multi$scored_scale)
+
+multi_scale_values <- scored_multi %>% 
+  #throw it out wide
+  select(SID,survey_name,score,scale_subscale_name) %>% tidyr::pivot_wider(names_from = scale_subscale_name,values_from = score)
+
+ppt_data_wide_raw_2 <- merge(ppt_data_wide_raw_1,multi_scale_values,by=c("SID","survey_name"),all=TRUE)
+
+
+ppt_data_wide <- merge(ppt_data_wide_raw_2,scored_fs_demo_zscored_wide,by=c("SID","survey_name"),all=TRUE)
+```
+
+
+```{r}
+#grabs the FIRST score for each item per participant.
+col_list <- lapply(colnames(ppt_data_wide %>% select(-survey_name,-SID)), function(col){
+  return(ppt_data_wide %>% select(-survey_name) %>% .[,c("SID",col)] %>% filter(!is.na(.[col])) %>% group_by(SID) %>% summarise("{col}":=first(.data[[col]])))
+})
+data_by_ppt <- purrr::reduce(col_list, left_join,by="SID")
+
+
+
+```
+
+
+##Now get the behavioral data
+
+
+```{r}
+data_by_ppt <- merge(data_by_ppt,behavioral_data,by.x="SID",by.y="subid",all.x = TRUE,all.y=FALSE)
+
+```
+
+Now we do some contrasts we haven't done yet...
+
+```{r}
+data_by_ppt$SRHI_healthy_minus_unhealthy <- data_by_ppt$SRHI_healthy-data_by_ppt$SRHI_unhealthy
+data_by_ppt$RTFS_f1_minus_f2 <- data_by_ppt$RTFS_factor_1-data_by_ppt$RTFS_factor_2
+#Craig CL,Marshall A , Sjostrom M et al. International Physical Activity Questionnaire: 12 country reliability and validity Med Sci Sports Exerc 2003;August
+#also available on the IPAQ scoring protocol in the DEV Dropbox, page 5
+#Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/Measures/Measures_Questionnaires/IPAQ Scoring Protocol.pdf
+data_by_ppt$IPAQ_walkingMETminutes <- data_by_ppt$IPAQ_walkingminutes* 3.3
+data_by_ppt$IPAQ_moderateMETminutes <- data_by_ppt$IPAQ_moderateminutes* 4.0
+data_by_ppt$IPAQ_vigorousMETminutes <- data_by_ppt$IPAQ_vigorousminutes* 8.0
+data_by_ppt$IPAQ_total_METminutes <-data_by_ppt$IPAQ_walkingMETminutes + data_by_ppt$IPAQ_moderateMETminutes+ data_by_ppt$IPAQ_vigorousMETminutes
+weight_in_kg <- data_by_ppt$weight_0* 0.453592 #convert from pounds to kg
+data_by_ppt$IPAQ_MET_kCal <- data_by_ppt$IPAQ_total_METminutes * weight_in_kg/60
+
+
+# data_by_ppt$birthsex_factor<-""
+# data_by_ppt$birthsex_factor[data_by_ppt$birthsex==1]<-"Female"
+# data_by_ppt$birthsex_factor[data_by_ppt$birthsex==2]<-"Male"
+# data_by_ppt$birthsex_factor<-factor(data_by_ppt$birthsex_factor,levels=c("Female","Male"))
+
+data_by_ppt <- data_by_ppt %>% mutate(
+  birthsex_factor =
+    factor(case_when(
+      birthsex==1 ~ "Female",
+      birthsex==2 ~ "Male"
+    ),levels=c("Female","Male"))
+)
+                                            
+```
+
+
+
+### get the modified FFQ
+
+This is done here, rather than earlier, because it needs gender.
+
+
+```{r}
+
+#we need two things here:
+#(1)  list of FFQ by individual item"
+      #Can't use "scored"
+      #need to use survey_long_clean from scorequaltrics_workflow. It's saved here:
+
+load(paste0(dropbox_file_dir,"/raw_survey_data.RData"))
+#(2)  list of birthsex. this is done easily enough with:
+birthsex_key <- data_by_ppt[c("SID","birthsex_factor")]
+
+#1=female, 2=male
+
+
+
+source("ffq_revision/get_ffq_v2.R")
+
+ffq_v2_values <- score_ffqv2(surveys_long_clean,birthsex_key)
+colnames(ffq_v2_values) <- paste0("FFQ_v2_",colnames(ffq_v2_values))
+
+
+```
+
+```{r}
+data_by_ppt <- merge(data_by_ppt,ffq_v2_values,by.x="SID",by.y="FFQ_v2_SID",all.x = TRUE,all.y=FALSE)
+
+```
+
+
+Now we need to get the non-scale social values in here.
+
+<!-- ```{r} -->
+<!-- ppt_data_wide_dummy <- ppt_data_wide -->
+
+<!-- for (cn in colnames(ppt_data_wide_dummy)[3:length(colnames(ppt_data_wide_dummy))]){ -->
+<!--   print(cn) -->
+<!--   ppt_data_wide_dummy[,cn]<-sample(ppt_data_wide_dummy[,cn],length(ppt_data_wide_dummy[,cn])) -->
+<!-- } -->
+<!-- rm(ppt_data_wide) -->
+<!-- ``` -->
+
+
+### wide-stage data cleaning
+
+#### outlier removal
+
+https://www.active.com/fitness/calculators/bodyfat
+
+Classification	Women (% Fat)	Men (% Fat)
+Essential Fat	10-12%	2-4%
+Athletes	14-20%	6-13%
+Fitness	21-24%	14-17%
+Acceptable	25-31%	18-25%
+Obese	32% +	25% +
+
+
+
+With ~200 subjects, how often would we expect subjects 2 or 3 or 4 SD outside the mean?
+
+```{r}
+
+for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
+  class(data_by_ppt[[coln]])
+  if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
+    
+    na_row <- is.na(unlist(data_by_ppt[coln]))
+    col_vals <- unlist(data_by_ppt[!na_row,coln])
+    if(class(col_vals)!="factor"){
+      col_sids <- data_by_ppt[!na_row,"SID"]
+      col_mean<-mean(col_vals)
+      col_sd<-sd(col_vals)
+      outliers_4sigma <- (col_vals < col_mean - col_sd * 4) | (col_vals > col_mean + col_sd * 4)
+      outliers_5sigma <- (col_vals < col_mean - col_sd * 5) | (col_vals > col_mean + col_sd * 5)
+      if(sum(outliers_4sigma)+sum(outliers_5sigma)>0){
+        print(paste(coln, ": 4 sigma outliers are:",paste(data_by_ppt[outliers_4sigma,"SID"],collapse = ","), "; 5 sigma outliers are:",paste(data_by_ppt[outliers_5sigma,"SID"],collapse = ",")))
+      }      
+    }
+  }
+}
+
+```
+
+```{r}
+
+
+# 
+# 
+# for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
+#   print(coln)
+#   class(data_by_ppt[[coln]])
+#   if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
+#     hist(unlist(data_by_ppt[coln]),breaks=20,main = coln)
+#   }
+#   
+# }
+```
+
+```{r}
+#remove implausible TRSQ score
+data_by_ppt$TRSQ[data_by_ppt$TRSQ<5]<-NA
+```
+
+
+```{r}
+readr::write_csv(data_by_ppt, file = paste0(data_path,"data_by_ppt.csv"))
+
+
+```
+
+Should probably remove a few more outliers, and consider transforming non-normal data or using rank test for it, but that'll do for now.
+### Exploratory analysis for health special issue
+
+Here we'll follow a few basic steps:
+
+ - Loop through each source and do these analyses. This might occur several times because we'll need to arrange different sources in unique ways.
+ - Add each test of interest to a grand table of findings, storing the label, effect, and the p-value
+ - Do FWE test on the findings to determine the end result
+
+
+For each set, we'll need to loop through the three outcome measures, and then loop through the relevant predictor variables. We do two-way correlations to understand which should be followed up.
+
+
+
+label the variables
+```{r}
+IVs <- c("SST_SSRT","SST_PostErrorSlowW1_median","SST_pes_mean_limited","ROC_Crave_Regulate_Minus_Look","ROC_Crave_Regulate",
+         
+         "SRHI_sum","SRHI_healthy_minus_unhealthy","TRSQ","RS","BIS_11",
+         paste0("TESQ_E_",unique(scored_fs[scored_fs$scale_name=="TESQ_E","scored_scale"]))
+         )
+DVs <- c("cancer_promoting_minus_preventing_FFQ","FFQ_v2_Mean_Weighted_Nutrient_Density","FFQ_v2_Mean_Weighted_percent_daily_value","bf_1","bf_1_controlled")
+```
+
+
+Can we merge across surveys to only include the first survey taken? For each of these scales, participants may have only done a selection of the surveys
+
+This would look like:
+
+ - For each participant and column, merge across surveys and only include the FIRST result in each survey.
+ 
+
+```{r}
+
+
+#now we estimate R^2....
+correlation_df <- data.frame()
+for (DV in DVs){
+  for(IV in IVs){
+    #for (dn in draw_names){
+      #pairwise_not_na <- (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% filter(survey_name==dn) %>% .[,DV])==FALSE)
+    pairwise_not_na <- (is.na(data_by_ppt %>% .[,IV])==FALSE) &  (is.na(data_by_ppt %>% .[,DV])==FALSE)
+    if(sum(pairwise_not_na)>0){
+      print(paste0(DV,",", IV, " (",as.character(sum(pairwise_not_na)) , " values)"))
+        cor_res <-cor.test(
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,IV],
+          #data_by_ppt %>% filter(survey_name==dn) %>% .[,DV],
+          data_by_ppt[[IV]],
+          data_by_ppt[[DV]],
+          use = "complete.obs"
+        )
+        #print(paste0("r value of ", as.character(cor_res$estimate)))
+        cat(".")
+        cor_df <- data.frame(
+          "v1"=DV,
+          "v2"=IV,
+          "n"=sum(pairwise_not_na),
+#          "survey"=dn,
+          "statistic" = cor_res$statistic,
+          "df" = cor_res$parameter,
+          "p.value" = cor_res$p.value,
+          "estimate"=cor_res$estimate,
+          "ci_lower" = cor_res$conf.int[[1]],
+          "ci_upper" = cor_res$conf.int[[2]]
+          
+          
+        )
+        correlation_df <-rbind(correlation_df,cor_df)
+          #correlation_list <- correlation_list %>% add_stats(cor_res)
+          
+
+     # }#else{
+        #print(paste("no valid column pair for:",IV,",", DV, " (",dn,")"))
+      #}
+   }
+  }
+}
+
+#correlation_df <-  tidy_stats_to_data_frame(correlation_list)
+
+
+
+```
+
+
+
+
+```{r}
+data_by_ppt %>% group_by(DEMO_mcarthur_social_standing) %>% summarise(mean_ffq=mean(cancer_promoting_minus_preventing_FFQ,na.rm=TRUE))
+
+cor.test(data_by_ppt$DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_liked_FCI)
+cor.test(data_by_ppt$DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_craved_FCI)
+cor.test(data_by_ppt$DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_FFQ)
+```
+
+
+```{r}
+ggplot(data_by_ppt,aes(DEMO_mcarthur_social_standing,data_by_ppt$cancer_promoting_minus_preventing_FFQ))+geom_point()
+```
+
+
+
+
+## Correlations
+
+
+```{r, fig.width=26}
+correlational_items <- c(IVs,DVs)
+
+corrplot::corrplot(cor(data_by_ppt[,correlational_items],use = "pairwise.complete.obs"),
+method="number",type="upper",diag=FALSE,tl.srt=35,tl.cex=0.8,cl.cex=0.8,number.cex=0.8,order="hclust")
+
+
+```
+
+
+
+```{r}
+cor.test(data_by_ppt$SST_SSRT,data_by_ppt$bf_1)
+cor.test(data_by_ppt$SST_SSRT,data_by_ppt$ROC_Crave_Minus_Neutral)
+```
+
+
+
+
+```{r}
+cor.test(data_by_ppt$SST_SSRT,data_by_ppt$cancer_promoting_minus_preventing_FFQ)
+cor.test(data_by_ppt$SST_SSRT,data_by_ppt$FFQ_v2_Mean_Weighted_Nutrient_Density)
+cor.test(data_by_ppt$SST_SSRT,data_by_ppt$FFQ_v2_Mean_Dietary_Nutrient_Density)
+```
+
+
+
+
+
+
+
+
+
+
+
