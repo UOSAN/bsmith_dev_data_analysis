@@ -15,7 +15,9 @@ library(dplyr)
 library(readr)
 print(getwd())
 source("orfcs_utilities.R")
-data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+data_dir <- config::get("rural_data_dir")
+#data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
 
 data_key <- read_csv(paste0(data_dir, "cloudresearch_survey_results/ORFCS Bespoke CR2_November 2, 2021_11.47_key.csv")) %>% t %>% data.frame
 data_key <- cbind("colkey" = rownames(data_key),data_key)
@@ -43,7 +45,7 @@ if (!require(ggcorrplot)) {install.packages('ggcorrplot')}
 
 ```{r}
 
-cred_file_location = '~/qualtrics_credentials.yaml'
+cred_file_location = config::get('qualtrics_credentials')
 #keep_columns = '(Login|ResponseId|Finished|SID)'
 survey_name_filter = '(Oregon Rural Food Consumption|ORFCS)'
 #sid_pattern = 'DEV[0-9]{3}$'
@@ -71,7 +73,8 @@ surveysFiltered = filter(surveysAvail, grepl(survey_name_filter, SurveyName))
 
 
 ```{r}
-rubric_dir = '/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/DEV_scoring_rubrics'
+
+rubric_dir = config::get('rubric_dir')#
 
 # specify rubric paths
 scoring_rubrics = data.frame(file = dir(file.path(rubric_dir), 
@@ -289,7 +292,7 @@ table(non_scale_data$Demo_3a_IsHispanicLatinoSpanish,non_scale_data$`DEMO_3b_Nat
 The score_qualtrics package can be quite awkward for data that aren't actually scales. For that data, I'm going to pull it manually from the CSVs I downloaded.
 
 ```{r}
-data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+#data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
 
 full_merged_results <- get_orfcs_survey_data(data_dir)
 
@@ -306,8 +309,10 @@ full_merged_results$PptZIPCode <- stringr::str_trunc(full_merged_results$PptZIPC
 #Now we want to get the RUCA codes.
 #Now, match the participant ZIP Codes to the RUCA 2010
 ppts_with_zip_ruca <- match_ppts_with_ruca_zipcode(data_dir, full_merged_results)
-
 ppts_with_zip_ruca$RuralZIP <- ppts_with_zip_ruca$RUCA1>=4
+
+#match participants to zip code info including household income
+ppts_with_zip_ruca <- match_ppts_with_zipcode_data(data_dir, ppts_with_zip_ruca)
 
 #exclude participants in the exclusion list
 ppts_via_csv_all_cols <- ppts_with_zip_ruca[(ppts_with_zip_ruca$aid %in% rejections$aid)==FALSE,]
@@ -317,7 +322,7 @@ ppts_via_csv_all_cols %<>% rename(RUCA_Description=Description)
 #SELECT DATA
 #now we only want specified and vetted cols from this data, to ensure we don't include any PII
 
-ppt_cols <-c("aid","HEIGHT_1","HEIGHT_2","WEIGHT","RuralZIP","RUCA_Description")
+ppt_cols <-c("aid","HEIGHT_1","HEIGHT_2","WEIGHT","RuralZIP","RUCA_Description","ZipcodeMedianHouseholdIncome")
 ppts_via_csv<-ppts_via_csv_all_cols[,ppt_cols]
 
 

@@ -20,16 +20,24 @@ library(ggplot2)
 library(data.table)
 ```
 
+Set directories
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+data_dir <- config::get("rural_data_dir")
+hints5_filepath <- config::get("hints_protected_data_folderpath")
+```
+
+
+
 ## Setup the ORFCS dataset
 
 
 ```{r}
+source("orfcs_utilities.R")
 library(magrittr)
 library(dplyr)
 
-
-
-data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
 
 preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
 library(readr)
@@ -37,18 +45,29 @@ library(ggplot2)
 library(GGally)
 orfcs_dataset <- readr::read_csv(preprocessed_data_filepath)
 
+#have to do this here because the file was saved in CSV, which converts factors to strings.
+orfcs_dataset$Education_Categorical<-factor(
+  orfcs_dataset$Education_Categorical,
+  #levels=3:9,
+  labels=c("No high school diploma",
+           "High school diploma/GED",
+           "Some college credit, no degree",
+           "Trade, technical, or vocational training",
+           "Associate's degree",
+           "Bachelor's degree",
+           "Master's, Professional, or doctoral degree")
+)
+
+orfcs_dataset$Education_Ordinal<-as.integer(orfcs_dataset$Education_Categorical)
 
 
 ```
 
-```{r}
-
-```
 
 ```{r}
 #https://www.rdocumentation.org/packages/mediation/versions/4.5.0/topics/mediate
 library(mediation)
-boot_times = 100 # set this to 10000 for final analysis, and 100 for setting up
+boot_times = 10 # set this to 10000 for final analysis, and 100 for setting up
 ```
 
 ## Set up the HINTS dataset
@@ -56,7 +75,7 @@ boot_times = 100 # set this to 10000 for final analysis, and 100 for setting up
 
 ```{r warning=FALSE}
 source("HINTS_preprocessing.R")
-hines_cycle5 <-get_hints5()
+hines_cycle5 <-get_hints5(hints5_filepath)
 
 ```
 
@@ -77,7 +96,7 @@ hines_cycle5 %>% group_by(HINTSIsRural) %>% count()
 
 
 ```{r}
-orfcs_dataset %>% filter(is.na(BMI)) %>% select(WEIGHT,HEIGHT_m) %>% is.na %>% colSums
+orfcs_dataset %>% filter(is.na(BMI)) %>% dplyr::select(WEIGHT,HEIGHT_m) %>% is.na %>% colSums
 orfcs_dataset %>% filter(!is.na(BMI) & !is.na(Gender3C) & !is.na(RuralZIP) & !is.na(PSS_z) & !is.na(DEMO_Age_c) & !is.na(Gender3C) & !is.na(RaceC2)) %>% .$RuralZIP %>% table
 orfcs_dataset %>% filter(!is.na(cancer_promoting_minus_preventing_FFQ) & !is.na(Gender3C) & !is.na(RuralZIP) & !is.na(PSS_z) & !is.na(DEMO_Age_c) & !is.na(Gender3C) & !is.na(RaceC2)) %>% .$RuralZIP %>% table
 predict_ffq_rural <- lm(cancer_promoting_minus_preventing_FFQ~RuralZIP+
@@ -227,7 +246,7 @@ set.seed(2498714)
 
 library(mediation)
 
-data_to_measure <- orfcs_dataset %>% filter(!is.na(BMI)) %>% filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
+data_to_measure <- orfcs_dataset %>% dplyr::filter(!is.na(BMI)) %>% dplyr::filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
 
 #Rurality -> Income -> BMI
 
@@ -504,6 +523,7 @@ summary(mc)
 ```{r}
 
 orfcs_dataset$HHIncome_z <- zscore(orfcs_dataset$aSES_02_z)
+orfcs_dataset$ZipcodeMedianHouseholdIncome_z <- zscore(orfcs_dataset$ZipcodeMedianHouseholdIncome)
 orfcs_dataset$IPAQ_total_METminutes_z <- zscore(orfcs_dataset$IPAQ_total_METminutes)
 orfcs_comprehensive_model <- lm(BMI~DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceC2+PSS_z
     +Education_Ordinal
@@ -511,6 +531,7 @@ orfcs_comprehensive_model <- lm(BMI~DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceC2+P
    +MESA_healthyfoodavailability_z+MESA_safetyfromcrime
    +FFQ_fruit_vegetables_z
    +IPAQ_total_METminutes_z
+   +ZipcodeMedianHouseholdIncome_z
    +HHIncome_z,orfcs_dataset)
 library(apaTables)
 
@@ -521,17 +542,43 @@ apa.reg.table(orfcs_comprehensive_model)
 
 ```{r}
 table(hines_cycle5$Education)
+hines_cycle5$EducationalAchievement<-as.integer(hines_cycle5$EducationOrdinal)
 
 # orfcs_dataset$HHIncome_z <- zscore(orfcs_dataset$aSES_02_z)
 hines_cycle5$HHInc_r_z <- zscore(hines_cycle5$HHInc_r)
 HINTS_comprehensive_model <- lm(BMI~Age_c+I(Age_c^2)+Gender3C+RacePP
-    +Education
+    +EducationalAchievement
    +HINTSIsRural_i
    +Fruit_vegetables_z
    +filename
    +HHInc_r_z,hines_cycle5)
 library(apaTables)
 
+hints_bmi_table<-apa.reg.table(HINTS_comprehensive_model)
+#apa.reg.table(HINTS_comprehensive_model,paste0(data_dir , "/hints_bmi_apa_out.doc"))
+
+```
+
+```{r}
+apa_HINTS <- apa.reg.table(HINTS_comprehensive_model)
+```
+
+
+
+```{r}
+table(hines_cycle5$Education)
+
+# orfcs_dataset$HHIncome_z <- zscore(orfcs_dataset$aSES_02_z)
+hines_cycle5$HHInc_r_z <- zscore(hines_cycle5$HHInc_r)
+HINTS_genhealth_comprehensive_model <- lm(GeneralHealth_i~Age_c+I(Age_c^2)+Gender3C+RacePP
+    +EducationalAchievement
+   +HINTSIsRural_i
+   +Fruit_vegetables_z
+   +filename
+   +HHInc_r_z,hines_cycle5)
+library(apaTables)
+
+HINTS_genhealth_model_df <- apa.reg.table(HINTS_genhealth_comprehensive_model)
 #apa.reg.table(orfcs_comprehensive_model,paste0(data_dir , "/apa_out.doc"))
 
 ```
@@ -539,6 +586,27 @@ library(apaTables)
 ```{r}
 apa_HINTS <- apa.reg.table(HINTS_comprehensive_model)
 ```
+
+
+
+```{r}
+table(hines_cycle5$Education)
+
+# orfcs_dataset$HHIncome_z <- zscore(orfcs_dataset$aSES_02_z)
+hines_cycle5$HHInc_r_z <- zscore(hines_cycle5$HHInc_r)
+HINTS_agghealth_comprehensive_model <- lm(MedConditionsAggregate~Age_c+I(Age_c^2)+Gender3C+RacePP
+    +EducationalAchievement
+   +HINTSIsRural_i
+   +Fruit_vegetables_z
+   +filename
+   +HHInc_r_z,hines_cycle5)
+library(apaTables)
+
+HINTS_agghealth_model_df <- apa.reg.table(HINTS_agghealth_comprehensive_model)
+#apa.reg.table(orfcs_comprehensive_model,paste0(data_dir , "/apa_out.doc"))
+
+```
+
 
 ### Follow-up focus on fruit and vege
 
@@ -639,7 +707,7 @@ set.seed(6472426)
 
 library(mediation)
 
-data_to_measure <- hines_cycle5 %>% filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
+data_to_measure <- hines_cycle5 %>% dplyr::filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
 
 #Rurality -> Income -> BMI
 

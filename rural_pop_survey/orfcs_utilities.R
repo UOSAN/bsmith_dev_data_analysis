@@ -46,6 +46,38 @@ match_ppts_with_ruca_zipcode <- function(data_dir, full_merged_results){
   
 }
 
+match_ppts_with_zipcode_data <- function(data_dir, full_merged_results){
+  median_income_data_all <- readr::read_csv(paste0(
+    data_dir,
+    "median-incomes-ACSST5Y2020.S1903_2022-04-18T143338/ACSST5Y2020.S1903_data_with_overlays_2022-03-18T145451.csv"
+  ),skip=1
+  )
+  #there's only one column we need out of all of this
+  zipcode_data_selected <- median_income_data_all %>% 
+    select(`Geographic Area Name`,
+           `Estimate!!Median income (dollars)!!HOUSEHOLD INCOME BY RACE AND HISPANIC OR LATINO ORIGIN OF HOUSEHOLDER!!Households`)
+  #now tidy it up.
+  
+  zipcode_data_selected <- zipcode_data_selected %>% 
+    mutate(ZIPCode = stringr::str_extract(`Geographic Area Name`,pattern = "\\d\\d\\d\\d\\d")) %>%
+    mutate(`Geographic Area Name` = NULL) %>% 
+    rename(
+    ZipcodeMedianHouseholdIncomeRaw = `Estimate!!Median income (dollars)!!HOUSEHOLD INCOME BY RACE AND HISPANIC OR LATINO ORIGIN OF HOUSEHOLDER!!Households`
+    )
+  
+  
+  zipcode_data_selected <- zipcode_data_selected %>% mutate(ZipcodeMedianHouseholdIncome = case_when(
+      ZipcodeMedianHouseholdIncomeRaw=="2,500-" ~ 2500,
+      ZipcodeMedianHouseholdIncomeRaw=="250,000+" ~ 250000,
+      trimws(ZipcodeMedianHouseholdIncomeRaw)=="-" ~ as.numeric(NA),
+      TRUE ~ as.numeric(ZipcodeMedianHouseholdIncomeRaw)
+      # is.numeric(ZipcodeMedianHouseholdIncomeRaw)
+    ))
+  
+  # zipcode_data_selected %>% filter(is.na(ZipcodeMedianHouseholdIncome)) %>% .$ZipcodeMedianHouseholdIncomeRaw %>% table
+  ppts_with_zipcode_info <- merge(full_merged_results,zipcode_data_selected,all.x=TRUE,all.y=FALSE,by.x="PptZIPCode",by.y="ZIPCode")
+  return(ppts_with_zipcode_info)
+}
 
 get_demo_data <- function(demo_data_long,acs_income_path){
   #set up the code that grabs all this stuff.
@@ -156,4 +188,8 @@ get_demo_data <- function(demo_data_long,acs_income_path){
   
   demo_all<- do.call(rbind,list(demo_social_standing,own_education_level,demo_zipcode_info,hh_data,demo_indiv_income))
   return(demo_all)
+}
+
+zscore <- function(x){
+  return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
 }

@@ -6,11 +6,13 @@ output:
 ---
 
 ```{r message=FALSE, warning=FALSE}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+
 library(dplyr)
 library(lavaan)
 source("HINTS_preprocessing.R")
-hints5 <-get_hints5(location="/Users/Ben/Dropbox (University of Oregon)/protected_files_ben_only")
-boot_times<-10
+hints5 <-get_hints5(location=config::get("hints_protected_data_folderpath"))
+boot_times<-100
 
 zscore <- function(x){
     return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
@@ -23,14 +25,13 @@ table(hints5$GeneralHealth_of) %>% cumsum / sum(!is.na(hints5$GeneralHealth_of))
 hist(as.integer(hints5$GeneralHealth_of))
 ```
 
-
 ```{r}
 library(magrittr)
 library(dplyr)
 
 
 
-data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+data_dir <- config::get("rural_data_dir")
 
 preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
 library(readr)
@@ -42,7 +43,6 @@ orfcs_dataset <- readr::read_csv(preprocessed_data_filepath)
 
 ```
 
-
 Let's do our best to include all the same covariates we previously included.
 
 # HINTS dataset: two mediators
@@ -51,12 +51,11 @@ This follows Hayes PROCESS Model 6 with two mediators but we are doing it here i
 
 Variables are:
 
- - Treatment: Rurality
- - Two Mediators: household income, and fruit and vegetable consumption, in that order.
- - Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure. (and cancer??)
+-   Treatment: Rurality
+-   Two Mediators: household income, and fruit and vegetable consumption, in that order.
+-   Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure. (and cancer??)
 
-
-This model below is adapted from https://towardsdatascience.com/doing-and-reporting-a-serial-mediation-model-with-two-mediators-in-r-with-lavaan-739ed3155814
+This model below is adapted from <https://towardsdatascience.com/doing-and-reporting-a-serial-mediation-model-with-two-mediators-in-r-with-lavaan-739ed3155814>
 
 I think they've left some things out. I need to do a bit more research to work out how to properly implement this, probably including a basic crash course in SEM.
 
@@ -92,6 +91,7 @@ hints5_pp$Gender3C<-factor(hints5_pp$Gender3C)
 hints5_pp <- mltools::one_hot(hints5_pp,"Gender3C",dropCols = FALSE)
 print(paste0(colnames(hints5_pp)[grepl("Gender3C_",colnames(hints5_pp))],collapse=" + "))
 ```
+
 Now prepare the ORFCS dataset for lavaan.
 
 ```{r}
@@ -114,7 +114,6 @@ orfcs_dataset_pp$Gender3C<-factor(orfcs_dataset_pp$Gender3C)
 orfcs_dataset_pp <- mltools::one_hot(orfcs_dataset_pp,"Gender3C",dropCols = FALSE)
 print(paste0(colnames(orfcs_dataset_pp)[grepl("Gender3C_",colnames(orfcs_dataset_pp))],collapse=" + "))
 ```
-
 
 ```{r}
 
@@ -167,7 +166,6 @@ outcome_measures <- c(
 
 ```
 
-
 ```{r}
 
 
@@ -205,8 +203,6 @@ for (outcome_var in outcome_measures){
 # summary(fit)
 ```
 
-
-
 # Oregon dataset: three mediators
 
 For comparison with HINTS, we'll first repeat the HINTS dataset two-mediator model as described above, but using three mediators.
@@ -217,11 +213,9 @@ This follows Hayes PROCESS Model 6 with THREE mediators but we are doing it here
 
 Variables are:
 
- - Treatment: Rurality
- - Two Mediators: household income, MESA healthy food availability, and fruit and vegetable consumption, in that order.
- - Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
-
-
+-   Treatment: Rurality
+-   Two Mediators: household income, MESA healthy food availability, and fruit and vegetable consumption, in that order.
+-   Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
 
 ```{r}
 #TREAT=HINTSIsRural_i
@@ -271,10 +265,6 @@ outcome_measures <- c(
 
 
 ```
- 
- 
-
-
 
 ```{r}
 
@@ -301,19 +291,18 @@ summary(orfcs_fit)
 
 ```
 
-
- 
 # Hybrid: three mediators
 
 This follows Hayes PROCESS Model 6 with THREE mediators. We need to somehow manually combine the two datasets by multiplying effects. Need to follow bootstrap analysis, which means we need to extract raw bootstrap results and combine them. I'm not sure it's feasible, but it would be quite valuable to do.
 
 Variables are:
 
- - Treatment: Rurality
- - Two Mediators: household income, MESA healthy food availability, and fruit and vegetable consumption, in that order.
- - Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
+-   Treatment: Rurality
+-   Two Mediators: household income, MESA healthy food availability, and fruit and vegetable consumption, in that order.
+-   Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
 
 ## Hybrid Analysis run
+
 ```{r}
 get_fit_PE<-function(fit_to_read){
   sink("temp_out.txt")
@@ -331,7 +320,6 @@ for (hints_fit_label in names(hints_fits_by_outcome)){
 }
 lavaan_results_df <- do.call(rbind,lavaan_results_list)
 ```
-
 
 ```{r}
 extract_and_label_bootstrap_results<-function(fit_obj,rows){
@@ -430,22 +418,17 @@ hybrid_effect_df<-do.call(rbind,hybrid_effect_list)
 
 ```
 
-
-
 ## Notes
+
 On its face, this "hybrid effect" shows that if we assume relationships between (a) household income and health food availability and (b) health food availability and fruit and veggie consumption are the same in the HINTS population as they are in the ORFCS population, then rurality has an indirect effect through health food availability in HINTS, too.
 
 # Summarizing the HINTS dataset results
 
 Because there are quite a lot of results here, we should probably summarize them in a table.
 
-
 ```{r}
 save.image(file="sequential_boot_10.Rdata")
 ```
-
-
-
 
 ```{r}
 p_value_asterisks<-function(pvalue){
@@ -467,15 +450,9 @@ library(papaja)
 library(kableExtra)
 ```
 
-
-
-
-
-
 ```{r}
 library(dplyr)
 ```
-
 
 ```{r}
 
@@ -511,11 +488,6 @@ kable_input %>%
 
 # Summarizing the hybrid dataset results
 
-
-
-
-
-
 ```{r}
 
 
@@ -535,3 +507,95 @@ kable_input %>%
 
 
 ```
+
+# Investigating additional factors
+
+## household income
+
+We probably could get household income from ORFCS because we have ZIP codes. First we need to get some mean data...
+
+```{r}
+orfcs_dataset_pp$ZipcodeMedianHouseholdIncome_c <- 
+  orfcs_dataset_pp$ZipcodeMedianHouseholdIncome - mean(orfcs_dataset_pp$ZipcodeMedianHouseholdIncome,na.rm=TRUE)
+
+orfcs_dataset_pp$ZipcodeMedianHouseholdIncome_z <- 
+  zscore(orfcs_dataset_pp$ZipcodeMedianHouseholdIncome)
+```
+
+now we have it...
+
+```{r}
+#TREAT=HINTSIsRural_i
+#m1=IncomeRanges_r
+#m2=Fruit_vegetables_z
+#OUTCOME=MedConditions_HighBP_i
+
+
+# mb <- lm(MESA_healthyfoodavailability_z~RuralZIP_i+Gender3C+DEMO_Age_c+RaceC2+PSS_z,data_to_measure)
+# mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+RaceC2+MESA_healthyfoodavailability_z+PSS_z,data_to_measure)
+
+# [1] "RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported + RaceC2_WhiteOnly"
+# [1] "Gender3C_Female + Gender3C_Male + Gender3C_Other"
+
+#NEXT TO DO: DEAL WITH CATEGORICAL DATA. GUIDE HERE: https://lavaan.ugent.be/tutorial/cat.html
+oregon_model_with_zipinc=
+"
+  #Regressions
+  ZipcodeMedianHouseholdIncome_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  MESA_healthyfoodavailability_z ~ bc*ZipcodeMedianHouseholdIncome_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*ZipcodeMedianHouseholdIncome_z + ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*ZipcodeMedianHouseholdIncome_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  
+  #Defined Parameters:
+  indirect_effect := ab*bc*cd*de
+  d_rural_food_availability := ac
+  id_rural_food_availability := ab*bc
+  rural_inc_consump := ab*bd*de
+  direct_effect := ae
+"
+
+# - Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
+
+outcome_measures <- c(
+  "BMI"#,
+  #"GeneralHealth_i",
+  #"MedConditionsAggregate",
+  #"MedConditions_HighBP_i",
+  #"EverHadCancer_i"#no cancer for now, doesn't seem very important.
+  )
+
+
+```
+
+So we built a simple model that replaces household income with ZIPCode Household Income. What does that look like?
+
+```{r}
+
+
+# for (outcome_var in outcome_measures){
+set.seed(8233042)
+outcome_var <- "BMI"
+oregon_model_w_outcome <- str_replace_all(oregon_model_with_zipinc,"\\(OUTCOMEVAR\\)",outcome_var)
+cat(paste0("MEDIATION MODEL FOR OUTCOME: ",outcome_var))
+cat(oregon_model_w_outcome)
+orfcs_fit=sem(
+  oregon_model_w_outcome,
+  orfcs_dataset_pp,
+  se = "bootstrap",
+  bootstrap=boot_times,
+  likelihood = "wishart")
+
+summary(orfcs_fit)
+  # cat("-----\n\n\n")
+# }
+```
+
+With this analysis I would tend to think we don't need to proceed to use Zipcode Median Household Income. It would tend to make the analysis more complicated, but what are the benefits? Primarily, it seems to be more strongly related to rurality (z=-14 for Zipcode household median income, compared to z=-4 for household income). However, it is not more strongly related to healthy food availability and SES. Finally, it is *less* strongly related to BMI; household income predicts BMI (z=-3.4) but zipcode median income does not (z=0.9). Because BMI is a variable of interest, or at least a proxy thereof, that seems to be the determining factor. If we include Zipcode Median household income, that will complicate the model without obvious benefit.
+
+## Hours worked
+
+Neither study records hours worked, although both record work status (full time/part time/unemployed). These would probably be predictive, but are not of particular interest, and I'm not aware of how we'd interpret this any differently to income, which is already included in the model.

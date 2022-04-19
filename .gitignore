@@ -8,4 +8,3 @@ authdata.R
 gen_credentials.Rmd
 gen_credentials.nb.html
 .DS_Store
-config.yml

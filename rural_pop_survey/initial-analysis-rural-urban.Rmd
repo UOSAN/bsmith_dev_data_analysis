@@ -6,7 +6,7 @@ output: html_notebook
 ```{r}
 cwd<-getwd()
 
-data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+data_dir <- "/Users/bensmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
 
 setwd(data_dir)
 

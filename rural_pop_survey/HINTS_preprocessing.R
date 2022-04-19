@@ -157,7 +157,18 @@ get_hints5 <- function(location = "/Users/benjaminsmith/Dropbox (University of O
   #note we're note including hte cancer diagnosis, which was pre-registered separately.
   hints5$MedConditionsAggregate <- rowSums(hints5 %>% dplyr::select(sapply(MedConditions_vars,function(x){paste0(x,"_i")})))
   
-  
+  hints5$EducationModified<-as.character(hints5$Education)
+  hints5$EducationModified[
+    hints5$Education %in% 
+      c("Post high school training other than college (vocational or ",
+        "Some college"
+        )]<-"Post high school training or some college"
+  hints5$EducationOrdinal <- factor(
+    hints5$EducationModified,
+    levels=c('Less than 8 years', '8 through 11 years', '12 years or completed high school', 
+             'Post high school training or some college', 'College graduate', 'Postgraduate'),
+    ordered = TRUE
+    )
   
   return(hints5)
 }
