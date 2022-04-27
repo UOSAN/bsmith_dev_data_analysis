@@ -617,7 +617,7 @@ ggplot(data_by_ppt,aes(DEMO_mcarthur_social_standing,data_by_ppt$cancer_promotin
 correlational_items <- c(IVs,DVs)
 
 corrplot::corrplot(cor(data_by_ppt[,correlational_items],use = "pairwise.complete.obs"),
-method="number",type="upper",diag=FALSE,tl.srt=35,tl.cex=0.8,cl.cex=0.8,number.cex=0.8,order="hclust")
+method="number",type="upper",diag=FALSE,tl.srt=35,tl.cex=2.8,cl.cex=2.8,number.cex=2.8,order="hclust")
 
 
 ```

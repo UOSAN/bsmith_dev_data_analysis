@@ -11,6 +11,7 @@ Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 library(dplyr)
 library(lavaan)
 source("HINTS_preprocessing.R")
+source("orfcs_utilities.R")
 hints5 <-get_hints5(location=config::get("hints_protected_data_folderpath"))
 boot_times<-100
 
@@ -245,9 +246,9 @@ oregon_model_template=
   
   #Defined Parameters:
   indirect_effect := ab*bc*cd*de
-  d_rural_food_availability := ac
-  id_rural_food_availability := ab*bc
-  rural_inc_consump := ab*bd*de
+  effect_via_food := ac*cd*de
+  effect_via_income := ab*be
+  effect_via_inc_eating := ab*bd*de
   direct_effect := ae
 "
 
@@ -322,34 +323,7 @@ lavaan_results_df <- do.call(rbind,lavaan_results_list)
 ```
 
 ```{r}
-extract_and_label_bootstrap_results<-function(fit_obj,rows){
-  fit_to_read <- fit_obj
-  #sink("temp_diversion.txt")
-  fit_pe<-summary(fit_to_read)$PE
-  #sink(NULL)
-  # print(summary(fit_to_read))
-  
-  print(nrow(fit_pe))
-  fit_pe$index<-1:nrow(fit_pe)
-  labelled_coefficients <- fit_pe %>% filter(label!="")
-  
-  row_ids_to_fetch <- labelled_coefficients$index[1:rows]
-  
-  fit_to_read_coef<-fit_to_read@boot$coef
-  
-  print(dim(fit_to_read_coef))
-  
-  bootstrap_results<-fit_to_read_coef[,row_ids_to_fetch]
-  
-  colnames(bootstrap_results)<-labelled_coefficients$label[1:rows]
-  return(bootstrap_results)
-}
 
-
-
-get_two_tailed_score <- function(z_score){
-  return((1-pnorm(abs(z_score)))*2)
-}
 
 summarize_calculated_effect <- function(effect_vector){
     effect_mean <- mean(effect_vector)
@@ -372,14 +346,14 @@ summarize_calculated_effect <- function(effect_vector){
     #cat("\n")
   }
 
-orfcs_boot<-extract_and_label_bootstrap_results(orfcs_fit,10)
+orfcs_boot<-extract_and_label_bootstrap_results(orfcs_fit)
 colnames(orfcs_boot)<-
   paste0("orfcs_",colnames(orfcs_boot))
 
 hybrid_effect_list <-list()
 for (effect_name in names(hints_fits_by_outcome)){
   cat(paste0("HYBRID INDIRECT EFFECT FOR: ",effect_name,"\n\n"))
-  hints_boot <-extract_and_label_bootstrap_results(hints_fits_by_outcome[[effect_name]],6)
+  hints_boot <-extract_and_label_bootstrap_results(hints_fits_by_outcome[[effect_name]])
   # sink("temp_diversion.txt")
   # lavaan_computed_indirect_effect <- (
   #   summary(hints_fits_by_outcome[[effect_name]])$PE %>% filter(label=="indirect_effect")
@@ -406,8 +380,12 @@ for (effect_name in names(hints_fits_by_outcome)){
   
   cat("Hybrid indirect effect:\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, orfcs_bc,orfcs_cd, hints_cd),1,prod)
-    
   hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
+  
+  cat("Hybrid effect via food availability and consumption:\n ")
+  hybrid_indirect_effect <- apply(combined_boot_results %>% select(orfcs_ac,orfcs_cd, hints_cd),1,prod)
+  hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
+  
   hie_result$outcome<-effect_name
   hybrid_effect_list<-append(hybrid_effect_list,list(hie_result))
   cat("---------\n\n\n")

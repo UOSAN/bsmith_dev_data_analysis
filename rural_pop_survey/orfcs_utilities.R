@@ -193,3 +193,77 @@ get_demo_data <- function(demo_data_long,acs_income_path){
 zscore <- function(x){
   return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
 }
+
+
+
+extract_and_label_bootstrap_results<-function(fit_obj){
+  fit_to_read <- fit_obj
+  #sink("temp_diversion.txt")
+  fit_pe<-summary(fit_to_read)$PE
+  #sink(NULL)
+  
+  #the main purpose of this function is that we have to select only the "base" labelled coefficients and not the derived ones.
+  
+  print(nrow(fit_pe))
+  fit_pe$index<-1:nrow(fit_pe)
+  labelled_coefficients <- fit_pe %>% filter(label!="")
+  
+  #get the coefficients
+  fit_to_read_coef<-fit_to_read@boot$coef
+  #find out how many there are
+  max_rows_estimated = dim(fit_to_read_coef)[2]
+  print(dim(fit_to_read_coef))
+  
+  #only get the rows where we actually have estimates
+  labelled_coefficients_with_estimates <- labelled_coefficients[labelled_coefficients$index<=max_rows_estimated,]
+  
+  row_ids_to_fetch <- labelled_coefficients_with_estimates$index #labelled_coefficients$index[1:rows]
+  
+  bootstrap_results<-fit_to_read_coef[,row_ids_to_fetch]
+  
+  colnames(bootstrap_results)<-labelled_coefficients_with_estimates$label
+  return(bootstrap_results)
+}
+
+
+
+get_two_tailed_score <- function(z_score){
+  return((1-pnorm(abs(z_score)))*2)
+}
+
+summarize_calculated_effect <- function(effect_vector){
+  effect_mean <- mean(effect_vector)
+  effect_se <- sd(effect_vector)
+  #the z-value here is exactly what lavaan displays.
+  #it's going to be a bit different
+  #because the mean and se I get are both a bit different for reasons that are unclear to me.
+  effect_z_value <- effect_mean/effect_se
+  effect_p_value <- get_two_tailed_score(effect_z_value)
+  
+  cat(paste("Estimate=",signif(effect_mean,4),", Std. Err=",signif(effect_se,4),", z-value=",signif(effect_z_value,4), ", p-value=",signif(effect_p_value,4)))
+  cat("\n")
+  
+  return(data.frame(
+    "est"=effect_mean,
+    "se"=effect_se,
+    "pvalue"=effect_p_value
+  ))
+  #print(t.test(hybrid_indirect_effect))
+  #cat("\n")
+}
+
+p_value_asterisks<-function(pvalue){
+  p_value_asterisks_by_scalar <- function(pvalue){
+    if (pvalue<0.001){
+      return("***")
+    }else if (pvalue<0.01){
+      return("**")
+    }else if (pvalue<0.05){
+      return("*")
+    }else if (pvalue<0.1){
+      return("+")
+    }
+    return("")
+  }
+  return(sapply(pvalue,p_value_asterisks_by_scalar))
+}
