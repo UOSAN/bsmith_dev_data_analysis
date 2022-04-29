@@ -32,10 +32,10 @@ low income women, particularly low income women head of households, are of parti
 
 
 ```{r}
-table(orfcs_dataset$RuralZIP_i,
-      orfcs_dataset$Gender3C,
-      orfcs_dataset$RaceCategorical=="HispanicAnyRace"
-      )
+# table(orfcs_dataset$RuralZIP_i,
+#       orfcs_dataset$Gender3C,
+#       orfcs_dataset$RaceCategorical=="HispanicAnyRace"
+#       )
 ```
 
 
