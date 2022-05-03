@@ -258,18 +258,23 @@ oregon_model_template=
   #Regressions
   aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  PSS_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  MESA_healthyfoodavailability_z ~ cd*PSS_z + bd*aSES_02_z + ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  FFQ_fruit_vegetables_z ~ de*MESA_healthyfoodavailability_z + ce*PSS_z + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ ef*FFQ_fruit_vegetables_z + df*MESA_healthyfoodavailability_z + cf*PSS_z + bf*aSES_02_z + af*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
   
   #Defined Parameters:
-  indirect_effect := ab*bc*cd*de
-  effect_via_food := ac*cd*de
-  effect_via_income := ab*be
-  effect_via_inc_eating := ab*bd*de
+  indirect_effect := ab*bc*cd*de*ef
+  effect_via_stress_eating := ac*ce*ef
+  effect_via_inc_stress_eating := ab*bc*ce*ef
+  effect_via_stress := ac*cf
+  effect_via_food := ad*de*ef
+  effect_via_income := ab*bf
+  effect_via_inc_food := ab*bd*de*ef
   effect_via_eating := ad*de
   direct_effect := ae
 "
