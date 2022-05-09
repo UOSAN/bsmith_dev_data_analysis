@@ -275,7 +275,7 @@ oregon_model_template=
   effect_via_food := ad*de*ef
   effect_via_income := ab*bf
   effect_via_inc_food := ab*bd*de*ef
-  effect_via_eating := ad*de
+  effect_via_inc_eating := ab*be*ef
   direct_effect := ae
 "
 
@@ -319,6 +319,7 @@ summary(orfcs_fit)
 
 ```
 
+PSS is profoundly uninteresting as a mediator here. lol. 
 # Hybrid: three mediators
 
 This follows Hayes PROCESS Model 6 with THREE mediators. We need to somehow manually combine the two datasets by multiplying effects. Need to follow bootstrap analysis, which means we need to extract raw bootstrap results and combine them. I'm not sure it's feasible, but it would be quite valuable to do.
