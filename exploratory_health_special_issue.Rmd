@@ -7,6 +7,8 @@ output:
 
 
 ```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+
 #install.packages("tidystats")
 library(stringr)
 library(dplyr)
@@ -14,8 +16,8 @@ library(ggplot2)
 library(rstatix)
 data_path <- "../../../files/data/"
 
-load("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/scored_data_w_demographics.RData")
-dropbox_file_dir = "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+load(paste0(config::get("dev_analysis_data_dir"),"scored_data_w_demographics.RData"))
+dropbox_file_dir = config::get("dev_analysis_data_dir")
 scored<-scored_with_demographics
 rm(scored_with_demographics)
 scored$score <- as.numeric(scored$score)

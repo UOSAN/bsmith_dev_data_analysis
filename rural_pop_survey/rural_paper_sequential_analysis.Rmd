@@ -30,16 +30,12 @@ weight physical activity and food intake
 
 low income women, particularly low income women head of households, are of particular concern, and possibly hispanic women
 
-
 ```{r}
-table(orfcs_dataset$RuralZIP_i,
-      orfcs_dataset$Gender3C,
-      orfcs_dataset$RaceCategorical=="HispanicAnyRace"
+#table(orfcs_dataset$RuralZIP_i,
+#      orfcs_dataset$Gender3C,
+#      orfcs_dataset$RaceCategorical=="HispanicAnyRace"
       )
 ```
-
-
-
 
 ```{r}
 table(hints5$GeneralHealth_of) %>% cumsum / sum(!is.na(hints5$GeneralHealth_of))
@@ -558,6 +554,7 @@ oregon_model_with_zipinc=
   indirect_effect := ab*bc*cd*de
   d_rural_food_availability := ac
   id_rural_food_availability := ab*bc
+  effect_via_income := ab*be
   rural_inc_consump := ab*bd*de
   direct_effect := ae
 "
@@ -598,8 +595,356 @@ summary(orfcs_fit)
 # }
 ```
 
+
+
+```{r mediation2}
+set.seed(2498714)
+
+library(mediation)
+
+data_to_measure <- orfcs_dataset %>% dplyr::filter(!is.na(BMI)) %>% dplyr::filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
+
+#Rurality -> Income -> BMI
+
+
+mb <- lm(aSES_02_z~RuralZIP_i+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceC2+PSS_z#+
+         ,data_to_measure)
+mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceC2+aSES_02_z+PSS_z#+
+         ,data_to_measure)
+
+mediate_result <- mediate(mb,mc,sims=boot_times,boot=TRUE,boot.ci.type = "bca",
+                          treat="RuralZIP_i",mediator="aSES_02_z")
+summary(mediate_result)
+plot(mediate_result)
+
+summary(mc)
+```
+
+
+
+
+```{r mediation2}
+set.seed(2498714)
+
+library(mediation)
+
+data_to_measure <- orfcs_dataset %>% dplyr::filter(!is.na(BMI)) %>% dplyr::filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
+
+#Rurality -> Income -> BMI
+
+mb <- lm(ZipcodeMedianHouseholdIncome~RuralZIP_i+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceC2+PSS_z#+
+         ,data_to_measure)
+mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceC2+ZipcodeMedianHouseholdIncome+PSS_z#+
+         ,data_to_measure)
+
+mediate_result <- mediate(mb,mc,sims=boot_times,boot=TRUE,boot.ci.type = "bca",
+                          treat="RuralZIP_i",mediator="ZipcodeMedianHouseholdIncome")
+summary(mediate_result)
+plot(mediate_result)
+
+summary(mc)
+```
+
+
 With this analysis I would tend to think we don't need to proceed to use Zipcode Median Household Income. It would tend to make the analysis more complicated, but what are the benefits? Primarily, it seems to be more strongly related to rurality (z=-14 for Zipcode household median income, compared to z=-4 for household income). However, it is not more strongly related to healthy food availability and SES. Finally, it is *less* strongly related to BMI; household income predicts BMI (z=-3.4) but zipcode median income does not (z=0.9). Because BMI is a variable of interest, or at least a proxy thereof, that seems to be the determining factor. If we include Zipcode Median household income, that will complicate the model without obvious benefit.
 
 ## Hours worked
 
 Neither study records hours worked, although both record work status (full time/part time/unemployed). These would probably be predictive, but are not of particular interest, and I'm not aware of how we'd interpret this any differently to income, which is already included in the model.
+
+# Pruning/regularization
+
+We can cut the dataset down, and perhaps observe slightly larger effects, by cutting the dataset down to size. Suitable rules might be:
+
+-   Include all possible pathways to start with
+
+-   Of the beta estimates with p\>0.1 and which are not part of a p\>0.1 pathway, remove the least significant
+
+-   Test for goodness of fit. If it's an improvement, keep variable out and repeat. If it's not an improvement, keep it in and repeat
+
+-   Repeat until there are no variables to take out.
+
+-   
+
+    ```{r}
+oregon_full_model_template=
+"
+  #Regressions
+  aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  
+  #Defined Parameters:
+  indirect_effect := ab*bc*cd*de
+  #cut one parameter
+  effect_abce :=ab*bc*ce #makes no particular theoretical sense but for regularization rules, I want to observe it
+  effect_via_food := ac*cd*de
+  effect_via_inc_eating := ab*bd*de
+  #cut two parameters
+  effect_via_income := ab*be
+  effect_ace := ac*ce
+  effect_via_eating := ad*de
+  #cut all mediators
+  direct_effect := ae
+"
+
+# - Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
+
+outcome_measures <- c(
+  "BMI"#,
+  #"GeneralHealth_i",
+  #"MedConditionsAggregate",
+  #"MedConditions_HighBP_i",
+  #"EverHadCancer_i"#no cancer for now, doesn't seem very important.
+  )
+
+
+
+    ```
+
+
+
+OK, so we have set a full model. Let's run the base full model in SEM and follow the steps above to do the first pruning iteration.
+
+
+```{r}
+library(performance)
+
+# for (outcome_var in outcome_measures){
+set.seed(8233042)
+outcome_var <- "BMI"
+oregon_model_w_outcome <- str_replace_all(oregon_full_model_template,"\\(OUTCOMEVAR\\)",outcome_var)
+cat(paste0("MEDIATION MODEL FOR OUTCOME: ",outcome_var))
+cat(oregon_model_w_outcome)
+orfcs_fit_full=sem(
+  oregon_model_w_outcome,
+  orfcs_dataset_pp,
+  se = "bootstrap",
+  bootstrap=boot_times,
+  likelihood = "wishart")
+
+summary(orfcs_fit_full,fit.measures=TRUE)
+  # cat("-----\n\n\n")
+# }
+
+
+
+```
+```{r}
+model_performance(orfcs_fit_full,metrics = c("Chi2","AGFI","CFI","RMSEA","p_RMSEA","AIC","BIC","Loglikelihood"))
+```
+
+OK. So now, let's try removing something. Of the model variables, ce was the least significant. That's the path directly from availability to outcomes, excluding consumption. So we'll remove it, and try again.
+
+## first pruning
+
+
+    ```{r}
+oregon_model_template_prune1=
+"
+  #Regressions
+  aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z #+ ce*MESA_healthyfoodavailability_z 
+               + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  
+  #Defined Parameters:
+  indirect_effect := ab*bc*cd*de
+  #cut one parameter
+  #effect_abce :=ab*bc*ce #makes no particular theoretical sense but for regularization rules, I want to observe it
+  effect_via_food := ac*cd*de
+  effect_via_inc_eating := ab*bd*de
+  #cut two parameters
+  effect_via_income := ab*be
+  #effect_ace := ac*ce
+  effect_via_eating := ad*de
+  #cut all mediators
+  direct_effect := ae
+"
+    
+```
+
+
+```{r}
+
+# for (outcome_var in outcome_measures){
+set.seed(8233042)
+outcome_var <- "BMI"
+oregon_model_w_outcome <- str_replace_all(oregon_model_template_prune1,"\\(OUTCOMEVAR\\)",outcome_var)
+cat(paste0("MEDIATION MODEL FOR OUTCOME: ",outcome_var))
+cat(oregon_model_w_outcome)
+orfcs_fit_prune1=sem(
+  oregon_model_w_outcome,
+  orfcs_dataset_pp,
+  se = "bootstrap",
+  bootstrap=boot_times,
+  likelihood = "wishart")
+
+summary(orfcs_fit_prune1)
+  # cat("-----\n\n\n")
+# }
+
+```
+
+```{r}
+compare_performance(orfcs_fit_full,orfcs_fit_prune1,metrics = c("Chi2","AGFI","CFI","RMSEA","p_RMSEA","AIC","BIC","Loglikelihood"))
+```
+
+OK, the model looks good, and on BIC, the pruned model is an improvement. so let's cut out another variable.
+
+Examinig the data, the next one to cut is bd, linking income to eating behavior (bypassing food availability). This is in one pathway, "effect via income and eating", and that pathway is not significant (p>0.1). So we remove it and try again.
+
+## Second pruning
+
+
+    ```{r}
+oregon_model_template_prune2=
+"
+  #Regressions
+  aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + #bd*aSES_02_z + 
+                            ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z #+ ce*MESA_healthyfoodavailability_z 
+               + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  
+  #Defined Parameters:
+  indirect_effect := ab*bc*cd*de
+  #cut one parameter
+  #effect_abce :=ab*bc*ce #makes no particular theoretical sense but for regularization rules, I want to observe it
+  effect_via_food := ac*cd*de
+  #effect_via_inc_eating := ab*bd*de
+  #cut two parameters
+  effect_via_income := ab*be
+  #effect_ace := ac*ce
+  effect_via_eating := ad*de
+  #cut all mediators
+  direct_effect := ae
+"
+    
+```
+
+
+```{r}
+
+# for (outcome_var in outcome_measures){
+set.seed(8233042)
+outcome_var <- "BMI"
+oregon_model_w_outcome <- str_replace_all(oregon_model_template_prune2,"\\(OUTCOMEVAR\\)",outcome_var)
+cat(paste0("MEDIATION MODEL FOR OUTCOME: ",outcome_var))
+cat(oregon_model_w_outcome)
+orfcs_fit_prune2=sem(
+  oregon_model_w_outcome,
+  orfcs_dataset_pp,
+  se = "bootstrap",
+  bootstrap=boot_times,
+  likelihood = "wishart")
+
+summary(orfcs_fit_prune2)
+  # cat("-----\n\n\n")
+# }
+
+```
+
+```{r}
+compare_performance(orfcs_fit_full,orfcs_fit_prune1,orfcs_fit_prune2,metrics = c("Chi2","AGFI","CFI","RMSEA","p_RMSEA","AIC","BIC","Loglikelihood"))
+```
+
+The next pruning again looks like an improvement on BIC and mabye on AIC. So we can proceed to a third pruning. Direct effect of rurality on eating, `ad`, isn't significant, and neither is the path that uses it. So we can eliminate it and try again.
+
+## Third pruning
+
+
+    ```{r}
+oregon_model_template_prune3=
+"
+  #Regressions
+  aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + #bd*aSES_02_z + ad*RuralZIP_i + 
+                          DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z #+ ce*MESA_healthyfoodavailability_z 
+               + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  
+  #Defined Parameters:
+  indirect_effect := ab*bc*cd*de
+  #cut one parameter
+  #effect_abce :=ab*bc*ce #makes no particular theoretical sense but for regularization rules, I want to observe it
+  effect_via_food := ac*cd*de
+  #effect_via_inc_eating := ab*bd*de
+  #cut two parameters
+  effect_via_income := ab*be
+  #effect_ace := ac*ce
+  #effect_via_eating := ad*de
+  #cut all mediators
+  direct_effect := ae
+"
+    
+```
+
+
+```{r}
+
+# for (outcome_var in outcome_measures){
+set.seed(8233042)
+outcome_var <- "BMI"
+cat(paste0("MEDIATION MODEL FOR OUTCOME: ",outcome_var))
+cat(oregon_model_w_outcome)
+orfcs_fit_prune3=sem(
+oregon_model_w_outcome <- str_replace_all(oregon_model_template_prune3,"\\(OUTCOMEVAR\\)",outcome_var)
+  oregon_model_w_outcome,
+  orfcs_dataset_pp,
+  se = "bootstrap",
+  bootstrap=boot_times,
+  likelihood = "wishart")
+
+summary(orfcs_fit_prune3,fit.measures=TRUE)
+  # cat("-----\n\n\n")
+# }
+
+```
+
+```{r}
+compare_performance(
+  orfcs_fit_full,
+  orfcs_fit_prune1,
+  orfcs_fit_prune2,
+  orfcs_fit_prune3,
+  metrics = c("Chi2","AGFI","CFI","RMSEA","p_RMSEA","AIC","BIC","Loglikelihood"))
+```
+
+At least according to BIC, this model is a better fit. All remaining path variables are significant, and remaining paths are either significant or marginally significant, so that's as far as it goes.
+
+
+Knowing all of this, perhaps it's not a big deal for the HINTS dataset that it doesn't have separate variables for consumption and availability. they seem quite related.
+
+
+
+
+
+```{r}
+0.718/sd(hints5$IncomeRanges_r,na.rm = TRUE)
+```
+
+
+
+
+

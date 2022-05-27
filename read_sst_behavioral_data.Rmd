@@ -15,11 +15,18 @@ knitr::opts_chunk$set(echo = TRUE)
 library(R.matlab)#install.packages("R.matlab")
 library(dplyr)
 library(stringr)
-data_path <- "../../../files/data/"
-dropbox_path <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab"
+
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+
+#data_path <- "../../../files/data/"
+data_path <-config::get("dev_analysis_data_dir")
+
+
+
+dropbox_path <- config::get("dropbox_path")
 sst_on_dropbox <- paste0(dropbox_path, "/Berkman Lab/Devaluation/Tasks/SST_DEV")
 
-input_mat_path = "/Users/benjaminsmith/Google Drive/oregon/preprocessing/DEV_scripts/fMRI/fx/multiconds/SST/conditions/"
+input_mat_path =config::get("input_mat_path")
 ```
 
 
@@ -88,7 +95,7 @@ library(stringr)
 study_df <- NULL
 for (fname in fname_list){
   print(fname)
-  run_mat_file <- readMat(paste0(behavioral_data_filepath,fname))
+  run_mat_file <- readMat(paste0(behavioral_data_filepath,"/",fname))
   run_df <- get_run_df(run_mat_file)
   finfo <- str_match(fname,"(DEV\\d{3})_(\\d)_SST(\\d)")
   subid <- finfo[,2]
@@ -113,6 +120,7 @@ for (fname in fname_list){
 
 
 ```{r}
+stop("need to re-write this to access reaction time, not duraiton. I think we have it somewhere, not sure where.")
 readr::write_csv(study_df,file = paste0(data_path,"sst_behavioral_data_all.csv"))
 ```
 
