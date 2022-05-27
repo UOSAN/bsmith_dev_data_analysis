@@ -20,6 +20,22 @@ zscore <- function(x){
 }
 ```
 
+
+```{r}
+table(orfcs_dataset$RuralZIP_i,
+      orfcs_dataset$Gender3C,
+      orfcs_dataset$RaceCategorical=="HispanicAnyRace"
+      )
+```
+
+
+```{r}
+sapply(c("Metropolitan", "Micropolitan", "Small town", "Rural"),
+       function(cat){sum(grepl(cat,hints5$PR_RUCA_2010))}
+       )
+```
+
+
 what's the variability between men and women
 
 including exercise or energy expenditure
