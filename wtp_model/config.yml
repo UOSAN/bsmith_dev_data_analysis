@@ -1,0 +1,23 @@
+default:
+  hints_protected_data_folderpath: /Users/bensmith/Dropbox (University of Oregon)/protected_files_ben_only/protected_HINTS_data
+  rubric_dir: /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/DEV_scoring_rubrics
+  dev_analysis_data_dir: /Users/bensmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/
+  qualtrics_credentials: ~/qualtrics_credentials.yaml  
+  dropbox_path: /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab
+  input_mat_path: /Users/bensmith/Documents/code/DEV_scripts/fMRI/fx/multiconds/SST/full_duration/conditions
+UO-2010763:
+  hints_protected_data_folderpath: /Users/bensmith/Dropbox (University of Oregon)/protected_files_ben_only/protected_HINTS_data
+  dev_analysis_data_dir: /Users/bensmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/
+  rubric_dir: /Users/bensmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/DEV_scoring_rubrics
+  qualtrics_credentials: ~/qualtrics_credentials.yaml
+  dropbox_path: /Users/bensmith/Dropbox (University of Oregon)/UO-SAN Lab
+  input_mat_path: /Users/bensmith/Documents/code/DEV_scripts/fMRI/fx/multiconds/SST/full_duration/conditions
+  dev_scripts_path: /Users/bensmith/Documents/code/DEV_scripts/
+Benjamins-MacBook-Pro-2.local:
+  dev_scripts_path: /Users/benjaminsmith/Google Drive/oregon/code/DEV_scripts/
+  hints_protected_data_folderpath: /Users/benjaminsmith/Dropbox (University of Oregon)/protected_files_ben_only/protected_HINTS_data
+  rural_data_dir: /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/
+  rubric_dir: /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/DEV_scoring_rubrics
+  qualtrics_credentials: ~/qualtrics_credentials.yaml  
+  dev_analysis_data_dir: /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/
+

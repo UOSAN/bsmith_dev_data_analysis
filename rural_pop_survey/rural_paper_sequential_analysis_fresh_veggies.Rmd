@@ -5,12 +5,6 @@ output:
     df_print: paged
 ---
 
-To run this script:
-1. Download HINTS 5 datasets from https://hints.cancer.gov/view-questions-topics/all-hints-questions.aspx to your data folder. Download all cycles of the data.
-2. In the data folder, unzip each dataset.
-3. Change the location parameter for the `get_hints5` call in the block below to point to your data folder.
-4. Run this script.
-
 ```{r message=FALSE, warning=FALSE}
 Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 
@@ -56,7 +50,7 @@ low income women, particularly low income women head of households, are of parti
 #table(orfcs_dataset$RuralZIP_i,
 #      orfcs_dataset$Gender3C,
 #      orfcs_dataset$RaceCategorical=="HispanicAnyRace"
-      )
+      #)
 ```
 
 ```{r}
@@ -164,13 +158,6 @@ summary(lm(
   MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Gender3C+filename
   ,hints5_pp))
 
-```
-
-
-```{r}
-summary(lm(
-  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Gender3C+filename
-  ,hints5_pp))
 ```
 
 ```{r}
@@ -283,11 +270,14 @@ oregon_model_template=
   #Regressions
   aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  #h
+  FFQ_HomegrownVegetables_ln ~ bh*aSES_02_z + ah*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + hc*FFQ_HomegrownVegetables_ln + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + hd*FFQ_HomegrownVegetables_ln + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*aSES_02_z + ae*RuralZIP_i + he*FFQ_HomegrownVegetables_ln + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
   
   #Defined Parameters:
@@ -296,6 +286,7 @@ oregon_model_template=
   effect_via_income := ab*be
   effect_via_inc_eating := ab*bd*de
   effect_via_eating := ad*de
+  homegrown_protective :=ah*hd*de
   direct_effect := ae
 "
 

@@ -1,0 +1,249 @@
+---
+title: "WTP Model first pass"
+output: html_notebook
+---
+
+This is a first-pass attempt to model willingness to pay data. Let's put the code together, WITHOUT testing the data, then consider pre-registration and then a test.
+
+What are we pre-registering? Something like:
+ - health and liking scores predict payment scores significantly better than either choice alone
+ - hunger ratings moderate liking, so that an interaction term can be observed between liking and hunger when predicting bid, indicating that liking is more important for predicting the bid score when participants are hungrier.
+ - hunger ratings also moderate the influence of health, so that an interaction can be observed between liking and hunger when predicting bids so that when participants are hungrier liking is less important
+
+To model these data, we'll use a multi-level model, where we predict individual bid based on health and liking score. At the participant level, we'll model hunger.
+
+Do we model any other participant factors? These might include:
+
+ - obesity level
+ - demographics (sex/gender, age, income)
+ - PSS
+
+With only ~200 subjects, we're probably under-specified to test _interactions_ with more than a couple of participant-level variables.
+
+Any other subject-level variables that might interact to predict greater predictivity of liking vs. health?
+
+self control
+ - impulsivity scale
+ - self control scale
+ - tempest self regulation scale for eating
+ - restraint scale
+ 
+food scarcity
+  - childhood financial security
+  - adult food security scale
+
+reward sensitivity
+ - Food Craving Inventory
+ 
+Food habits
+ - Food Frequency Inventory
+
+Before testing each of these we may want to run some sort of correlation on them to look at the correlations between the scales. If items are uncorrelated, we could include them together in a single regression. If they are correlated, we might want to avoid testing them together, test their interaction, or pick one scale over another to analyze.
+
+## Implementation
+
+### First: group-level predictors
+
+In linear modeling terms what we are looking for is a *varying slope*; the varying slope will have a *group-level predictor* (e.g., hunger).
+
+See Gelman & Hill, 12.6: group-level predictors; also 13.1.
+## three-level model
+http://www.alexanderdemos.org/Mixed5.html
+
+```{r eval=FALSE, echo=TRUE}
+bid ~ rt + healthiness + tastiness
+```
+
+We then add group (subject)
+
+
+```{r eval=FALSE, echo=TRUE}
+bid ~ rt + healthiness + tastiness + (1 | DEVID)
+```
+
+and then add a predictor by group for DEVID
+
+
+```{r eval=FALSE, echo=TRUE}
+bid ~ rt + healthiness + tastiness + subject_hunger + (1 | DEVID)
+```
+
+I think?????
+
+
+and then propose that it interacts with tastiness
+
+
+```{r eval=FALSE, echo=TRUE}
+bid ~ rt + healthiness + tastiness*subject_hunger + (1 | DEVID)
+```
+
+
+I have a feeling that hunger should be in the brackets like
+
+
+```{r eval=FALSE, echo=TRUE}
+bid ~ rt + healthiness + tastiness*subject_hunger + (1 + subject_hunger | DEVID)
+```
+
+or maybe even the interaction term, 
+
+
+
+```{r eval=FALSE, echo=TRUE}
+bid ~ rt + healthiness + tastiness*subject_hunger + (1 + tastiness:subject_hunger | DEVID)
+```
+
+but I don't see this done in the examples :/
+
+#try it out
+
+
+make some fake data....
+
+```{r}
+devid_vec=1:100
+session_run_num=c(4,2,2,2)
+
+run_length <- 16
+#runid_vec=c(4,2,2,2)
+healthiness_factors <- factor(c("unhealthy","healthy"))
+#tastiness_factors  <- 1:4
+health_vec = sample(rep(healthiness_factors,run_length/length(healthiness_factors)),size = run_length,replace = FALSE)
+set.seed(516)
+
+subject_level <- function(s){
+  subj_bias <- runif(1,-1,1)
+  subject_hunger <- runif(1,1,3)
+  subject_hunger_interaction_size <- rnorm(1,1,1)
+  subject_session_list <- lapply(1:session_run_num,function(x){session_level(x,subject_bid_bias = subj_bias,subject_hunger = subject_hunger, subject_hunger_interaction_size=subject_hunger_interaction_size)})
+  subject_session_df <- do.call("rbind",subject_session_list)
+  subject_session_df$devid<-s
+  return(subject_session_df)
+}
+
+session_level <- function(sessionid,subject_bid_bias,subject_hunger, subject_hunger_interaction_size){
+  session_bid_bias <- runif(1,-1,1) + subject_bid_bias
+  session_hunger <- runif(1,0,2) + subject_hunger
+  hunger_interaction_size <- rnorm(1,0,1) + subject_hunger_interaction_size
+  
+  this_session_run_num <- session_run_num[[sessionid]]
+  session_length <- this_session_run_num * run_length
+  subject_df <- data.frame(
+    "sessionid" = sessionid,
+    "trialid" = 1:session_length,
+    "runid" = rep(1:this_session_run_num,each=run_length),
+    "health_rating" = rep(health_vec,this_session_run_num),
+    "hunger" = session_hunger,
+    #"taste_rating" = round(min(max(,1),4))
+    #"taste_rating" = round(sapply(sapply(rnorm(n = length(trialid_vec) ,2.0 + subj_hunger/5,1),max,1),min,4))
+    "taste_rating" = round(sapply(sapply(rnorm(n = session_length ,2.5,1),max,1),min,4))
+    )
+  
+  subject_df$bid <- (1 + # group fixed effect intercept
+    session_bid_bias + #whether the subject makes large bids or not (intercept)
+      subject_df$taste_rating*rnorm(1,1,0.5) + #subject's taste rating for a specific food
+      #as.integer(subject_df$health_rating)*rnorm(1,1 + subj_hunger/5,0.5) +
+      as.integer(subject_df$health_rating)*rnorm(1,1,0.5) +
+            #cross-group health rating for a particular food, randomly varying by subject
+      subject_df$taste_rating*rnorm(1,1 + session_hunger/5,0.5) + #taste by hunger interaction, randomly varying by subject
+      #0.5*subj_bias*(subject_df$taste_rating + as.integer(subject_df$health_rating)) +
+      subject_df$hunger + 
+      rnorm(session_length,0,3) #random variance in bid
+  )
+  
+  subject_df$bid_no_interaction <- (1 + # group fixed effect intercept
+    session_bid_bias + #whether the subject makes large bids or not (intercept)
+      subject_df$taste_rating*rnorm(1,1,0.5) +#subject's taste rating for a specific food
+      #as.integer(subject_df$health_rating)*rnorm(1,1 + subj_hunger/5,0.5) +
+      as.integer(subject_df$health_rating)*rnorm(1,1,0.5) +
+            #cross-group health rating for a particular food, randomly varying by subject
+      #subject_df$taste_rating*rnorm(1,1 + subj_hunger/5,0.5) + #taste by hunger interaction, randomly varying by subject
+      #0.5*subj_bias*(subject_df$taste_rating + as.integer(subject_df$health_rating)) +
+      subject_df$hunger + 
+      rnorm(session_length,0,3) #random variance in bid
+  )
+  
+  
+  
+  return(subject_df)
+}
+
+
+
+group_data <- lapply(devid_vec,subject_level)
+
+wtp_fake_data <- do.call("rbind",group_data)
+
+#must have tried for half an hour to et this to work within the loop and it didn't...
+standardize<-function(x){return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))}
+
+
+wtp_fake_data$health_rating_norm <- standardize(as.integer(wtp_fake_data$health_rating))
+wtp_fake_data$taste_rating_norm <- standardize(wtp_fake_data$taste_rating)
+wtp_fake_data$hunger_norm <- standardize(wtp_fake_data$hunger)
+
+# wtp_fake_data_h1<-wtp_fake_data 
+# 
+# wtp_fake_data_h1$bid <- wtp_fake_data_h1$bid + wtp_fake_data$hunger*0.8
+
+wtp_fake_data$bid_norm <- standardize(wtp_fake_data$bid)
+wtp_fake_data$bid_no_interaction_norm <- standardize(wtp_fake_data$bid_no_interaction)
+#wtp_fake_data_h1$bid_norm <- standardize(wtp_fake_data_h1$bid)
+
+table(wtp_fake_data$taste_rating_norm)
+```
+
+
+
+We don't really care whether or not there are individual-level differences in the interaction between taste ratings and hunger norms. we just want to know, overall, whether they interact and whether modeling that interaction can make the model more predictive.
+
+In fact, individual-level differences in interaction between taste ratings and hunger norms don't make sense. there aren't individual-level differences because there's not an interaction ath the individual-level because there's only one hunger norm per subject. So it's nonsensical to include group-level variables in that bracket.
+
+
+
+```{r}
+library(lme4)
+
+model1 <- lme4::lmer(
+  bid_norm ~ health_rating_norm + taste_rating_norm + hunger_norm + 
+    (1 + taste_rating_norm + health_rating_norm + hunger_norm | devid) + 
+    (1 + taste_rating_norm + health_rating_norm | devid:sessionid),
+  wtp_fake_data
+  )
+summary(model1)
+
+#coef(model1)
+```
+
+```{r}
+
+model2 <- lme4::lmer(
+  bid_norm ~ health_rating_norm + taste_rating_norm*hunger_norm + 
+    (1 + taste_rating_norm + health_rating_norm + hunger_norm + taste_rating_norm:hunger_norm | devid) + 
+    (1 + taste_rating_norm + health_rating_norm | devid:sessionid),
+  wtp_fake_data
+  )
+
+summary(model2)
+
+
+```
+```{r}
+
+model3 <- lme4::lmer(
+  bid_norm ~ health_rating_norm*hunger_norm + taste_rating_norm*hunger_norm + 
+    (1 + taste_rating_norm + health_rating_norm + hunger_norm + taste_rating_norm:hunger_norm + health_rating_norm:hunger_norm | devid) + 
+    (1 + taste_rating_norm + health_rating_norm | devid:sessionid),
+  wtp_fake_data
+  )
+
+summary(model3)
+
+
+```
+
+```{r}
+anova(model1, model2, model3)
+```
+

@@ -1,0 +1,46 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is a notebook designed for understanding the data about hunger available in DEV.
+
+First let's take a look at the hunger data from redcap session 1 (the day of the first scan).
+
+```{r}
+
+
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+data_dir <- config::get("dev_analysis_data_dir")
+
+
+```
+
+```{r}
+
+setwd(paste0(data_dir,"hunger/"))
+
+source("DEV-Session1Data_R_2022-04-19_2347.r")
+```
+
+```{r}
+
+hist(data$hunger_1)
+```
+
+This looks like a reasonable distribution of data. So--are there useful things we can do with this to work on a multi-objective analysis of food craving? Let's:
+
+-   Go back and examine our objectives a little bit. What's "multi-objective" about this? Maybe read through notes from discussion with Steve.
+  - think about how each task might respond to hunger.
+  - SST. Hunger might increase the FailedStop errors in response to highly appetitive foods but not non-appetitive foods. The catch is that I don't think we have non-appetitive foods. It is possible that we could look at the different types of foods that people claim to enjoy, but that would require at least that SST has a variety of liked to non-liked foods.
+  - WTP. Likewise, hunger might increase the amount people are willing to pay for highly appetitive vs. not highly appetitive foods.
+  - So we would be observing a homeostatic modulation of incentive salience. That's fine and good. 
+  - If we knew *which* foods people had eaten before the scan, we could _theoretically_ observe a nutrition-specific homeostatic modulation of incentive salience (e.g., salt vs. sugar vs fat, or fat vs. protein vs. carbohydrates). This is where the diary data could be useful. But let's try to ignore the diary data. Are there useful multi-objective analyses we could use even without diary data?
+  - Another objective we could examine is hedonic utility from present consumption against identity-goal congruence related to avoiding unhealthy food. Specifically, participants have a goal to avoid unhealthy food; we know this because they are all signed up to the study to try to reduce their unhealthy food consumption. I don't think we have any sort of variance in their strength of desire or identity congruence to eat healthier.
+-   Look at whether it correlates with craving ratings at all. Consider pre-registering a plan before you go ahead with this.
+  - Do we have data about craving on the same day as we collected hunger data? Which session was this data collected in? Yes. It's same-day.
+ - Hedonic utility vs. health-goal. Assuming we have health data, but no homeostatic data, how might we use a multi-objective model to model the interaction between health goals and hedonic utility?
+ - Our model adds two goals, in this case, hedonic utility and health goals. For the salt paper, the insight was that apparently non-monotonic behavior could be broken up into two different monotonic, salience-modulated goals. Is there an apparently monotonic goal which could be broken up here?
+ - "Hunger" might be apparently monotonic, but we could break it up into sub-goals. Assuming equal levels of hunger, people who self-report, in general, greater craving for specific foods could be predicted to crave those foods more. In other words, as [general] hunger increases, relative craving or preference for particularly-preferred foods would increase even more. Absolute craving for _disliked_ foods would also increase, but less so. However, in this context, no one would be particularly surprised by that..
+ - Are we doing Pavlovian/model-based learning?
+ - Certainly the SST task has Pavlovian responding. There's an assignment to keep the task (press go with a go signal; do not press with a no-go signal) and there's a Pavlovian prediction of the food. so we have competing instrumental and Pavlovian responses.

@@ -1,0 +1,25 @@
+---
+title: "WTP Model first pass"
+output: html_notebook
+---
+
+This is a first-pass attempt to model willingness to pay data. Let's put the code together, WITHOUT testing the data, then consider pre-registration and then a test.
+
+
+
+```{r}
+library(dplyr)
+knitr::opts_chunk$set(echo = TRUE)
+data_path <- "../../../../files/data
+
+zscore <- function(x){
+    return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
+}
+```
+
+
+
+```{r}
+wtp_raw <- readr::read_csv(paste0(data_path, "wtp_behavdesign_clean.csv"))
+wtp_raw <- wtp_raw[,2:ncol(wtp_raw)]
+```
