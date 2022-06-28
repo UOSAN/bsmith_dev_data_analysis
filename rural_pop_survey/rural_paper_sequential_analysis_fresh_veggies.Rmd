@@ -3,14 +3,7 @@ title: "R Notebook"
 output:
   html_document:
     df_print: paged
-  pdf_document: default
 ---
-
-To run this script:
-1. Download HINTS 5 datasets from https://hints.cancer.gov/view-questions-topics/all-hints-questions.aspx to your data folder. Download all cycles of the data.
-2. In the data folder, unzip each dataset.
-3. Change the location parameter for the `get_hints5` call in the block below to point to your data folder.
-4. Run this script.
 
 ```{r message=FALSE, warning=FALSE}
 Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
@@ -20,7 +13,7 @@ library(lavaan)
 source("HINTS_preprocessing.R")
 source("orfcs_utilities.R")
 hints5 <-get_hints5(location=config::get("hints_protected_data_folderpath"))
-boot_times<-10000
+boot_times<-100
 
 zscore <- function(x){
     return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
@@ -57,7 +50,7 @@ low income women, particularly low income women head of households, are of parti
 #table(orfcs_dataset$RuralZIP_i,
 #      orfcs_dataset$Gender3C,
 #      orfcs_dataset$RaceCategorical=="HispanicAnyRace"
-#      )
+      #)
 ```
 
 ```{r}
@@ -165,13 +158,6 @@ summary(lm(
   MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Gender3C+filename
   ,hints5_pp))
 
-```
-
-
-```{r}
-summary(lm(
-  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Gender3C+filename
-  ,hints5_pp))
 ```
 
 ```{r}
@@ -284,11 +270,14 @@ oregon_model_template=
   #Regressions
   aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  #h
+  FFQ_HomegrownVegetables_ln ~ bh*aSES_02_z + ah*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + hc*FFQ_HomegrownVegetables_ln + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
-  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*aSES_02_z + ae*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + hd*FFQ_HomegrownVegetables_ln + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*aSES_02_z + ae*RuralZIP_i + he*FFQ_HomegrownVegetables_ln + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
   
   
   #Defined Parameters:
@@ -297,6 +286,7 @@ oregon_model_template=
   effect_via_income := ab*be
   effect_via_inc_eating := ab*bd*de
   effect_via_eating := ad*de
+  homegrown_protective :=ah*hd*de
   direct_effect := ae
 "
 
@@ -426,27 +416,20 @@ for (effect_name in names(hints_fits_by_outcome)){
   HINTS_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, hints_bc, hints_cd),1,prod)
   summarize_calculated_effect(HINTS_indirect_effect)
   
-  
   cat("Hybrid indirect effect:\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, orfcs_bc,orfcs_cd, hints_cd),1,prod)
   hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
-  hybrid_effect_set<-list("indirect_effect"=hie_result)
   
   cat("Hybrid effect via food availability and consumption:\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(orfcs_ac,orfcs_cd, hints_cd),1,prod)
   hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
-  hybrid_effect_set <- append(hybrid_effect_set,list("availability_consumption"=hie_result))
   
   cat("Hybrid effect via food consumption (independently of availability):\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(orfcs_ad,hints_cd),1,prod)
   hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
-  hybrid_effect_set <- append(hybrid_effect_set,list("consumption_alone"=hie_result))
   
-  hybrid_effect_set_df <- do.call(rbind,hybrid_effect_set)
-  hybrid_effect_set_df$outcome<-effect_name
-  hybrid_effect_set_df$pathway <- rownames(hybrid_effect_set_df)
-  
-  hybrid_effect_list<-append(hybrid_effect_list,list(hybrid_effect_set_df))
+  hie_result$outcome<-effect_name
+  hybrid_effect_list<-append(hybrid_effect_list,list(hie_result))
   cat("---------\n\n\n")
 
 }
@@ -464,15 +447,7 @@ On its face, this "hybrid effect" shows that if we assume relationships between 
 Because there are quite a lot of results here, we should probably summarize them in a table.
 
 ```{r}
-save.image(file=paste0("sequential_boot_",as.character(boot_times),".Rdata"))
-#load(file="sequential_boot_10.Rdata")
-```
-
-
-```{r}
-library(dplyr)
-library(papaja)
-library(kableExtra)
+save.image(file="sequential_boot_10.Rdata")
 ```
 
 ```{r}
@@ -485,88 +460,48 @@ p_value_asterisks<-function(pvalue){
   }else if (pvalue<0.05){
     return("*")
   }else if (pvalue<0.1){
-    return("⁺")
+    return("+")
   }
   return("")
   }
   return(sapply(pvalue,p_value_asterisks_by_scalar))
 }
-
-
-formatB<-function(num,digits=digits){
-  #FormatBen
-  #return(str_replace(format(round(num,digits=digits),justify="right",scientific=FALSE)," ","&nbsp;"))
-  return(format(round(num,digits=digits),scientific=FALSE))
-}
-
-num_w_p <- function(num, pvalue,digits=2){
-  
-  return(paste0(formatB(num,digits=digits),p_value_asterisks(pvalue)))
-}
-#can use this function for all sorts of labels, not just a particular kind
-label_rename<-function(label){
-  #effect routes
-  label[label=="effect_via_fruit_vege_only"]<-"Via fruit and vegetable consumption"
-  label[label=="effect_via_inc_only"]<-"Via income only"
-  label[label=="availability_consumption"]<-"Via fruit and vegetable availability and consumption"
-  label[label=="consumption_alone"]<-"Via fruit and vegetable consumption alone"
-  
-  #Outcome labels
-  label[label=="GeneralHealth_i"] <- "Self-rated health"
-  label[label=="MedConditionsAggregate"] <- "Aggregate cardiometabolic health"
-  label[label=="MedConditions_HighBP_i"] <- "High blood pressure/hypertension"
-  label[label=="EverHadCancer_i"] <- "Ever had cancer"
-  #BMI"                    "GeneralHealth_i"        "MedConditionsAggregate" "MedConditions_HighBP_i" "EverHadCancer_i"   
-  
-  
-  #misc
-  label <- sapply(
-    label,
-    function(l){
-      if(l=="BMI") return(l)
-      return(str_replace_all(l,"_"," ") %>% str_to_sentence)
-    }
-  )
-    
-  return(label)
-}
-
-
-
+library(papaja)
+library(kableExtra)
 ```
 
+```{r}
+library(dplyr)
+```
 
 ```{r}
+
+
 
 kable_input <- lavaan_results_df %>% filter(label %in% c(
     "indirect_effect",
   "direct_effect",
   "effect_via_inc_only",
   "effect_via_fruit_vege_only")) %>%
-  mutate(Pathway = label_rename(label),
-         Outcome = label_rename(outcome),
-         Estimate = num_w_p(est,pvalue,digits=4),
-         SE=formatB(se,digits=4)) %>%
-  arrange(outcome) %>%
-  select(Pathway, Outcome,Estimate,SE) %>% arrange(Pathway)
+  mutate(pv = p_value_asterisks(pvalue)) %>%
+  select(label, outcome,est,pv,se) %>% arrange(label,outcome)
 
 groups_df <- kable_input %>%
-  group_by(Pathway) %>% 
-    summarize(group_start=length(Pathway))
+  
+  group_by(label) %>% 
+    summarize(group_start=length(label))
 
 groups<-groups_df$group_start
-names(groups)<-groups_df$Pathway
+names(groups)<-groups_df$label
 
-kable_out <- kable_input %>% 
-  select(-Pathway) %>%
-  knitr::kable() %>% 
+kable_input %>% 
+  select(-label) %>%
+  knitr::kable(signif=3) %>% 
   kable_classic(full_width = F,html_font="Times New Roman") %>%
   pack_rows(index=groups)
   
 
-#knitr::asis_output(str_replace(kable_out,"\\+","\\^\\+"))
 
-kable_out
 
 
 ```
@@ -578,28 +513,14 @@ kable_out
 
 
 kable_input <- hybrid_effect_df %>%
-  #mutate(pv = p_value_asterisks(pvalue)) %>%
-  mutate(Pathway = label_rename(pathway),
-         Outcome = label_rename(outcome),
-         Estimate = num_w_p(est,pvalue,digits=4),
-         SE=formatB(se,digits=4)) %>%
-  select(Pathway, Outcome,Estimate,SE) %>% arrange(Pathway)
+  mutate(pv = p_value_asterisks(pvalue)) %>%
+  select(outcome,est,pv,se) %>% arrange(outcome)
 
-groups_df <- kable_input %>%
-  group_by(Pathway) %>% 
-    summarize(group_start=length(Outcome))
 
-groups<-groups_df$group_start
-names(groups)<-groups_df$Pathway
-
-rownames(kable_input)<-NULL
 kable_input %>% 
-  select(-Pathway) %>%
-  knitr::kable() %>% 
+  knitr::kable(signif=3) %>% 
   kable_classic(full_width = F,html_font="Times New Roman") %>%
-  
-  #pack_rows(index=c("indirect_effect"=nrow(kable_input)))
-  pack_rows(index=groups)
+  pack_rows(index=c("indirect_effect"=nrow(kable_input)))
   
 
 
@@ -722,7 +643,7 @@ summary(mc)
 
 
 
-```{r mediation3}
+```{r mediation2}
 set.seed(2498714)
 
 library(mediation)
@@ -1007,8 +928,8 @@ set.seed(8233042)
 outcome_var <- "BMI"
 cat(paste0("MEDIATION MODEL FOR OUTCOME: ",outcome_var))
 cat(oregon_model_w_outcome)
-oregon_model_w_outcome <- str_replace_all(oregon_model_template_prune3,"\\(OUTCOMEVAR\\)",outcome_var)
 orfcs_fit_prune3=sem(
+oregon_model_w_outcome <- str_replace_all(oregon_model_template_prune3,"\\(OUTCOMEVAR\\)",outcome_var)
   oregon_model_w_outcome,
   orfcs_dataset_pp,
   se = "bootstrap",

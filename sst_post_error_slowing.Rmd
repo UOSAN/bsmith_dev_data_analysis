@@ -3,18 +3,53 @@ title: "sst_post_error_slowing"
 output: html_notebook
 ---
 
+Steps:
+
+ - load file
+ - number each trial consecutively based on the onset time
+ - number the following trial for each trial
+ - merge the file with itself, merging each trial with its following trial
+ - for each measure the post-trial time for a correct result
  
-## About the Stop Signal Task
+
+ 
+ 
+ This paper probably has a good method, 'How to measure post-error slowing: A confound and a simple solution',
+ 
+ Look at their "simple solution", and follow the method there. https://www.sciencedirect.com/science/article/abs/pii/S0022249612000454
+ https://www.sciencedirect.com/science/article/pii/S0022249612000454
+ 
+ https://www.frontiersin.org/articles/10.3389/fpsyg.2014.00119/full
+ 
+ 
+ For the variables, see https://www.dropbox.com/scl/fi/acc3pmvb28b9swz0cnr82/Info-about-Stop-Signal-Task-Baseline-Analysis.docx?dl=0&rlkey=18mfzinj70pmuhdv8d00nh84e
+ found in /Berkman Lab/Devaluation/Papers/Frontiers - Health Special Issue
+ we should use: 
+        PostErrorSlowW1_mean
+        PostErrorSlowW1_median
+not sst_pes_limited
+ 
+ 
+## load file
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+sst_all_data_filepath <- "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/sst_behavioral_data_all.csv"
+
+sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+```
+```{r}
+library(dplyr)
+```
+
+ ## About the Stop Signal Task
  
 Task format 
 The participant must respond to an arrow stimulus, by selecting one of two options, depending on the direction in which the arrow points. If an audio tone is present, the subject must withhold making that response (inhibition). The test consists of two parts: In the first part, the participant is introduced to the test and told to select the left-hand button when they see a left-pointing arrow and the right-hand button when they see a right-pointing arrow. There is one block of 16 trials for the participant to practice this. In the second part, the participant is told to continue selecting the buttons when they see the arrows but, if they hear an auditory signal (a beep), they should withhold their response and not select the button. 
-
 Go task (e.g. press left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears) 
-
 Stop signal (e.g. a cross replacing the arrow OR a tone?) appears after a variable stop-signal delay (SSD), instructing participants to suppress the imminent go response.  
-
 Conceptualizes the ability to inhibit the response as a race between a Go- and a Stop process that are triggered by the presentation of the Go and Stop-signal, respectively. If the Go process finishes first, the response will be executed. If the Stop process finishes first, the response will be inhibited (Teichert, 2015).
-
 Condition Type
  1 CorrectGo (i.e. pressed left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears)
  2 FailedGo (i.e. did NOT press left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears)
@@ -22,60 +57,40 @@ Condition Type
  4 FailedStop: (i.e. Failed to suppressed the go response)
  
 ## Load file with participant data 
-
 ```{r}
-Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
-
-sst_all_data_filepath_current <- paste0(config::get("dev_analysis_data_dir"),"sst_behavioral_data_all.csv")
-sst_all_data_filepath_march <- paste0(config::get("dev_analysis_data_dir"),"sst_behavioral_data_all.3.7.22.csv")
-
-#sst_all_data_raw <- read.csv(file = "https://www.dropbox.com/s/0gj8fcxa06peq29/sst_behavioral_data_all.3.7.22.csv?dl=1", stringsAsFactors = FALSE, header = TRUE) # dropbox > DEV > Health special issue > 
-sst_all_data_raw <- read.csv(file = sst_all_data_filepath, stringsAsFactors = FALSE, header = TRUE)
-
-#Remove test trials
-sst_all_data_raw <- sst_all_data_raw[!grepl("DEV999", sst_all_data_raw$subid),]
+# sst_all_data_raw <- read.csv(file = "https://www.dropbox.com/s/0gj8fcxa06peq29/sst_behavioral_data_all.3.7.22.csv?dl=1", stringsAsFactors = FALSE, header = TRUE) # dropbox > DEV > Health special issue > 
+# #Remove test trials
+# sst_all_data_raw <- sst_all_data_raw[!grepl("DEV999", sst_all_data_raw$subid),]
 ```
-
-
 ## Calculating Post-Error Slowing
 We will examine post-error slowing. This will be calculated by subtracting the reaction time (RT) preceding a Stop-error trial from the trial following it and averaging these across all stop errors (i.e. higher scores reflect higher post-error slowing, a measure of adaptive behavioral adjustment).
-
 ## Step 1: Number each trial (per wave) consecutively based on the onset time
-
 ```{r}
 library(dplyr)
 #View(sst_all_data_raw)
-sst_all_data_raw <- sst_all_data_raw%>%group_by(subid,waveid,runid) %>% mutate(trial_id = seq_along(duration))
-
+sst_all_data_raw <- sst_all_data_raw%>%group_by(subid,waveid,runid) %>% mutate(trial_id = seq_along(reaction_time))
 ```
-
 ## Step 2: And duration for previous and next trials. No longer needed with new approach 
 ```{r}
 # Subtract the RT preceeding a Stop-error trial ("FailedStop") from the trial following it
 #library(dplyr)
 #sst_all_data_raw <- mutate(sst_all_data_raw, previous_duration = lag(duration, 2))
-
 #sst_all_data_raw <- mutate(sst_all_data_raw, next_duration = lead(duration, 2))
-
 #do a lead and lag by trial type - only look at those surrounded by CorrectGo
-
 #sst_all_data_raw <-  for (condition == "CorrectGo")
         #{mutate(sst_all_data_raw, previous_duration_limited = lag(duration, 2))}
-
 #sst_all_data_raw <- mutate(sst_all_data_raw, next_duration_limited = ifelse(condition == "CorrectGo", lead(duration, 2)))
-
 #sst_all_data_raw <- mutate(sst_all_data_raw, previous_duration_limited = lag(duration, 2, ifelse(condition == "CorrectGo")))
-
 #library(tidyverse)
 #sst_all_data_raw <- sst_all_data_raw %>%
         #mutate(
                 #previous_duration_limited = if_else(lag(condition, 2) == "CorrectGo",
                        #lag(duration, 2))) %>% 
   #fill(previous_duration_limited)
-
-write.csv(sst_all_data_raw,paste0(config::get("dev_analysis_data_dir"),"SST_Raw2.csv"), row.names = FALSE)
+write.csv(sst_all_data_raw,paste0(dropbox_file_dir,"SST_Raw2.csv"), row.names = FALSE)
         
 ```
+
 
 ```{r}
 #Create a column that returns a yes if the Correct Go comes after a Failed Stop
@@ -84,214 +99,160 @@ sst_all_data_raw$PostError_CorrectGo <- if_else( #If
     & sst_all_data_raw$waveid == "1" #and it is wave 1
     & lag(sst_all_data_raw$condition == "FailedStop", 2), # and the previous condition is a Failed Stop, (ignoring the Cue condition)
     "yes", "no" ) #label row "yes", otherwise, label it "no"
-
 #Create a column that returns a yes if the Correct Go comes after a Correct Go
 sst_all_data_raw$PostCorrect_CorrectGo <- if_else( #If 
     sst_all_data_raw$condition == "CorrectGo" #The condition is a Correct Go 
     & sst_all_data_raw$waveid == "1" #and it is wave 1
     & lag(sst_all_data_raw$condition == "CorrectGo", 2), # and the previous condition is a Correct Go, (ignoring the Cue condition)
     "yes", "no" ) #label row "yes", otherwise, label it "no"
-
 ```
-
 ##MEAN SCORES 
 ## Calculate average response time for each participant for 1) the Correct Gos that follow Failed Stops  
 ```{r}
 #1 POST-ERROR CORRECT GO TRIALS
 #Filter for only Correct Gos that are followed by Failed Stops
 sst_PECGonly <- filter(sst_all_data_raw, PostError_CorrectGo == "yes") #PECG refers to Post-Error Correct Go trials 
-
-write.csv(sst_PECGonly,paste0(config::get("dev_analysis_data_dir"),"SST_PEC.csv"), row.names = FALSE)
-
+write.csv(sst_PECGonly,paste0(dropbox_file_dir, "SST_PEC.csv"), row.names = FALSE)
 #Create a histogram to look for group of responses that reflect anticipatory responding (i.e. occur before reasonably possible to respond to the cue)
 library(ggplot2)
-psych::describe(sst_PECGonly$duration)
+psych::describe(sst_PECGonly$reaction_time)
 ggplot(data = sst_PECGonly) +
-  geom_histogram(aes(x = duration), bins = 50, binwidth=.01 , boundary=-0.1, fill = 'turquoise', color = 'black', ) + theme(
+  geom_histogram(aes(x = reaction_time), bins = 50, binwidth=.01 , boundary=-0.1, fill = 'turquoise', color = 'black', ) + theme(
     panel.background = element_rect(fill = "#BFD5E3", colour = "#6D9EC1",
                                 size = 2, linetype = "solid"),
     panel.grid.major = element_line(size = 0.5, linetype = 'solid',
                                 colour = "white"), 
     panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white")) + 
  scale_x_continuous(minor_breaks = seq(.05, 10, .05))
-
 #Remove all rows where duration is less than 25 MS. 
-sst_PECGonly <- subset(sst_PECGonly, duration>.25) 
-
+sst_PECGonly <- subset(sst_PECGonly, reaction_time>.25) 
 #Remove all rows where duration is greater than 1.25 MS. 
-sst_PECGonly <- subset(sst_PECGonly, duration<1.25) 
-
+sst_PECGonly <- subset(sst_PECGonly, reaction_time<1.25) 
 #Check that this occurred 
-psych::describe(sst_PECGonly$duration) #looks good 
-
+psych::describe(sst_PECGonly$reaction_time) #looks good 
 #Calculate the mean by participant for all Post-Error Correct Gos 
-sst_PECG_byPp <- sst_PECGonly %>% group_by(subid) %>% summarise(PECG_mean = mean(duration, na.rm=TRUE))
-
+sst_PECG_byPp <- sst_PECGonly %>% group_by(subid) %>% summarise(PECG_mean = mean(reaction_time, na.rm=TRUE))
 #2 POST-CORRECT CORRECT GO TRIALS
 #Filter for only Correct Gos that are preceeded and followed by Correct Gos
 sst_PCCGonly <- filter(sst_all_data_raw, PostCorrect_CorrectGo == "yes") #PCCG refers to Post-Correct Correct Go trials 
-
 library(ggplot2)
-psych::describe(sst_PCCGonly$duration)
-
+psych::describe(sst_PCCGonly$reaction_time)
 ggplot(data = sst_PCCGonly) +
-  geom_histogram(aes(x = duration), bins = 50, binwidth=.01 , boundary=-0.1, fill = 'turquoise', color = 'black', ) + theme(
+  geom_histogram(aes(x = reaction_time), bins = 50, binwidth=.01 , boundary=-0.1, fill = 'turquoise', color = 'black', ) + theme(
     panel.background = element_rect(fill = "#BFD5E3", colour = "#6D9EC1",
                                 size = 2, linetype = "solid"),
     panel.grid.major = element_line(size = 0.5, linetype = 'solid',
                                 colour = "white"), 
     panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white")) + 
  scale_x_continuous(minor_breaks = seq(.05, 10, .05))
-
 #Remove all rows where duration is less than 25 MS. 
-sst_PCCGonly <- subset(sst_PCCGonly, duration>.25)
-
+sst_PCCGonly <- subset(sst_PCCGonly, reaction_time>.25)
 #Remove all rows where duration is greater than 1.25 MS. 
-sst_PCCGonly <- subset(sst_PCCGonly, duration<1.25) 
-
+sst_PCCGonly <- subset(sst_PCCGonly, reaction_time<1.25) 
 #Check that this occurred 
-psych::describe(sst_PCCGonly$duration) #looks good
-
+psych::describe(sst_PCCGonly$reaction_time) #looks good
 ggplot(data = sst_PCCGonly) +
-  geom_histogram(aes(x = duration), bins = 50, binwidth=.01 , boundary=-0.1, fill = 'turquoise', color = 'black', ) + theme(
+  geom_histogram(aes(x = reaction_time), bins = 50, binwidth=.01 , boundary=-0.1, fill = 'turquoise', color = 'black', ) + theme(
     panel.background = element_rect(fill = "#BFD5E3", colour = "#6D9EC1",
                                 size = 2, linetype = "solid"),
     panel.grid.major = element_line(size = 0.5, linetype = 'solid',
                                 colour = "white"), 
     panel.grid.minor = element_line(size = 0.25, linetype = 'solid',colour = "white")) + 
  scale_x_continuous(minor_breaks = seq(.05, 10, .05))
-
 #Calculate the mean by participant for all Post-Correct Correct Gos 
-sst_PCCG_byPp <- sst_PCCGonly %>% group_by(subid) %>% summarise(PCCG_mean = mean(duration, na.rm=TRUE))
-
+sst_PCCG_byPp <- sst_PCCGonly %>% group_by(subid) %>% summarise(PCCG_mean = mean(reaction_time, na.rm=TRUE))
 ```
-
 ##Calculate the "Post-Error Slowing", here referring to the mean of Correct Go Trials following Failed Stops minus the mean of Correct Go Trials following Correct Go trials for each participant
 ```{r}
 #Create new dataset that adds a column with the PCCG_mean variable from the sst_PCCG_byPp dataframe to the sst_PECG_byPp dataframe based on subject id 
 sst_PES <- sst_PECG_byPp %>%
   left_join(dplyr::select(sst_PCCG_byPp, subid, PCCG_mean = PCCG_mean), by = 'subid') 
-
 sst_PES$PostErrorSlowW1_mean <-  sst_PES$PECG_mean - sst_PES$PCCG_mean #Behavioral adaptation (i.e. post-error slowing) is reflected by higher / more positive scores
-
 ```
-
 ##MEDIAN SCORES 
 ## Calculate average response time for each participant for 1) the Correct Gos that follow Failed Stops  
 ```{r}
 #Calculate the MEDIAN by participant for all Post-Error Correct Gos 
-sst_PECG_byPp_med <- sst_PECGonly %>% group_by(subid) %>% summarise(PECG_median = median(duration, na.rm=TRUE))
-
+sst_PECG_byPp_med <- sst_PECGonly %>% group_by(subid) %>% summarise(PECG_median = median(reaction_time, na.rm=TRUE))
 #Calculate the MEDIAN by participant for all Post-Error Correct Gos 
-sst_PCCG_byPp_med <- sst_PCCGonly %>% group_by(subid) %>% summarise(PCCG_median = median(duration, na.rm=TRUE))
-
+sst_PCCG_byPp_med <- sst_PCCGonly %>% group_by(subid) %>% summarise(PCCG_median = median(reaction_time, na.rm=TRUE))
 ```
-
 ##Calculate the "Post-Error Slowing", here referring to the MEDIAN of Correct Go Trials following Failed Stops minues the MEDIAN of Correct Go Trials following Correct Go trials for each participant. THIS IS THE ONE WE ARE USING (PER DASA REQUEST)
 ```{r}
 #Create new dataset that adds a column with the PCCG_mean variable from the sst_PCCG_byPp dataframe to the sst_PECG_byPp dataframe based on subject id 
 sst_PES_median <- sst_PECG_byPp_med %>%
   left_join(dplyr::select(sst_PCCG_byPp_med, subid, PCCG_median = PCCG_median), by = 'subid') 
-
 sst_PES_median$PostErrorSlowW1_median <-  sst_PES_median$PECG_median - sst_PES_median$PCCG_median #Behavioral adaptation (i.e. post-error slowing) is reflected by higher / more positive scores
-
 ```
-
 #Create a df that has both mean and median 
 ```{r}
 sst_PES <- cbind(sst_PES, PECG_median = sst_PES_median$PECG_median)
-
 sst_PES <- cbind(sst_PES, PCCG_median = sst_PES_median$PCCG_median)
-
 sst_PES <- cbind(sst_PES, PostErrorSlowW1_median = sst_PES_median$PostErrorSlowW1_median)
 ```
-
 ##Create a csv file for sharing
 ```{r}
-write.csv(sst_PES,paste0(config::get("dev_analysis_data_dir"),"post_error_slowing_simple_approach.csv"))
-
+write.csv(sst_PES,paste0(dropbox_file_dir,"post_error_slowing_simple_approach.csv"))
 #install.packages("rdrop2")
 library(rdrop2) 
 #drop_create('health_special_issue') 
 #drop_upload('post_error_slowing_simple_approach.csv', path = 'health_special_issue')
-
 #Ask Ben about PES medians = 0, seems unlikely 
 ```
-
 #Visualizing PES effect overall
-
 ```{r}
-
 psych::describe(sst_PES$PECG_mean)
 psych::describe(sst_PES$PCCG_mean)
   
 boxplot(sst_PES$PECG_mean, ylab = "PECG_mean",
   main = "Boxplot of Correct Go following Error")
-
 boxplot(sst_PES$PCCG_mean, ylab = "PCCG_mean",
   main = "Boxplot of Correct Go following Correct")
-
-
 #plot first kernel density plot
 kd1 <- density(sst_PES$PECG_mean)
 plot(kd1, col='blue', lwd=2)
 abline(v = mean(sst_PES$PECG_mean), col = "red")
-
 #plot second kernel density plot
 kd2 <- density(sst_PES$PCCG_mean)
 lines(kd2, col='green', lwd=2)
 abline(v = mean(sst_PES$PCCG_mean), col = "red")
-
 #Is the difference between PECG and PCCG significant?
-
 t.test(sst_PES$PECG_mean, sst_PES$PCCG_mean, paired = TRUE, alternative = "two.sided")
 ```
 
+
 ## For Reference Only - WE ARE NO LONGER USING THIS APPROACH - Calculate average PES for each participant for the Failed Stops that are preceeded and followed by Correct Gos only. 
+
+
 ```{r}
 #Create a column that returns a yes if the failed stop is surrounded by correct gos 
 #sst_all_data_raw$failedstopwewant <- if_else(sst_all_data_raw$condition == "FailedStop" & lag(sst_all_data_raw$condition == "CorrectGo", 2) & lead(sst_all_data_raw$condition == "CorrectGo", 2), "yes", "no" )
-
 #Calculate Post-error Slowing per trial (Note: higher scores reflect higher post-error slowing).
-
 #Calculate post-error slowing for ALL trials (Not what we will use ultimately)
 #sst_all_data_raw$PES_trial <- sst_all_data_raw$next_duration - sst_all_data_raw$previous_duration  
 #sst_all_data_raw %>% 
   #group_by(condition, subid) %>%
-
 #Negative means 
 #FCalculate the mean by participant for all failed stops
 #sst_pes <- sst_all_data_raw %>% group_by(subid) %>% summarise(pes_mean = mean(PES_trial[condition == "FailedStop"], na.rm=TRUE))
-
 #Filter for only Failed Stops that are preceeded and followed by Correct Gos
 #sst_pes_yesonly <- filter(sst_all_data_raw, failedstopwewant == "yes")
-
 #Calculate the mean for these duration differences for each subject and create a new dataframe
 #sst_pes_limited <- sst_pes_yesonly %>% group_by(subid) %>% summarise(pes_mean_limited = mean(PES_trial[failedstopwewant == "yes"], na.rm=TRUE))
-
 #write.csv(sst_pes_limited,"post_error_slowing.csv")
-
 #install.packages("rdrop2")
 #library(rdrop2) 
 #drop_create('health_special_issue') 
 #drop_upload('post_error_slowing.csv', path = 'health_special_issue')
-
 #sst_pes_limited_w1 <- sst_pes_yesonly %>% filter(waveid==1) %>% group_by(subid) %>% summarise(pes_mean_limited = mean(PES_trial[failedstopwewant == "yes"], na.rm=TRUE))
-
 #write.csv(sst_pes_limited_w1,"post_error_slowing_wave1.csv")
 #drop_upload('post_error_slowing_wave1.csv', path = 'health_special_issue')
-
-
-
 #Alternative ways to do this for reference
 #sst_pes_limited <- sst_all_data_raw %>% group_by(subid) %>% summarise(pes_mean_limited = mean(PES_trial[failedstopwewant == "yes"], na.rm=TRUE))
-
 #sst_pes_all <- cbind(sst_pes, pes_mean_limited = sst_pes_limited$pes_mean_limited)
-
 ```
 
 ```{r}
 #Exploring the data to investigate why duration is being bucketed
 #sst_all_data_raw %>% filter(condition=="CorrectGo" & waveid==3) %>% .$duration %>% table
 ```
-

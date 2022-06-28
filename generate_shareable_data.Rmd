@@ -1,0 +1,49 @@
+---
+title: "Generate shareable data"
+output: html_notebook
+---
+
+This file anonymizes our dataset to ensure it is shareable publicly.
+
+The following steps are taken to ensure anonymity:
+
+ - participants from minority race or gender groups have zip codes removed. data will only display "rural" or "urban"
+ - participants from a zip code with fewer than 20 subjects are also removed.
+
+We won't on-share HINTS data, but should provide a script that generates it.
+
+
+```{r message=FALSE, warning=FALSE}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+
+library(dplyr)
+library(lavaan)
+#source("HINTS_preprocessing.R")
+source("orfcs_utilities.R")
+#hints5 <-get_hints5(location=config::get("hints_protected_data_folderpath"))
+#boot_times<-100
+
+zscore <- function(x){
+    return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
+}
+```
+
+
+
+```{r}
+library(magrittr)
+library(dplyr)
+
+
+
+data_dir <- config::get("rural_data_dir")
+
+preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
+library(readr)
+library(ggplot2)
+library(GGally)
+orfcs_dataset <- readr::read_csv(preprocessed_data_filepath)
+
+```
+
+

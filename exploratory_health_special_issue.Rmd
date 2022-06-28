@@ -14,6 +14,7 @@ library(stringr)
 library(dplyr)
 library(ggplot2)
 library(rstatix)
+library(data.table)
 data_path <- "../../../files/data/"
 
 load(paste0(config::get("dev_analysis_data_dir"),"scored_data_w_demographics.RData"))
@@ -42,7 +43,7 @@ load("../../../files/data/ppt_list_w_data.RData")
 
 ppt_list_w_data$date_0<-as.Date(ppt_list_w_data$date_0)
 ppt_list_w_data$dob<-as.Date(ppt_list_w_data$dob)
-ppt_list_w_data$age365<- as.numeric((ppt_list_w_data$date_0-ppt_list_w_data$dob)/365)
+ppt_list_w_data$age365<- round(as.numeric((ppt_list_w_data$date_0-ppt_list_w_data$dob)/365)*4,0)/4#rounding to nearest 0.25 to avoid identification
 
 #our primary health outcome measure
 ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,bf_1,weight_0,height_0,birthsex,age365,bmi_0,bmi_1) %>% filter(!is.na(bf_1))
@@ -118,7 +119,7 @@ Now get behavioral measures.
 ```{r}
 
 #sst_pes <- readr::read_csv("https://www.dropbox.com/s/vaubgp23y5j0m5g/post_error_slowing.csv?dl=0")
-sst_pes <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing.csv"))
+# sst_pes <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing.csv"))
 sst_pes_simple <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing_simple_approach.csv"))
 #should be wave 1 by default.
 sst_data_1 <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
@@ -126,7 +127,7 @@ sst_data_2 <- readr::read_csv(file=paste0(data_path,"sst_pre_analyzed_stats.csv"
 sst_data_1_w1 <- sst_data_1%>%filter(runid==1)%>% select(-runid)
 sst_data_2_w1 <- sst_data_2 %>% filter(wave==1) %>% select(-wave)
 sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE) %>%
-  merge(sst_pes[,2:ncol(sst_pes)],by="subid",all=TRUE) %>%
+  #merge(sst_pes[,2:ncol(sst_pes)],by="subid",all=TRUE) %>%
   merge(sst_pes_simple[,2:ncol(sst_pes_simple)],by="subid",all=TRUE)
 
 
@@ -645,7 +646,7 @@ data_by_ppt$TRSQ[data_by_ppt$TRSQ<5]<-NA
 
 
 ```{r}
-readr::write_csv(data_by_ppt, file = paste0(data_path,"data_by_ppt.csv"))
+readr::write_csv(data_by_ppt, file = paste0(dropbox_file_dir,"data_by_ppt.csv"))
 
 
 ```
@@ -1605,7 +1606,6 @@ summary(lm(bf_1~FFQ_cancer_preventing_sq+FFQ_cancer_promoting_sq+IPAQ_quartiles_
 summary(lm(bf_1~FFQ_cancer_promoting_sq+IPAQ_quartiles_int,data_by_ppt))
 summary(lm(bf_1~FFQ_cancer_promoting_sq+IPAQ_MET_kCal+a,data_by_ppt))
 
-data_by_ppt$age
 
 ```
 

@@ -3,7 +3,6 @@ title: "R Notebook"
 output:
   html_document:
     df_print: paged
-  pdf_document: default
 ---
 
 To run this script:
@@ -20,7 +19,7 @@ library(lavaan)
 source("HINTS_preprocessing.R")
 source("orfcs_utilities.R")
 hints5 <-get_hints5(location=config::get("hints_protected_data_folderpath"))
-boot_times<-10000
+boot_times<-100
 
 zscore <- function(x){
     return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
@@ -29,10 +28,10 @@ zscore <- function(x){
 
 
 ```{r}
-table(orfcs_dataset$RuralZIP_i,
-      orfcs_dataset$Gender3C,
-      orfcs_dataset$RaceCategorical=="HispanicAnyRace"
-      )
+# table(orfcs_dataset$RuralZIP_i,
+#       orfcs_dataset$Gender3C,
+#       orfcs_dataset$RaceCategorical=="HispanicAnyRace"
+#       )
 ```
 
 
@@ -127,10 +126,18 @@ hints5_pp$RacePP2<-factor(hints5_pp$RacePP2)
 hints5_pp <- mltools::one_hot(hints5_pp,"RacePP2",dropCols = FALSE)
 print(paste0(colnames(hints5_pp)[grepl("RacePP2_",colnames(hints5_pp))],collapse=" + "))
 
+hints5_pp<-factor_to_clean_string(hints5_pp,"Hisp_Cat2")
+hints5_pp$Hisp_Cat2<-factor(hints5_pp$Hisp_Cat2,levels=names(sort(table(hints5_pp$Hisp_Cat2),decreasing = TRUE)))
+hints5_pp <- mltools::one_hot(hints5_pp,"Hisp_Cat2",dropCols = FALSE)
+print(paste0(colnames(hints5_pp)[grepl("Hisp_Cat2_",colnames(hints5_pp))],collapse=" + "))
+
 hints5_pp<-factor_to_clean_string(hints5_pp,"Gender3C")
 hints5_pp$Gender3C<-factor(hints5_pp$Gender3C)
 hints5_pp <- mltools::one_hot(hints5_pp,"Gender3C",dropCols = FALSE)
 print(paste0(colnames(hints5_pp)[grepl("Gender3C_",colnames(hints5_pp))],collapse=" + "))
+
+
+
 ```
 
 Now prepare the ORFCS dataset for lavaan.
@@ -158,20 +165,22 @@ print(paste0(colnames(orfcs_dataset_pp)[grepl("Gender3C_",colnames(orfcs_dataset
 
 ```{r}
 
-summary(lm(
-  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename
-  ,hints5_pp))
-summary(lm(
-  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Gender3C+filename
-  ,hints5_pp))
+hints_model <- lm(
+  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename
+  ,hints5_pp)
+summary(hints_model)
+
+confint(hints_model)
 
 ```
 
 
 ```{r}
-summary(lm(
-  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Gender3C+filename
-  ,hints5_pp))
+hints_hbp<-lm(
+  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Hisp_Cat2+Gender3C+filename
+  ,hints5_pp)
+summary(hints_hbp)
+confint(hints_hbp)
 ```
 
 ```{r}
@@ -185,11 +194,11 @@ summary(lm(
 hints_model_template=
 "
   #Regressions
-  IncomeRanges_r ~ ab*HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese
+  IncomeRanges_r ~ ab*HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese + Hisp_Cat2_Unknown + Hisp_Cat2_Mexican + Hisp_Cat2_Other_Hispanic + Hisp_Cat2_Puerto_Rican + Hisp_Cat2_Multiple_Hispanic_ethnicities_selected + Hisp_Cat2_Cuban
   
-  Fruit_vegetables_z ~ bc*IncomeRanges_r + ac*HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese
+  Fruit_vegetables_z ~ bc*IncomeRanges_r + ac*HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese + Hisp_Cat2_Unknown + Hisp_Cat2_Mexican + Hisp_Cat2_Other_Hispanic + Hisp_Cat2_Puerto_Rican + Hisp_Cat2_Multiple_Hispanic_ethnicities_selected + Hisp_Cat2_Cuban
   
-  (OUTCOMEVAR) ~ cd*Fruit_vegetables_z + bd*IncomeRanges_r + ad*HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese
+  (OUTCOMEVAR) ~ cd*Fruit_vegetables_z + bd*IncomeRanges_r + ad*HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese + Hisp_Cat2_Unknown + Hisp_Cat2_Mexican + Hisp_Cat2_Other_Hispanic + Hisp_Cat2_Puerto_Rican + Hisp_Cat2_Multiple_Hispanic_ethnicities_selected + Hisp_Cat2_Cuban
   
   
   #Defined Parameters:
@@ -255,7 +264,7 @@ for (outcome_var in outcome_measures){
 
 For comparison with HINTS, we'll first repeat the HINTS dataset two-mediator model as described above, but using three mediators.
 
-THen, we'll proceed with our main Oregon dataset analysis.
+Then, we'll proceed with our main Oregon dataset analysis.
 
 This follows Hayes PROCESS Model 6 with THREE mediators but we are doing it here in Lavaan.
 
@@ -426,27 +435,20 @@ for (effect_name in names(hints_fits_by_outcome)){
   HINTS_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, hints_bc, hints_cd),1,prod)
   summarize_calculated_effect(HINTS_indirect_effect)
   
-  
   cat("Hybrid indirect effect:\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, orfcs_bc,orfcs_cd, hints_cd),1,prod)
   hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
-  hybrid_effect_set<-list("indirect_effect"=hie_result)
   
   cat("Hybrid effect via food availability and consumption:\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(orfcs_ac,orfcs_cd, hints_cd),1,prod)
   hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
-  hybrid_effect_set <- append(hybrid_effect_set,list("availability_consumption"=hie_result))
   
   cat("Hybrid effect via food consumption (independently of availability):\n ")
   hybrid_indirect_effect <- apply(combined_boot_results %>% select(orfcs_ad,hints_cd),1,prod)
   hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
-  hybrid_effect_set <- append(hybrid_effect_set,list("consumption_alone"=hie_result))
   
-  hybrid_effect_set_df <- do.call(rbind,hybrid_effect_set)
-  hybrid_effect_set_df$outcome<-effect_name
-  hybrid_effect_set_df$pathway <- rownames(hybrid_effect_set_df)
-  
-  hybrid_effect_list<-append(hybrid_effect_list,list(hybrid_effect_set_df))
+  hie_result$outcome<-effect_name
+  hybrid_effect_list<-append(hybrid_effect_list,list(hie_result))
   cat("---------\n\n\n")
 
 }
@@ -464,15 +466,7 @@ On its face, this "hybrid effect" shows that if we assume relationships between 
 Because there are quite a lot of results here, we should probably summarize them in a table.
 
 ```{r}
-save.image(file=paste0("sequential_boot_",as.character(boot_times),".Rdata"))
-#load(file="sequential_boot_10.Rdata")
-```
-
-
-```{r}
-library(dplyr)
-library(papaja)
-library(kableExtra)
+save.image(file="sequential_boot_10.Rdata")
 ```
 
 ```{r}
@@ -485,88 +479,48 @@ p_value_asterisks<-function(pvalue){
   }else if (pvalue<0.05){
     return("*")
   }else if (pvalue<0.1){
-    return("⁺")
+    return("+")
   }
   return("")
   }
   return(sapply(pvalue,p_value_asterisks_by_scalar))
 }
-
-
-formatB<-function(num,digits=digits){
-  #FormatBen
-  #return(str_replace(format(round(num,digits=digits),justify="right",scientific=FALSE)," ","&nbsp;"))
-  return(format(round(num,digits=digits),scientific=FALSE))
-}
-
-num_w_p <- function(num, pvalue,digits=2){
-  
-  return(paste0(formatB(num,digits=digits),p_value_asterisks(pvalue)))
-}
-#can use this function for all sorts of labels, not just a particular kind
-label_rename<-function(label){
-  #effect routes
-  label[label=="effect_via_fruit_vege_only"]<-"Via fruit and vegetable consumption"
-  label[label=="effect_via_inc_only"]<-"Via income only"
-  label[label=="availability_consumption"]<-"Via fruit and vegetable availability and consumption"
-  label[label=="consumption_alone"]<-"Via fruit and vegetable consumption alone"
-  
-  #Outcome labels
-  label[label=="GeneralHealth_i"] <- "Self-rated health"
-  label[label=="MedConditionsAggregate"] <- "Aggregate cardiometabolic health"
-  label[label=="MedConditions_HighBP_i"] <- "High blood pressure/hypertension"
-  label[label=="EverHadCancer_i"] <- "Ever had cancer"
-  #BMI"                    "GeneralHealth_i"        "MedConditionsAggregate" "MedConditions_HighBP_i" "EverHadCancer_i"   
-  
-  
-  #misc
-  label <- sapply(
-    label,
-    function(l){
-      if(l=="BMI") return(l)
-      return(str_replace_all(l,"_"," ") %>% str_to_sentence)
-    }
-  )
-    
-  return(label)
-}
-
-
-
+library(papaja)
+library(kableExtra)
 ```
 
+```{r}
+library(dplyr)
+```
 
 ```{r}
+
+
 
 kable_input <- lavaan_results_df %>% filter(label %in% c(
     "indirect_effect",
   "direct_effect",
   "effect_via_inc_only",
   "effect_via_fruit_vege_only")) %>%
-  mutate(Pathway = label_rename(label),
-         Outcome = label_rename(outcome),
-         Estimate = num_w_p(est,pvalue,digits=4),
-         SE=formatB(se,digits=4)) %>%
-  arrange(outcome) %>%
-  select(Pathway, Outcome,Estimate,SE) %>% arrange(Pathway)
+  mutate(pv = p_value_asterisks(pvalue)) %>%
+  select(label, outcome,est,pv,se) %>% arrange(label,outcome)
 
 groups_df <- kable_input %>%
-  group_by(Pathway) %>% 
-    summarize(group_start=length(Pathway))
+  
+  group_by(label) %>% 
+    summarize(group_start=length(label))
 
 groups<-groups_df$group_start
-names(groups)<-groups_df$Pathway
+names(groups)<-groups_df$label
 
-kable_out <- kable_input %>% 
-  select(-Pathway) %>%
-  knitr::kable() %>% 
+kable_input %>% 
+  select(-label) %>%
+  knitr::kable(signif=3) %>% 
   kable_classic(full_width = F,html_font="Times New Roman") %>%
   pack_rows(index=groups)
   
 
-#knitr::asis_output(str_replace(kable_out,"\\+","\\^\\+"))
 
-kable_out
 
 
 ```
@@ -578,28 +532,14 @@ kable_out
 
 
 kable_input <- hybrid_effect_df %>%
-  #mutate(pv = p_value_asterisks(pvalue)) %>%
-  mutate(Pathway = label_rename(pathway),
-         Outcome = label_rename(outcome),
-         Estimate = num_w_p(est,pvalue,digits=4),
-         SE=formatB(se,digits=4)) %>%
-  select(Pathway, Outcome,Estimate,SE) %>% arrange(Pathway)
+  mutate(pv = p_value_asterisks(pvalue)) %>%
+  select(outcome,est,pv,se) %>% arrange(outcome)
 
-groups_df <- kable_input %>%
-  group_by(Pathway) %>% 
-    summarize(group_start=length(Outcome))
 
-groups<-groups_df$group_start
-names(groups)<-groups_df$Pathway
-
-rownames(kable_input)<-NULL
 kable_input %>% 
-  select(-Pathway) %>%
-  knitr::kable() %>% 
+  knitr::kable(signif=3) %>% 
   kable_classic(full_width = F,html_font="Times New Roman") %>%
-  
-  #pack_rows(index=c("indirect_effect"=nrow(kable_input)))
-  pack_rows(index=groups)
+  pack_rows(index=c("indirect_effect"=nrow(kable_input)))
   
 
 
@@ -722,7 +662,7 @@ summary(mc)
 
 
 
-```{r mediation3}
+```{r mediation2}
 set.seed(2498714)
 
 library(mediation)
