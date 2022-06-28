@@ -38,14 +38,15 @@ So these items are:
 ```{r}
 library(mediation)
 library(dplyr)
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 ```
 
 
 ```{r message=FALSE, warning=FALSE}
 
 source("HINTS_preprocessing.R")
-hints5 <-get_hints5()
-boot_times<-10
+hints5 <-get_hints5(paste0(config::get("hints_protected_data_folderpath"),"/"))
+boot_times<-10000
 ```
 
 
@@ -90,9 +91,6 @@ for (dichot_var in c("MedConditions_Diabetes", "MedConditions_HighBP", "MedCondi
 As per the pre-register, we will use the individual item MedConditions_HighBP, which has 45% of respondents answering yes, but rather than using MedConditions_Diabetes and MedConditions_HeartCondition, we will calculate an aggregate of all three measures and predict that aggregate. This code has now been moved to HINTS preprocessing.
 ```{r}
 #dichotomize these variables so every value is either No, Yes, or NA.
-```
-```{r}
-hist(hints5$)
 ```
 
 
@@ -334,5 +332,8 @@ mediation_result = run_HINTS_mediation("EverHadCancer_i", "IncomeRanges_r", is_l
 
 ```
 
+```{r}
+save.image(file="HINTS_health_outcomes.Rmd")
+```
 
 
