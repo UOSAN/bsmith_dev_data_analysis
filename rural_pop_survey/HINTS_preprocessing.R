@@ -76,8 +76,6 @@ get_hints5 <- function(location = "/Users/benjaminsmith/Dropbox (University of O
   hints5$RacePreprocessed2[hints5$RacePreprocessed2 %in% c("Missing data (Not Ascertained)","Missing data (Web partial - Question Never Seen)")]<-"(Missing Data)"
   race_pp2_levels <- names(sort(table(hints5$RacePreprocessed2),decreasing = TRUE))
   
-  
-  
   hints5$HHInc[hints5$HHInc=="Missing Data (Not Ascertained)"]<-NA
   hints5$HHInc[hints5$HHInc=="Missing data (Web partial - Question Never Seen)"]<-NA
   median_hh_inc<-median(as.integer(hints5$HHInc),na.rm=TRUE)
@@ -139,6 +137,11 @@ get_hints5 <- function(location = "/Users/benjaminsmith/Dropbox (University of O
   gender_text <- as.character(hints5$SelfGender)
   hints5$Gender3C <- factor(gender_text,levels = c("Female","Male","MissingOrMultiple"))
   hints5$Gender3C[is.na(hints5$Gender3C)]<- "MissingOrMultiple"
+  
+  hints5$Hisp_Cat2 <- stringr::str_replace(hints5$Hisp_Cat," only","")
+  hints5$Hisp_Cat2[hints5$Hisp_Cat2 %in% c("Missing data (Web partial - Question Never Seen)", "Missing data (Not Ascertained)")] <- "Unknown"
+  hisp_cat2_levels <- names(sort(table(hints5$Hisp_Cat2),decreasing = TRUE))
+  hints5$Hisp_Cat2 <- factor(hints5$Hisp_Cat2,hisp_cat2_levels)
   
   hints5$GeneralHealth <- stringr::str_replace(hints5$GeneralHealth,",","")
   hints5$GeneralHealth <- stringr::str_replace(hints5$GeneralHealth,"\\?","")
