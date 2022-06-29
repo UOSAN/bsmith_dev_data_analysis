@@ -19,7 +19,7 @@ library(lavaan)
 source("HINTS_preprocessing.R")
 source("orfcs_utilities.R")
 hints5 <-get_hints5(location=config::get("hints_protected_data_folderpath"))
-boot_times<-100
+boot_times<-40
 
 zscore <- function(x){
     return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
@@ -85,19 +85,7 @@ orfcs_dataset <- readr::read_csv(preprocessed_data_filepath)
 
 Let's do our best to include all the same covariates we previously included.
 
-# HINTS dataset: two mediators
-
-This follows Hayes PROCESS Model 6 with two mediators but we are doing it here in Lavaan.
-
-Variables are:
-
--   Treatment: Rurality
--   Two Mediators: household income, and fruit and vegetable consumption, in that order.
--   Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure. (and cancer??)
-
-This model below is adapted from <https://towardsdatascience.com/doing-and-reporting-a-serial-mediation-model-with-two-mediators-in-r-with-lavaan-739ed3155814>
-
-I think they've left some things out. I need to do a bit more research to work out how to properly implement this, probably including a basic crash course in SEM.
+# Prep
 
 ```{r}
 library(stringi)
@@ -163,25 +151,25 @@ orfcs_dataset_pp <- mltools::one_hot(orfcs_dataset_pp,"Gender3C",dropCols = FALS
 print(paste0(colnames(orfcs_dataset_pp)[grepl("Gender3C_",colnames(orfcs_dataset_pp))],collapse=" + "))
 ```
 
-```{r}
 
-hints_model <- lm(
-  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename
-  ,hints5_pp)
-summary(hints_model)
-
-confint(hints_model)
-
-```
+# Oregon dataset: basic disparity
 
 
-```{r}
-hints_hbp<-lm(
-  MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+Age_c_pow2+RacePP+Hisp_Cat2+Gender3C+filename
-  ,hints5_pp)
-summary(hints_hbp)
-confint(hints_hbp)
-```
+# HINTS dataset: two mediators
+
+This follows Hayes PROCESS Model 6 with two mediators but we are doing it here in Lavaan.
+
+Variables are:
+
+-   Treatment: Rurality
+-   Two Mediators: household income, and fruit and vegetable consumption, in that order.
+-   Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure. (and cancer??)
+
+This model below is adapted from <https://towardsdatascience.com/doing-and-reporting-a-serial-mediation-model-with-two-mediators-in-r-with-lavaan-739ed3155814>
+
+I think they've left some things out. I need to do a bit more research to work out how to properly implement this, probably including a basic crash course in SEM.
+
+For the basic HINTs lms, see `HINTS_health_outcomes.Rmd`.
 
 ```{r}
 #TREAT=HINTSIsRural_i
@@ -242,7 +230,7 @@ for (outcome_var in outcome_measures){
     likelihood = "wishart")
   
   hints_fits_by_outcome[[outcome_var]]<-fit
-  summary(fit)
+  summary(fit,ci=TRUE)
   cat("-----\n\n\n")
 }
 ```
@@ -342,7 +330,7 @@ orfcs_fit=sem(
   bootstrap=boot_times,
   likelihood = "wishart")
 
-summary(orfcs_fit)
+summary(orfcs_fit,ci=TRUE)
   # cat("-----\n\n\n")
 # }
 
@@ -364,7 +352,7 @@ Variables are:
 ```{r}
 get_fit_PE<-function(fit_to_read){
   sink("temp_out.txt")
-  fit_pe<-summary(fit_to_read)$PE
+  fit_pe<-summary(fit_to_read,ci=TRUE)$PE
   sink(NULL)
   return(fit_pe)
 }
@@ -379,12 +367,14 @@ for (hints_fit_label in names(hints_fits_by_outcome)){
 lavaan_results_df <- do.call(rbind,lavaan_results_list)
 ```
 
-```{r}
+```{r, warning=FALSE}
 
 
 summarize_calculated_effect <- function(effect_vector){
     effect_mean <- mean(effect_vector)
     effect_se <- sd(effect_vector)
+    effect_ci_lower <- quantile(effect_vector,0.025)
+    effect_ci_upper <- quantile(effect_vector,0.975)
     #the z-value here is exactly what lavaan displays.
     #it's going to be a bit different
     #because the mean and se I get are both a bit different for reasons that are unclear to me.
@@ -397,7 +387,9 @@ summarize_calculated_effect <- function(effect_vector){
     return(data.frame(
       "est"=effect_mean,
       "se"=effect_se,
-      "pvalue"=effect_p_value
+      "pvalue"=effect_p_value,
+      "ci_lower" = effect_ci_lower,
+      "ci_upper" = effect_ci_upper
     ))
     #print(t.test(hybrid_indirect_effect))
     #cat("\n")
@@ -629,14 +621,14 @@ orfcs_fit=sem(
   bootstrap=boot_times,
   likelihood = "wishart")
 
-summary(orfcs_fit)
+summary(orfcs_fit,ci=TRUE)
   # cat("-----\n\n\n")
 # }
 ```
 
 
 
-```{r mediation2}
+```{r mediation_aSES}
 set.seed(2498714)
 
 library(mediation)
@@ -653,16 +645,16 @@ mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceC2+aSES_02_z+PSS
 
 mediate_result <- mediate(mb,mc,sims=boot_times,boot=TRUE,boot.ci.type = "bca",
                           treat="RuralZIP_i",mediator="aSES_02_z")
-summary(mediate_result)
+summary(mediate_result,ci=TRUE)
 plot(mediate_result)
 
-summary(mc)
+summary(mc,ci=TRUE)
 ```
 
 
 
 
-```{r mediation2}
+```{r mediation2_MedianHouseholdIncome}
 set.seed(2498714)
 
 library(mediation)
@@ -678,10 +670,10 @@ mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+I(DEMO_Age_c^2)+RaceC2+ZipcodeMedian
 
 mediate_result <- mediate(mb,mc,sims=boot_times,boot=TRUE,boot.ci.type = "bca",
                           treat="RuralZIP_i",mediator="ZipcodeMedianHouseholdIncome")
-summary(mediate_result)
-plot(mediate_result)
+summary(mediate_result,ci=TRUE)
+plot(mediate_result,ci=TRUE)
 
-summary(mc)
+summary(mc,ci=TRUE)
 ```
 
 
@@ -691,7 +683,7 @@ With this analysis I would tend to think we don't need to proceed to use Zipcode
 
 Neither study records hours worked, although both record work status (full time/part time/unemployed). These would probably be predictive, but are not of particular interest, and I'm not aware of how we'd interpret this any differently to income, which is already included in the model.
 
-# Pruning/regularization
+# Pruning/regularization Oregon dataset
 
 We can cut the dataset down, and perhaps observe slightly larger effects, by cutting the dataset down to size. Suitable rules might be:
 
@@ -767,7 +759,7 @@ orfcs_fit_full=sem(
   bootstrap=boot_times,
   likelihood = "wishart")
 
-summary(orfcs_fit_full,fit.measures=TRUE)
+summary(orfcs_fit_full,fit.measures=TRUE,ci=TRUE)
   # cat("-----\n\n\n")
 # }
 
@@ -829,7 +821,7 @@ orfcs_fit_prune1=sem(
   bootstrap=boot_times,
   likelihood = "wishart")
 
-summary(orfcs_fit_prune1)
+summary(orfcs_fit_prune1,ci=TRUE)
   # cat("-----\n\n\n")
 # }
 
@@ -893,7 +885,7 @@ orfcs_fit_prune2=sem(
   bootstrap=boot_times,
   likelihood = "wishart")
 
-summary(orfcs_fit_prune2)
+summary(orfcs_fit_prune2,ci=TRUE)
   # cat("-----\n\n\n")
 # }
 
@@ -955,7 +947,7 @@ orfcs_fit_prune3=sem(
   bootstrap=boot_times,
   likelihood = "wishart")
 
-summary(orfcs_fit_prune3,fit.measures=TRUE)
+summary(orfcs_fit_prune3,fit.measures=TRUE,ci=TRUE)
   # cat("-----\n\n\n")
 # }
 
@@ -976,14 +968,4 @@ At least according to BIC, this model is a better fit. All remaining path variab
 Knowing all of this, perhaps it's not a big deal for the HINTS dataset that it doesn't have separate variables for consumption and availability. they seem quite related.
 
 
-
-
-
-```{r}
-0.718/sd(hints5$IncomeRanges_r,na.rm = TRUE)
-```
-
-
-
-
-
+All modeled variables are now significant at least at the p>0.1 level, and in fact, they're all significant at the p<0.01 level, so we are done pruning.
