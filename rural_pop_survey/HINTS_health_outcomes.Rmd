@@ -122,13 +122,26 @@ So here, we're testing general health for a start.
 
 
 #health_measures <- c("GeneralHealth", "MedConditions_Diabetes", "MedConditions_HighBP", "MedConditions_HeartCondition", EverHadCancer)
-formula_rhs<-"~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename"
+formula_rhs<-"~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename"
 formula_general <- paste0("GeneralHealth_i",formula_rhs)
 
 print(formula_general)
 rural_disparity <- lm(eval(formula_general),hints5)
 
-summary(rural_disparity)
+print_model_summary <- function(model){
+  print(summary(model))
+  conf_ints <- confint(model)
+  if("glm" %in% class(model)){
+    if (model$family$family=="binomial"){
+      print(cbind(OR = exp(coef(model)),exp(conf_ints)))
+      return()
+    }
+  }
+  print(cbind(coef = coef(model),conf_ints))
+  
+}
+
+print_model_summary(rural_disparity)
 
 ```
 
@@ -137,8 +150,8 @@ formula_hbp <- paste0("MedConditions_HighBP_i",formula_rhs)
 print(formula_hbp)
 rural_disparity <- glm(eval(formula_hbp),hints5, family = "binomial")
 
-summary(rural_disparity)
-print(exp(cbind(OR = coef(rural_disparity))))
+
+print_model_summary(rural_disparity)
 ```
 
 Now we use the aggregate value. 
@@ -148,7 +161,9 @@ formula_hbp <- paste0("MedConditionsAggregate",formula_rhs)
 print(formula_hbp)
 rural_disparity <- lm(formula_hbp,hints5)
 
-summary(rural_disparity)
+
+
+print_model_summary(rural_disparity)
 ```
 Finally, how do we do on the cancer score?
 
@@ -159,7 +174,9 @@ formula_cancer <- paste0("EverHadCancer_i",formula_rhs)
 print(formula_cancer)
 rural_disparity <- glm(eval(formula_cancer),hints5, family = "binomial")
 
-summary(rural_disparity)
+
+
+print_model_summary(rural_disparity)
 ```
 
 Right, so the finding is significant for everything we have examined. Controlling for age, race, and gender, rural respondents had:

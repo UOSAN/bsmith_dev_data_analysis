@@ -104,15 +104,16 @@ predict_ffq_rural <- lm(cancer_promoting_minus_preventing_FFQ~RuralZIP+
                       PSS_z+
                     DEMO_Age_c+Gender3C+RaceC2,
                   orfcs_dataset)
-summary(predict_ffq_rural)
+print(summary(predict_ffq_rural))
+print(confint(predict_ffq_rural))
 
 predict_bmi_rural <- lm(BMI~RuralZIP+
                     #MESA_healthyfoodavailability+MESA_safetyfromcrime
                       PSS_z+
                     DEMO_Age_c+Gender3C+RaceC2,
                   orfcs_dataset)
-summary(predict_bmi_rural)
-
+print(summary(predict_bmi_rural))
+print(confint(predict_bmi_rural))
 
 ```
 
@@ -159,7 +160,7 @@ summary(predict_bmi_rural)
 
 
 
-```{r mediation1}
+```{r mediation1_zip_food_availability}
 set.seed(6472426)
 library(mediation)
 
@@ -664,7 +665,7 @@ summary(predict_bmi_rural)
 
 
 
-```{r mediation1}
+```{r mediation1_food_availability}
 set.seed(6472426)
 library(mediation)
 
@@ -702,23 +703,23 @@ summary(HINTS_comprehensive_model)
 
 
 ```{r mediation1}
-set.seed(6472426)
-
-
-library(mediation)
-
-data_to_measure <- hines_cycle5 %>% dplyr::filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
-
-#Rurality -> Income -> BMI
-
-#data_to_measure$FFQ_fruit_vegetables_z_flip<- (-data_to_measure$FFQ_fruit_vegetables_z)
-mb <- lm(MESA_healthyfoodavailability_z~HINTSIsRural_i+Gender3C+Age_c+RacePP+PSS_z,data_to_measure)
-mc <- lm(FFQ_fruit_vegetables_z~HINTSIsRural_i+Gender3C+Age_c+RacePP+MESA_healthyfoodavailability_z+PSS_z,data_to_measure)
-
-mediate_result <- mediate(mb,mc,sims=boot_times, boot=TRUE,boot.ci.type = "bca", treat="HINTSIsRural_i",mediator="MESA_healthyfoodavailability_z")
-summary(mediate_result)
-summary(mb)
-summary(mc)
+# set.seed(6472426)
+# 
+# 
+# library(mediation)
+# 
+# data_to_measure <- hines_cycle5 %>% dplyr::filter(!is.na(BMI) & Gender3C %in% c("Male","Female"))
+# 
+# #Rurality -> Income -> BMI
+# 
+# #data_to_measure$FFQ_fruit_vegetables_z_flip<- (-data_to_measure$FFQ_fruit_vegetables_z)
+# mb <- lm(MESA_healthyfoodavailability_z~HINTSIsRural_i+Gender3C+Age_c+RacePP+PSS_z,data_to_measure)
+# mc <- lm(FFQ_fruit_vegetables_z~HINTSIsRural_i+Gender3C+Age_c+RacePP+MESA_healthyfoodavailability_z+PSS_z,data_to_measure)
+# 
+# mediate_result <- mediate(mb,mc,sims=boot_times, boot=TRUE,boot.ci.type = "bca", treat="HINTSIsRural_i",mediator="MESA_healthyfoodavailability_z")
+# summary(mediate_result)
+# summary(mb)
+# summary(mc)
 ```
 
 

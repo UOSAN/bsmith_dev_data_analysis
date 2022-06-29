@@ -86,19 +86,10 @@ orfcs_dataset <- readr::read_csv(preprocessed_data_filepath)
 
 Let's do our best to include all the same covariates we previously included.
 
-# HINTS dataset: two mediators
+# prep
 
-This follows Hayes PROCESS Model 6 with two mediators but we are doing it here in Lavaan.
 
-Variables are:
 
--   Treatment: Rurality
--   Two Mediators: household income, and fruit and vegetable consumption, in that order.
--   Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure. (and cancer??)
-
-This model below is adapted from <https://towardsdatascience.com/doing-and-reporting-a-serial-mediation-model-with-two-mediators-in-r-with-lavaan-739ed3155814>
-
-I think they've left some things out. I need to do a bit more research to work out how to properly implement this, probably including a basic crash course in SEM.
 
 ```{r}
 library(stringi)
@@ -155,6 +146,21 @@ orfcs_dataset_pp$Gender3C<-factor(orfcs_dataset_pp$Gender3C)
 orfcs_dataset_pp <- mltools::one_hot(orfcs_dataset_pp,"Gender3C",dropCols = FALSE)
 print(paste0(colnames(orfcs_dataset_pp)[grepl("Gender3C_",colnames(orfcs_dataset_pp))],collapse=" + "))
 ```
+
+
+# HINTS dataset: two mediators
+
+This follows Hayes PROCESS Model 6 with two mediators but we are doing it here in Lavaan.
+
+Variables are:
+
+-   Treatment: Rurality
+-   Two Mediators: household income, and fruit and vegetable consumption, in that order.
+-   Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure. (and cancer??)
+
+This model below is adapted from <https://towardsdatascience.com/doing-and-reporting-a-serial-mediation-model-with-two-mediators-in-r-with-lavaan-739ed3155814>
+
+I think they've left some things out. I need to do a bit more research to work out how to properly implement this, probably including a basic crash course in SEM.
 
 ```{r}
 
