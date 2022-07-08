@@ -8,6 +8,4 @@ authdata.R
 gen_credentials.Rmd
 gen_credentials.nb.html
 .DS_Store
-rural_pop_survey/sequential_boot*.Rdata
-rural_pop_survey/sequential_boot_10.Rdata
-*/sequential_boot_10.Rdata
+
