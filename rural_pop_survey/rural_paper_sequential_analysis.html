@@ -3640,20 +3640,27 @@ for (effect_name in names(hints_fits_by_outcome)){
   HINTS_indirect_effect &lt;- apply(combined_boot_results %&gt;% select(hints_ab, hints_bc, hints_cd),1,prod)
   summarize_calculated_effect(HINTS_indirect_effect)
   
+  
   cat(&quot;Hybrid indirect effect:\n &quot;)
   hybrid_indirect_effect &lt;- apply(combined_boot_results %&gt;% select(hints_ab, orfcs_bc,orfcs_cd, hints_cd),1,prod)
   hie_result &lt;- summarize_calculated_effect(hybrid_indirect_effect)
+  hybrid_effect_set&lt;-list(&quot;indirect_effect&quot;=hie_result)
   
   cat(&quot;Hybrid effect via food availability and consumption:\n &quot;)
   hybrid_indirect_effect &lt;- apply(combined_boot_results %&gt;% select(orfcs_ac,orfcs_cd, hints_cd),1,prod)
   hie_result &lt;- summarize_calculated_effect(hybrid_indirect_effect)
+  hybrid_effect_set &lt;- append(hybrid_effect_set,list(&quot;availability_consumption&quot;=hie_result))
   
   cat(&quot;Hybrid effect via food consumption (independently of availability):\n &quot;)
   hybrid_indirect_effect &lt;- apply(combined_boot_results %&gt;% select(orfcs_ad,hints_cd),1,prod)
   hie_result &lt;- summarize_calculated_effect(hybrid_indirect_effect)
+  hybrid_effect_set &lt;- append(hybrid_effect_set,list(&quot;consumption_alone&quot;=hie_result))
   
-  hie_result$outcome&lt;-effect_name
-  hybrid_effect_list&lt;-append(hybrid_effect_list,list(hie_result))
+  hybrid_effect_set_df &lt;- do.call(rbind,hybrid_effect_set)
+  hybrid_effect_set_df$outcome&lt;-effect_name
+  hybrid_effect_set_df$pathway &lt;- rownames(hybrid_effect_set_df)
+  
+  hybrid_effect_list&lt;-append(hybrid_effect_list,list(hybrid_effect_set_df))
   cat(&quot;---------\n\n\n&quot;)
 
 }</code></pre>
@@ -4706,456 +4713,565 @@ library(papaja)</code></pre>
 ## 
 ##     group_rows</code></pre>
 <pre class="r"><code>library(dplyr)</code></pre>
+<pre class="r"><code>p_value_asterisks&lt;-function(pvalue){
+  p_value_asterisks_by_scalar &lt;- function(pvalue){
+    if (pvalue&lt;0.001){
+    return(&quot;***&quot;)
+  }else if (pvalue&lt;0.01){
+    return(&quot;**&quot;)
+  }else if (pvalue&lt;0.05){
+    return(&quot;*&quot;)
+  }else if (pvalue&lt;0.1){
+    return(&quot;⁺&quot;)
+  }
+  return(&quot;&quot;)
+  }
+  return(sapply(pvalue,p_value_asterisks_by_scalar))
+}
+
+
+formatB&lt;-function(num,digits=digits){
+  #FormatBen
+  #return(str_replace(format(round(num,digits=digits),justify=&quot;right&quot;,scientific=FALSE),&quot; &quot;,&quot;&amp;nbsp;&quot;))
+  return(format(round(num,digits=digits),scientific=FALSE))
+}
+
+num_w_p &lt;- function(num, pvalue,digits=2){
+  
+  return(paste0(formatB(num,digits=digits),p_value_asterisks(pvalue)))
+}
+#can use this function for all sorts of labels, not just a particular kind
+label_rename&lt;-function(label){
+  #effect routes
+  label[label==&quot;effect_via_fruit_vege_only&quot;]&lt;-&quot;Via fruit and vegetable consumption&quot;
+  label[label==&quot;effect_via_inc_only&quot;]&lt;-&quot;Via income only&quot;
+  label[label==&quot;availability_consumption&quot;]&lt;-&quot;Via fruit and vegetable availability and consumption&quot;
+  label[label==&quot;consumption_alone&quot;]&lt;-&quot;Via fruit and vegetable consumption alone&quot;
+  
+  #Outcome labels
+  label[label==&quot;GeneralHealth_i&quot;] &lt;- &quot;Self-rated health&quot;
+  label[label==&quot;MedConditionsAggregate&quot;] &lt;- &quot;Aggregate cardiometabolic health&quot;
+  label[label==&quot;MedConditions_HighBP_i&quot;] &lt;- &quot;High blood pressure/hypertension&quot;
+  label[label==&quot;EverHadCancer_i&quot;] &lt;- &quot;Ever had cancer&quot;
+  #BMI&quot;                    &quot;GeneralHealth_i&quot;        &quot;MedConditionsAggregate&quot; &quot;MedConditions_HighBP_i&quot; &quot;EverHadCancer_i&quot;   
+  
+  
+  #misc
+  label &lt;- sapply(
+    label,
+    function(l){
+      if(l==&quot;BMI&quot;) return(l)
+      return(str_replace_all(l,&quot;_&quot;,&quot; &quot;) %&gt;% str_to_sentence)
+    }
+  )
+    
+  return(label)
+}</code></pre>
 <pre class="r"><code>kable_input &lt;- lavaan_results_df %&gt;% filter(label %in% c(
     &quot;indirect_effect&quot;,
   &quot;direct_effect&quot;,
   &quot;effect_via_inc_only&quot;,
   &quot;effect_via_fruit_vege_only&quot;)) %&gt;%
-  mutate(pv = p_value_asterisks(pvalue)) %&gt;%
-  select(label, outcome,est,pv,se) %&gt;% arrange(label,outcome)
+  mutate(Pathway = label_rename(label),
+         Outcome = label_rename(outcome),
+         Estimate = num_w_p(est,pvalue,digits=4),
+         SE=formatB(se,digits=4)) %&gt;%
+  arrange(outcome) %&gt;%
+  select(Pathway, Outcome,Estimate,SE) %&gt;% arrange(Pathway)
 
 groups_df &lt;- kable_input %&gt;%
-  
-  group_by(label) %&gt;% 
-    summarize(group_start=length(label))
+  group_by(Pathway) %&gt;% 
+    summarize(group_start=length(Pathway))
 
 groups&lt;-groups_df$group_start
-names(groups)&lt;-groups_df$label
+names(groups)&lt;-groups_df$Pathway
 
-kable_input %&gt;% 
-  select(-label) %&gt;%
-  knitr::kable(signif=3) %&gt;% 
+kable_out &lt;- kable_input %&gt;% 
+  select(-Pathway) %&gt;%
+  knitr::kable() %&gt;% 
   kable_classic(full_width = F,html_font=&quot;Times New Roman&quot;) %&gt;%
+  pack_rows(index=groups)
+  
+
+#knitr::asis_output(str_replace(kable_out,&quot;\\+&quot;,&quot;\\^\\+&quot;))
+
+kable_out</code></pre>
+<table class=" lightable-classic" style="font-family: Times New Roman; width: auto !important; margin-left: auto; margin-right: auto;">
+<thead>
+<tr>
+<th style="text-align:left;">
+Outcome
+</th>
+<th style="text-align:left;">
+Estimate
+</th>
+<th style="text-align:left;">
+SE
+</th>
+</tr>
+</thead>
+<tbody>
+<tr grouplength="5">
+<td colspan="3" style="border-bottom: 0;">
+<strong>Direct effect</strong>
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+BMI
+</td>
+<td style="text-align:left;">
+0.9605***
+</td>
+<td style="text-align:left;">
+0.2713
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Ever had cancer
+</td>
+<td style="text-align:left;">
+-0.0146
+</td>
+<td style="text-align:left;">
+0.0134
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Self-rated health
+</td>
+<td style="text-align:left;">
+0.0614⁺
+</td>
+<td style="text-align:left;">
+0.0351
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+High blood pressure/hypertension
+</td>
+<td style="text-align:left;">
+0.0242
+</td>
+<td style="text-align:left;">
+0.0177
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Aggregate cardiometabolic health
+</td>
+<td style="text-align:left;">
+0.0383
+</td>
+<td style="text-align:left;">
+0.0303
+</td>
+</tr>
+<tr grouplength="5">
+<td colspan="3" style="border-bottom: 0;">
+<strong>Indirect effect</strong>
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+BMI
+</td>
+<td style="text-align:left;">
+0.0375***
+</td>
+<td style="text-align:left;">
+0.0070
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Ever had cancer
+</td>
+<td style="text-align:left;">
+-0.0003
+</td>
+<td style="text-align:left;">
+0.0003
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Self-rated health
+</td>
+<td style="text-align:left;">
+0.0093***
+</td>
+<td style="text-align:left;">
+0.0014
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+High blood pressure/hypertension
+</td>
+<td style="text-align:left;">
+0.0009*
+</td>
+<td style="text-align:left;">
+0.0004
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Aggregate cardiometabolic health
+</td>
+<td style="text-align:left;">
+0.0021**
+</td>
+<td style="text-align:left;">
+0.0007
+</td>
+</tr>
+<tr grouplength="5">
+<td colspan="3" style="border-bottom: 0;">
+<strong>Via fruit and vegetable consumption</strong>
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+BMI
+</td>
+<td style="text-align:left;">
+0.0394
+</td>
+<td style="text-align:left;">
+0.0246
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Ever had cancer
+</td>
+<td style="text-align:left;">
+-0.0003
+</td>
+<td style="text-align:left;">
+0.0004
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Self-rated health
+</td>
+<td style="text-align:left;">
+0.0103⁺
+</td>
+<td style="text-align:left;">
+0.0058
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+High blood pressure/hypertension
+</td>
+<td style="text-align:left;">
+0.0010
+</td>
+<td style="text-align:left;">
+0.0007
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Aggregate cardiometabolic health
+</td>
+<td style="text-align:left;">
+0.0021
+</td>
+<td style="text-align:left;">
+0.0015
+</td>
+</tr>
+<tr grouplength="5">
+<td colspan="3" style="border-bottom: 0;">
+<strong>Via income only</strong>
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+BMI
+</td>
+<td style="text-align:left;">
+0.2184***
+</td>
+<td style="text-align:left;">
+0.0392
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Ever had cancer
+</td>
+<td style="text-align:left;">
+-0.0014
+</td>
+<td style="text-align:left;">
+0.0016
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Self-rated health
+</td>
+<td style="text-align:left;">
+0.0853***
+</td>
+<td style="text-align:left;">
+0.0100
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+High blood pressure/hypertension
+</td>
+<td style="text-align:left;">
+0.0178***
+</td>
+<td style="text-align:left;">
+0.0028
+</td>
+</tr>
+<tr>
+<td style="text-align:left;padding-left: 2em;" indentlevel="1">
+Aggregate cardiometabolic health
+</td>
+<td style="text-align:left;">
+0.0414***
+</td>
+<td style="text-align:left;">
+0.0058
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div id="summarizing-the-hybrid-dataset-results" class="section level1">
+<h1>Summarizing the hybrid dataset results</h1>
+<pre class="r"><code>kable_input &lt;- hybrid_effect_df %&gt;%
+  #mutate(pv = p_value_asterisks(pvalue)) %&gt;%
+  mutate(Pathway = label_rename(pathway),
+         Outcome = label_rename(outcome),
+         Estimate = num_w_p(est,pvalue,digits=4),
+         SE=formatB(se,digits=4)) %&gt;%
+  select(Pathway, Outcome,Estimate,SE) %&gt;% arrange(Pathway)
+
+groups_df &lt;- kable_input %&gt;%
+  group_by(Pathway) %&gt;% 
+    summarize(group_start=length(Outcome))
+
+groups&lt;-groups_df$group_start
+names(groups)&lt;-groups_df$Pathway
+
+rownames(kable_input)&lt;-NULL
+kable_input %&gt;% 
+  select(-Pathway) %&gt;%
+  knitr::kable() %&gt;% 
+  kable_classic(full_width = F,html_font=&quot;Times New Roman&quot;) %&gt;%
+  
+  #pack_rows(index=c(&quot;indirect_effect&quot;=nrow(kable_input)))
   pack_rows(index=groups)</code></pre>
 <table class=" lightable-classic" style="font-family: Times New Roman; width: auto !important; margin-left: auto; margin-right: auto;">
 <thead>
 <tr>
 <th style="text-align:left;">
-outcome
-</th>
-<th style="text-align:right;">
-est
+Outcome
 </th>
 <th style="text-align:left;">
-pv
+Estimate
 </th>
-<th style="text-align:right;">
-se
+<th style="text-align:left;">
+SE
 </th>
 </tr>
 </thead>
 <tbody>
 <tr grouplength="5">
-<td colspan="4" style="border-bottom: 0;">
-<strong>direct_effect</strong>
+<td colspan="3" style="border-bottom: 0;">
+<strong>Indirect effect</strong>
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 BMI
 </td>
-<td style="text-align:right;">
-0.9604839
+<td style="text-align:left;">
+0.0119*
 </td>
 <td style="text-align:left;">
-***
-</td>
-<td style="text-align:right;">
-0.2712640
+0.0047
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-EverHadCancer_i
-</td>
-<td style="text-align:right;">
--0.0146056
+Self-rated health
 </td>
 <td style="text-align:left;">
+0.0029**
 </td>
-<td style="text-align:right;">
-0.0133788
+<td style="text-align:left;">
+0.0011
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-GeneralHealth_i
-</td>
-<td style="text-align:right;">
-0.0614323
+Aggregate cardiometabolic health
 </td>
 <td style="text-align:left;">
-<ul>
-<li></td>
-<td style="text-align:right;">
-0.0350695
+0.0007*
+</td>
+<td style="text-align:left;">
+0.0003
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditions_HighBP_i
-</td>
-<td style="text-align:right;">
-0.0241813
+High blood pressure/hypertension
 </td>
 <td style="text-align:left;">
+0.0003⁺
 </td>
-<td style="text-align:right;">
-0.0176876
+<td style="text-align:left;">
+0.0002
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditionsAggregate
-</td>
-<td style="text-align:right;">
-0.0382777
+Ever had cancer
 </td>
 <td style="text-align:left;">
+-0.0001
 </td>
-<td style="text-align:right;">
-0.0302506
+<td style="text-align:left;">
+0.0001
 </td>
 </tr>
 <tr grouplength="5">
-<td colspan="4" style="border-bottom: 0;">
-<strong>effect_via_fruit_vege_only</strong>
+<td colspan="3" style="border-bottom: 0;">
+<strong>Via fruit and vegetable availability and consumption</strong>
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 BMI
 </td>
-<td style="text-align:right;">
-0.0394457
+<td style="text-align:left;">
+0.0268*
 </td>
 <td style="text-align:left;">
-</td>
-<td style="text-align:right;">
-0.0245768
+0.0122
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-EverHadCancer_i
-</td>
-<td style="text-align:right;">
--0.0002747
+Self-rated health
 </td>
 <td style="text-align:left;">
+0.0066*
 </td>
-<td style="text-align:right;">
-0.0003774
+<td style="text-align:left;">
+0.0029
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-GeneralHealth_i
-</td>
-<td style="text-align:right;">
-0.0102995
+Aggregate cardiometabolic health
 </td>
 <td style="text-align:left;">
-<ul>
-<li></td>
-<td style="text-align:right;">
-0.0058027
+0.0015⁺
+</td>
+<td style="text-align:left;">
+0.0008
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditions_HighBP_i
-</td>
-<td style="text-align:right;">
-0.0009851
+High blood pressure/hypertension
 </td>
 <td style="text-align:left;">
+0.0006
 </td>
-<td style="text-align:right;">
-0.0007155
+<td style="text-align:left;">
+0.0004
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditionsAggregate
-</td>
-<td style="text-align:right;">
-0.0021442
+Ever had cancer
 </td>
 <td style="text-align:left;">
+-0.0002
 </td>
-<td style="text-align:right;">
-0.0015246
+<td style="text-align:left;">
+0.0002
 </td>
 </tr>
 <tr grouplength="5">
-<td colspan="4" style="border-bottom: 0;">
-<strong>effect_via_inc_only</strong>
+<td colspan="3" style="border-bottom: 0;">
+<strong>Via fruit and vegetable consumption alone</strong>
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
 BMI
 </td>
-<td style="text-align:right;">
-0.2183564
+<td style="text-align:left;">
+-0.0740
 </td>
 <td style="text-align:left;">
-***
-</td>
-<td style="text-align:right;">
-0.0392039
+0.0540
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-EverHadCancer_i
-</td>
-<td style="text-align:right;">
--0.0014111
+Self-rated health
 </td>
 <td style="text-align:left;">
+-0.0181
 </td>
-<td style="text-align:right;">
-0.0016019
+<td style="text-align:left;">
+0.0130
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-GeneralHealth_i
-</td>
-<td style="text-align:right;">
-0.0852599
+Aggregate cardiometabolic health
 </td>
 <td style="text-align:left;">
-***
+-0.0042
 </td>
-<td style="text-align:right;">
-0.0099558
+<td style="text-align:left;">
+0.0033
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditions_HighBP_i
-</td>
-<td style="text-align:right;">
-0.0177578
+High blood pressure/hypertension
 </td>
 <td style="text-align:left;">
-***
+-0.0018
 </td>
-<td style="text-align:right;">
-0.0027708
+<td style="text-align:left;">
+0.0015
 </td>
 </tr>
 <tr>
 <td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditionsAggregate
-</td>
-<td style="text-align:right;">
-0.0414258
+Ever had cancer
 </td>
 <td style="text-align:left;">
-***
-</td>
-<td style="text-align:right;">
-0.0057895
-</td>
-</tr>
-<tr grouplength="5">
-<td colspan="4" style="border-bottom: 0;">
-<strong>indirect_effect</strong>
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-BMI
-</td>
-<td style="text-align:right;">
-0.0375259
+0.0005
 </td>
 <td style="text-align:left;">
-***
-</td>
-<td style="text-align:right;">
-0.0069606
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-EverHadCancer_i
-</td>
-<td style="text-align:right;">
--0.0002542
-</td>
-<td style="text-align:left;">
-</td>
-<td style="text-align:right;">
-0.0002785
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-GeneralHealth_i
-</td>
-<td style="text-align:right;">
-0.0093351
-</td>
-<td style="text-align:left;">
-***
-</td>
-<td style="text-align:right;">
-0.0014247
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditions_HighBP_i
-</td>
-<td style="text-align:right;">
-0.0009071
-</td>
-<td style="text-align:left;">
-<ul>
-<li></td>
-<td style="text-align:right;">
-0.0003764
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-MedConditionsAggregate
-</td>
-<td style="text-align:right;">
-0.0021482
-</td>
-<td style="text-align:left;">
-**
-</td>
-<td style="text-align:right;">
-0.0006849
-</td>
-</tr>
-</tbody>
-</table></li>
-</ul></li>
-</ul></li>
-</ul>
-</div>
-<div id="summarizing-the-hybrid-dataset-results" class="section level1">
-<h1>Summarizing the hybrid dataset results</h1>
-<pre class="r"><code>kable_input &lt;- hybrid_effect_df %&gt;%
-  mutate(pv = p_value_asterisks(pvalue)) %&gt;%
-  select(outcome,est,pv,se) %&gt;% arrange(outcome)
-
-
-kable_input %&gt;% 
-  knitr::kable(signif=3) %&gt;% 
-  kable_classic(full_width = F,html_font=&quot;Times New Roman&quot;) %&gt;%
-  pack_rows(index=c(&quot;indirect_effect&quot;=nrow(kable_input)))</code></pre>
-<table class=" lightable-classic" style="font-family: Times New Roman; width: auto !important; margin-left: auto; margin-right: auto;">
-<thead>
-<tr>
-<th style="text-align:left;">
-</th>
-<th style="text-align:left;">
-outcome
-</th>
-<th style="text-align:right;">
-est
-</th>
-<th style="text-align:left;">
-pv
-</th>
-<th style="text-align:right;">
-se
-</th>
-</tr>
-</thead>
-<tbody>
-<tr grouplength="5">
-<td colspan="5" style="border-bottom: 0;">
-<strong>indirect_effect</strong>
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-2.5%
-</td>
-<td style="text-align:left;">
-BMI
-</td>
-<td style="text-align:right;">
--0.0739881
-</td>
-<td style="text-align:left;">
-</td>
-<td style="text-align:right;">
-0.0540344
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-2.5%4
-</td>
-<td style="text-align:left;">
-EverHadCancer_i
-</td>
-<td style="text-align:right;">
-0.0004997
-</td>
-<td style="text-align:left;">
-</td>
-<td style="text-align:right;">
-0.0007487
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-2.5%1
-</td>
-<td style="text-align:left;">
-GeneralHealth_i
-</td>
-<td style="text-align:right;">
--0.0181380
-</td>
-<td style="text-align:left;">
-</td>
-<td style="text-align:right;">
-0.0129868
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-2.5%3
-</td>
-<td style="text-align:left;">
-MedConditions_HighBP_i
-</td>
-<td style="text-align:right;">
--0.0017578
-</td>
-<td style="text-align:left;">
-</td>
-<td style="text-align:right;">
-0.0015059
-</td>
-</tr>
-<tr>
-<td style="text-align:left;padding-left: 2em;" indentlevel="1">
-2.5%2
-</td>
-<td style="text-align:left;">
-MedConditionsAggregate
-</td>
-<td style="text-align:right;">
--0.0041867
-</td>
-<td style="text-align:left;">
-</td>
-<td style="text-align:right;">
-0.0033127
+0.0007
 </td>
 </tr>
 </tbody>

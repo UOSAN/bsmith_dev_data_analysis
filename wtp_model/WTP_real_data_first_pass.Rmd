@@ -153,7 +153,33 @@ summary(model)
 
 hist(regress_data$hunger_1)
 ```
+```{r}
+mean_by_food <- regress_data %>% #filter(health_cond=="unhealthy") %>% 
+  group_by(food_pic) %>% summarise(
+  #hunger=mean(hunger_1,na.rm=TRUE),
+  liking_for_food = mean(liking_rating,na.rm=TRUE),
+  bid=mean(bid,na.rm=TRUE)
+  )
 
+cor.test(mean_by_food$liking_for_food,mean_by_food$bid)
+
+
+
+plot(mean_by_food$liking_for_food,mean_by_food$bid)
+```
+
+```{r}
+mean_by_subject <- regress_data %>% filter(health_cond=="unhealthy" & liking_rating==4) %>% group_by(subject) %>% summarise(
+  hunger=mean(hunger_1,na.rm=TRUE),
+  bid=mean(bid,na.rm=TRUE)
+  )
+
+cor.test(mean_by_subject$hunger,mean_by_subject$bid)
+
+
+
+plot(mean_by_subject$hunger,mean_by_subject$bid)
+```
 
 We don't really care whether or not there are individual-level differences in the interaction between taste ratings and hunger norms. we just want to know, overall, whether they interact and whether modeling that interaction can make the model more predictive.
 
@@ -179,7 +205,7 @@ That's a non-significant effect for hunger. It is in the reverse direction to wh
 ```{r}
 
 model2 <- lme4::lmer(
-  bid_norm ~ run + health_rating + liking_rating_norm*hunger_norm + (1+ liking_rating_norm + health_rating | subject),
+  bid_norm ~ run + health_rating + liking_rating_norm*hunger_norm + (1 + liking_rating_norm | food_pic) + (1+ liking_rating_norm + health_rating | subject),
   regress_data
   )
 
