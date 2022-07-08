@@ -52,6 +52,7 @@ low income women, particularly low income women head of households, are of parti
 #      )
 ```
 
+
 ```{r}
 table(hints5$GeneralHealth_of) %>% cumsum / sum(!is.na(hints5$GeneralHealth_of))
 
