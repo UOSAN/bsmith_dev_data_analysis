@@ -111,12 +111,14 @@ predict_bmi <- lm(BMI~
                     DEMO_Age_c+Gender3C+RaceCategorical,
                   orfcs_dataset)
 summary(predict_bmi)
+confint(predict_bmi)
 
 predict_ffq <- lm(cancer_promoting_minus_preventing_FFQ_z~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
                     DEMO_Age_c+Gender3C+RaceCategorical,
                   orfcs_dataset)
 summary(predict_ffq)
+confint(predict_ffq)
 ```
 
 In each of these analyses, MESA_healthyfoodavailability is important, and is related to lower BMIs (b=-0.7, p<0.05) and FFQ (b=-0.07, p<0.001). That is, for every 1 SD in healthy food availability, we get -0.7 points on the BMI scale and -0.13 points on the z-scored Food Frequency Questionnaire.
@@ -132,12 +134,14 @@ predict_bmi <- lm(BMI~
                     DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceCategorical,
                   orfcs_dataset)
 summary(predict_bmi)
+confint(predict_bmi)
 
 predict_ffq <- lm(cancer_promoting_minus_preventing_FFQ_z~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
                     DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceCategorical,
                   orfcs_dataset)
 summary(predict_ffq)
+confint(predict_ffq)
 ```
 
 ## Exploring overweight-obese subset
