@@ -1764,18 +1764,20 @@ pre code {
 <p>We won’t on-share HINTS data, but should provide a script that generates it.</p>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuU3lzLnNldGVudihSX0NPTkZJR19BQ1RJVkUgPSBTeXMuaW5mbygpW1wibm9kZW5hbWVcIl0pXG5cbmxpYnJhcnkoZHBseXIpXG5saWJyYXJ5KGxhdmFhbilcbiNzb3VyY2UoXCJISU5UU19wcmVwcm9jZXNzaW5nLlJcIilcbnNvdXJjZShcIm9yZmNzX3V0aWxpdGllcy5SXCIpXG5gYGAifQ== -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuU3lzLnNldGVudihSX0NPTkZJR19BQ1RJVkUgPSBTeXMuaW5mbygpW1wibm9kZW5hbWVcIl0pXG5cbmxpYnJhcnkoZHBseXIpXG5saWJyYXJ5KGxhdmFhbilcbiNzb3VyY2UoXCJISU5UU19wcmVwcm9jZXNzaW5nLlJcIilcbnNvdXJjZShcIm9yZmNzX3V0aWxpdGllcy5SXCIpXG4jaGludHM1IDwtZ2V0X2hpbnRzNShsb2NhdGlvbj1jb25maWc6OmdldChcImhpbnRzX3Byb3RlY3RlZF9kYXRhX2ZvbGRlcnBhdGhcIikpXG4jYm9vdF90aW1lczwtMTAwXG5cbnpzY29yZSA8LSBmdW5jdGlvbih4KXtcbiAgICByZXR1cm4oKHgtbWVhbih4LG5hLnJtPVRSVUUpKS9zZCh4LG5hLnJtPVRSVUUpKVxufVxuYGBgIn0= -->
 <pre class="r"><code>Sys.setenv(R_CONFIG_ACTIVE = Sys.info()[&quot;nodename&quot;])
 
 library(dplyr)
 library(lavaan)
 #source(&quot;HINTS_preprocessing.R&quot;)
-source(&quot;orfcs_utilities.R&quot;)</code></pre>
+source(&quot;orfcs_utilities.R&quot;)
+#hints5 &lt;-get_hints5(location=config::get(&quot;hints_protected_data_folderpath&quot;))
+#boot_times&lt;-100
+
+zscore &lt;- function(x){
+    return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
+}</code></pre>
 <!-- rnb-source-end -->
-<!-- rnb-output-begin eyJkYXRhIjoiRXJyb3IgaW4gZmlsZShmaWxlbmFtZSwgXCJyXCIsIGVuY29kaW5nID0gZW5jb2RpbmcpIDogXG4gIGNhbm5vdCBvcGVuIHRoZSBjb25uZWN0aW9uXG4ifQ== -->
-<pre><code>Error in file(filename, &quot;r&quot;, encoding = encoding) : 
-  cannot open the connection</code></pre>
-<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->

@@ -16,6 +16,7 @@ We won't on-share HINTS data, but should provide a script that generates it.
 ```{r message=FALSE, warning=FALSE}
 Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 
+library(tidyverse)
 library(dplyr)
 library(lavaan)
 #source("HINTS_preprocessing.R")
@@ -68,9 +69,12 @@ cols_to_select <- (
   grepl("RaceC2", colnames(orfcs_dataset)) | 
   grepl("Education_Categorical", colnames(orfcs_dataset)) | 
   grepl("PSS", colnames(orfcs_dataset)) | 
-  grepl("aSES", colnames(orfcs_dataset))
+  grepl("aSES", colnames(orfcs_dataset)) |
+  grepl("DEMO_Age", colnames(orfcs_dataset)) |
+  grepl("DEMO_Age_c", colnames(orfcs_dataset)) |
+  grepl("PSS_z", colnames(orfcs_dataset))
 )
-ds_shareable_columns <- orfcs_dataset %>% select(colnames(orfcs_dataset)[cols_to_select])
+ds_shareable_columns <- orfcs_dataset[,colnames(orfcs_dataset)[cols_to_select]]
   
 
 ```
@@ -112,8 +116,8 @@ ds_shareable_columns <- ds_shareable_columns %>%
   rename_with( ~ cols_to_rename_from_key[.x],.cols=names(cols_to_rename_from_key)) %>%
   rename(`Included as houshold member Spouse`=aSES_04a_1, `Included as houshold member Children`=aSES_04a_2, `Included as houshold member Others`=aSES_04a_3)
 
-ds_shareable_columns$aSES_02_z<-NULL
-ds_shareable_columns$BMI <-round(ds_shareable_columns$BMI)
+ds_shareable_columns$aSES_02_z
+ds_shareable_columns$BMI <-round(ds_shareable_columns$BMI,1)
 ds_shareable_columns$BMI_c <-NULL
 
 ```

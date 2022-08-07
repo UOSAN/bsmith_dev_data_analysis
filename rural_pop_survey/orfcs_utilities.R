@@ -1,4 +1,4 @@
-
+library(dplyr)
 
 
 get_orfcs_survey_data <- function(data_dir){
@@ -54,7 +54,7 @@ match_ppts_with_zipcode_data <- function(data_dir, full_merged_results){
   )
   #there's only one column we need out of all of this
   zipcode_data_selected <- median_income_data_all %>% 
-    select(`Geographic Area Name`,
+    dplyr::select(`Geographic Area Name`,
            `Estimate!!Median income (dollars)!!HOUSEHOLD INCOME BY RACE AND HISPANIC OR LATINO ORIGIN OF HOUSEHOLDER!!Households`)
   #now tidy it up.
   

@@ -40,6 +40,24 @@ Food habits
 
 Before testing each of these we may want to run some sort of correlation on them to look at the correlations between the scales. If items are uncorrelated, we could include them together in a single regression. If they are correlated, we might want to avoid testing them together, test their interaction, or pick one scale over another to analyze.
 
+## original question
+
+From our teams script the orignla question is
+
+> We asked you to not eat for 3 hours prior to this appointment and to refrain from liquids for the past hour. Were you able to do that?  
+> 
+> And how hungry are you currently feeling on a scale from 1-5 where 1 = not hungry at all and 5 = extremely hungry? 
+> 
+> Record answer in Redcap 
+> 
+> Great! We would like you to continue fasting prior to the body composition assessment to obtain the most accurate results. After you complete the physical assessments, you’ll be able to drink fluids and after the MRI scan, we’ll provide you with a snack.  
+> 
+> We have a couple minutes before we need to get started. Would you like to visit the restroom or do you need anything before we get started? 
+> 
+> Do you have any questions for me before we start gathering some of the measurements? 
+
+ 
+
 ## Implementation
 
 ### First: group-level predictors
@@ -172,6 +190,7 @@ summary(model1)
 
 #coef(model1)
 ```
+
 
 That's a non-significant effect for hunger. It is in the reverse direction to what we'd predict. But we weren't interestd in the main effct, particularly. What does it do as an interaction term?
 

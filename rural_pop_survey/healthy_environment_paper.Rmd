@@ -24,34 +24,32 @@ library(dplyr)
 
 data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
 
-preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed_anon_by_subj.csv")
+#preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
+preprocessed_data_filepath <- paste0(config::get("orfcs_shareable_folder"),"oregon_dataset_anon.csv")
 library(readr)
 library(ggplot2)
 library(GGally)
-preprocessed_data_raw <- readr::read_csv(preprocessed_data_filepath)
+preprocessed_data <- readr::read_csv(preprocessed_data_filepath)
 
+#don't need to include this attention check here because it's now been added to the pre-processing.
+# rows_to_remove <- ((preprocessed_data_raw$EDM_forwardscore<2 & preprocessed_data_raw$EDM_reversescored>4) |
+#   (preprocessed_data_raw$EDM_forwardscore>=4.5 & preprocessed_data_raw$EDM_reversescored<2))
+# rows_to_remove[is.na(rows_to_remove)]<-FALSE
+# print(sum(rows_to_remove,na.rm=TRUE))
+# sub_ids_to_remove <- preprocessed_data_raw[rows_to_remove,"SID"]
+# preprocessed_data <- preprocessed_data_raw %>% filter((SID %in% unlist(sub_ids_to_remove))==FALSE)
 
-rows_to_remove <- ((preprocessed_data_raw$EDM_forwardscore<2 & preprocessed_data_raw$EDM_reversescored>4) |
-  (preprocessed_data_raw$EDM_forwardscore>=4.5 & preprocessed_data_raw$EDM_reversescored<2))
-rows_to_remove[is.na(rows_to_remove)]<-FALSE
-sum(rows_to_remove)
-sub_ids_to_remove <- preprocessed_data_raw[rows_to_remove,"SID"]
-preprocessed_data <- preprocessed_data_raw %>% filter((SID %in% unlist(sub_ids_to_remove))==FALSE)
+# preprocessed_data$RaceCategorical<-factor(preprocessed_data$RaceCategorical,levels=unique(preprocessed_data$RaceCategorical))
 
-
-preprocessed_data$DEMO_Age_c <- preprocessed_data$DEMO_Age-38 #using U.S. median age
-
-preprocessed_data$RaceCategorical<-factor(preprocessed_data$RaceCategorical,levels=unique(preprocessed_data$RaceCategorical))
-
-preprocessed_data$RuralZIP_i <- as.numeric(preprocessed_data$RuralZIP)
-preprocessed_data$RaceC2 <- as.character(preprocessed_data$RaceCategorical)
-preprocessed_data$RaceC2[preprocessed_data$RaceC2=="RaceNotReported"] <- "OtherRaceRaceNotReported"
-preprocessed_data$RaceC2[preprocessed_data$RaceC2=="OtherRace"] <- "OtherRaceRaceNotReported"
-preprocessed_data$RaceC2 <-factor(preprocessed_data$RaceC2,levels=names(sort(table(preprocessed_data$RaceC2),decreasing=TRUE)))
+# preprocessed_data$RuralZIP_i <- as.numeric(preprocessed_data$RuralZIP)
+# preprocessed_data$RaceC2 <- as.character(preprocessed_data$RaceCategorical)
+# preprocessed_data$RaceC2[preprocessed_data$RaceC2=="RaceNotReported"] <- "OtherRaceRaceNotReported"
+# preprocessed_data$RaceC2[preprocessed_data$RaceC2=="OtherRace"] <- "OtherRaceRaceNotReported"
+# preprocessed_data$RaceC2 <-factor(preprocessed_data$RaceC2,levels=names(sort(table(preprocessed_data$RaceC2),decreasing=TRUE)))
 
 #need to remove this one data point for data quality issue.
-preprocessed_data[!is.na(preprocessed_data$WEIGHT) & preprocessed_data$WEIGHT>500,c("WEIGHT","WEIGHT_kg","BMI")] <- NA
-rm(preprocessed_data_raw)
+# preprocessed_data[!is.na(preprocessed_data$WEIGHT) & preprocessed_data$WEIGHT>500,c("WEIGHT","WEIGHT_kg","BMI")] <- NA
+# rm(preprocessed_data_raw)
 orfcs_dataset<-preprocessed_data
 ```
 
@@ -108,14 +106,14 @@ So we are locked into a fairly specific analysis plan here.
 
 predict_bmi <- lm(BMI~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
-                    DEMO_Age_c+Gender3C+RaceCategorical,
+                    DEMO_Age_c+Gender3C+RaceC2,
                   orfcs_dataset)
 summary(predict_bmi)
 confint(predict_bmi)
 
 predict_ffq <- lm(cancer_promoting_minus_preventing_FFQ_z~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
-                    DEMO_Age_c+Gender3C+RaceCategorical,
+                    DEMO_Age_c+Gender3C+RaceC2,
                   orfcs_dataset)
 summary(predict_ffq)
 confint(predict_ffq)
@@ -131,14 +129,14 @@ We can also measures these while controlling for age as a quadratic variable:
 
 predict_bmi <- lm(BMI~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
-                    DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceCategorical,
+                    DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceC2,
                   orfcs_dataset)
 summary(predict_bmi)
 confint(predict_bmi)
 
 predict_ffq <- lm(cancer_promoting_minus_preventing_FFQ_z~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
-                    DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceCategorical,
+                    DEMO_Age_c+I(DEMO_Age_c^2)+Gender3C+RaceC2,
                   orfcs_dataset)
 summary(predict_ffq)
 confint(predict_ffq)
@@ -158,13 +156,13 @@ We were interested in subjects with BMIs over 25, because some research suggests
 
 predict_bmi25_bmi <- lm(BMI~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
-                    DEMO_Age_c+Gender3C+RaceCategorical,
+                    DEMO_Age_c+Gender3C+RaceC2,
                   orfcs_dataset %>% filter(BMI>25.0))
 summary(predict_bmi25_bmi)
 
 predict_bmi25_ffq <- lm(cancer_promoting_minus_preventing_FFQ_z~
                     MESA_healthyfoodavailability_z+MESA_safetyfromcrime_z+PSS_z+
-                    DEMO_Age_c+Gender3C+RaceCategorical,
+                    DEMO_Age_c+Gender3C+RaceC2,
                   orfcs_dataset %>% filter(BMI>25.0))
 summary(predict_bmi25_ffq)
 ```
@@ -182,7 +180,7 @@ Having established that FFQ is related to healthy food availability, we wanted t
 
 predict_bmi_from_ffq <- lm(BMI~
                     cancer_promoting_minus_preventing_FFQ_z+
-                    DEMO_Age_c+Gender3C+RaceCategorical,
+                    DEMO_Age_c+Gender3C+RaceC2,
                   orfcs_dataset)
 summary(predict_bmi_from_ffq)
 
@@ -275,12 +273,12 @@ dev_data_by_ppt %<>%
 
 ```{r}
 predict_bmi <- lm(bmi~cancer_promoting_minus_preventing_FFQ_z+
-                    age365_c+birthsex_factor+RaceCategorical,
+                    age365_c+birthsex_factor+RaceC2,
                   dev_data_by_ppt)
 summary(predict_bmi)
 
 predict_bf_1 <- lm(bf_1~cancer_promoting_minus_preventing_FFQ_z+
-                    age365_c+birthsex_factor+RaceCategorical,
+                    age365_c+birthsex_factor+RaceC2,
                   dev_data_by_ppt)
 summary(predict_bf_1)
 

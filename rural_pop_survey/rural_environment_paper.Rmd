@@ -7,6 +7,7 @@ output:
 
 We plan a paper on the rural environment, based on data here: https://docs.google.com/document/d/18f048q1x7UAKwgjXP7UNRuAT6Ad3XBXZHAi3dFYO2U4/edit#heading=h.n0uc8s3dggzu .
 
+If this is run with ORFCS data downloaded from the publicly available dataset, the results here might differ slightly from those presented in the paper. The results in the paper use unrounded BMIs (calculated from feet and inches) whereas the publicly avialalbe results have BMIs rounded to one decimal place, in order to protect anonmynity.
 
 # Setup
 
@@ -39,7 +40,9 @@ library(magrittr)
 library(dplyr)
 
 
-preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
+#preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
+preprocessed_data_filepath <- paste0(config::get("orfcs_shareable_folder"),"oregon_dataset_anon.csv")
+
 library(readr)
 library(ggplot2)
 library(GGally)
@@ -61,6 +64,38 @@ orfcs_dataset$Education_Categorical<-factor(
 orfcs_dataset$Education_Ordinal<-as.integer(orfcs_dataset$Education_Categorical)
 
 
+```
+
+
+
+```{r}
+source("orfcs_utilities.R")
+library(magrittr)
+library(dplyr)
+
+
+#preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
+preprocessed_data_filepath <- paste0(config::get("orfcs_shareable_folder"),"oregon_dataset_anon.csv")
+
+library(readr)
+library(ggplot2)
+library(GGally)
+orfcs_dataset2 <- readr::read_csv(preprocessed_data_filepath)
+
+#have to do this here because the file was saved in CSV, which converts factors to strings.
+orfcs_dataset2$Education_Categorical<-factor(
+  orfcs_dataset2$Education_Categorical,
+  #levels=3:9,
+  labels=c("No high school diploma",
+           "High school diploma/GED",
+           "Some college credit, no degree",
+           "Trade, technical, or vocational training",
+           "Associate's degree",
+           "Bachelor's degree",
+           "Master's, Professional, or doctoral degree")
+)
+
+orfcs_dataset2$Education_Ordinal<-as.integer(orfcs_dataset2$Education_Categorical)
 ```
 
 
@@ -96,7 +131,7 @@ hines_cycle5 %>% group_by(HINTSIsRural) %>% count()
 
 
 ```{r}
-orfcs_dataset %>% filter(is.na(BMI)) %>% dplyr::select(WEIGHT,HEIGHT_m) %>% is.na %>% colSums
+#orfcs_dataset %>% filter(is.na(BMI)) %>% dplyr::select(WEIGHT,HEIGHT_m) %>% is.na %>% colSums
 orfcs_dataset %>% filter(!is.na(BMI) & !is.na(Gender3C) & !is.na(RuralZIP) & !is.na(PSS_z) & !is.na(DEMO_Age_c) & !is.na(Gender3C) & !is.na(RaceC2)) %>% .$RuralZIP %>% table
 orfcs_dataset %>% filter(!is.na(cancer_promoting_minus_preventing_FFQ) & !is.na(Gender3C) & !is.na(RuralZIP) & !is.na(PSS_z) & !is.na(DEMO_Age_c) & !is.na(Gender3C) & !is.na(RaceC2)) %>% .$RuralZIP %>% table
 predict_ffq_rural <- lm(cancer_promoting_minus_preventing_FFQ~RuralZIP+
