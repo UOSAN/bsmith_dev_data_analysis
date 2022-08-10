@@ -1721,13 +1721,7 @@ hints5 &lt;-get_hints5(paste0(config::get(&quot;hints_protected_data_folderpath&
 ## [1] &quot;RUC2013TRUE&quot;
 ## [1] TRUE
 ## [1] TRUE</code></pre>
-<pre class="r"><code>boot_times&lt;-10000
-include_hispanic_status &lt;- TRUE
-if(include_hispanic_status){
-  race_vars &lt;- &quot;RacePP+Hisp_Cat2&quot;
-}else{
-  race_vars &lt;- &quot;RacePP&quot;
-}</code></pre>
+<pre class="r"><code>boot_times&lt;-10000</code></pre>
 <pre class="r"><code>zscore &lt;- function(x){
     return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
   }</code></pre>
@@ -1874,505 +1868,241 @@ are poorer health outcomes for rural areas compared to urban ones</li>
 <p>To test this, we use regression.</p>
 <p>So here, we’re testing general health for a start.</p>
 <pre class="r"><code>#health_measures &lt;- c(&quot;GeneralHealth&quot;, &quot;MedConditions_Diabetes&quot;, &quot;MedConditions_HighBP&quot;, &quot;MedConditions_HeartCondition&quot;, EverHadCancer)
-formula_rhs&lt;-paste0(&quot;~HINTSIsRural_i+Age_c+I(Age_c^2)+&quot;,race_vars,&quot;+Gender3C+filename&quot;)
+formula_rhs&lt;-&quot;~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
 formula_general &lt;- paste0(&quot;GeneralHealth_i&quot;,formula_rhs)
 
 print(formula_general)</code></pre>
-<pre><code>## [1] &quot;GeneralHealth_i~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;GeneralHealth_i~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre class="r"><code>rural_disparity &lt;- lm(eval(formula_general),hints5)
 
-print_model_summary &lt;- function(model){
-  print(summary(model))
-  conf_ints &lt;- confint(model)
-  if(&quot;glm&quot; %in% class(model)){
-    if (model$family$family==&quot;binomial&quot;){
-      print(cbind(OR = exp(coef(model)),exp(conf_ints)))
-      return()
-    }
-  }
-  print(cbind(coef = coef(model),conf_ints))
-  
-}
-
-print_model_summary(rural_disparity)</code></pre>
+summary(rural_disparity)</code></pre>
 <pre><code>## 
 ## Call:
 ## lm(formula = eval(formula_general), data = hints5)
 ## 
 ## Residuals:
 ##      Min       1Q   Median       3Q      Max 
-## -2.37851 -0.62047  0.01039  0.54087  2.94713 
+## -2.25401 -0.62631  0.03639  0.53843  2.88753 
 ## 
 ## Coefficients:
 ##                                                          Estimate Std. Error
-## (Intercept)                                             2.300e+00  2.099e-02
-## HINTSIsRural_i                                          1.628e-01  2.200e-02
-## Age_c                                                   1.093e-02  9.097e-04
-## I(Age_c^2)                                             -1.502e-05  2.331e-05
-## RacePPBlack                                             3.110e-01  2.145e-02
-## RacePPMissing data (Not Ascertained)                    8.065e-02  3.691e-02
-## RacePPMultiple races selected                           2.773e-01  3.988e-02
-## RacePPChinese                                           1.242e-01  6.987e-02
-## RacePPFilipino                                          1.945e-01  7.734e-02
-## RacePPAsian Indian                                     -3.907e-02  8.061e-02
-## RacePPOther Asian                                       1.430e-01  8.247e-02
-## RacePPAmerican Indian or Alaska Native                  2.923e-01  9.093e-02
-## RacePPPacific Islander                                  3.969e-01  1.038e-01
-## RacePPVietnamese                                        1.721e-01  1.198e-01
-## RacePPMissing data (Web partial - Question Never Seen) -1.028e-01  1.665e-01
-## RacePPKorean                                            1.599e-01  1.503e-01
-## RacePPJapanese                                         -1.620e-01  1.750e-01
-## Hisp_Cat2Unknown                                        1.484e-01  3.067e-02
-## Hisp_Cat2Mexican                                        3.371e-01  3.216e-02
-## Hisp_Cat2Other Hispanic                                 1.399e-01  3.708e-02
-## Hisp_Cat2Puerto Rican                                   2.358e-01  6.317e-02
-## Hisp_Cat2Multiple Hispanic ethnicities selected         2.057e-01  9.057e-02
-## Hisp_Cat2Cuban                                         -1.223e-01  9.382e-02
-## Gender3CMale                                           -3.506e-02  1.570e-02
-## Gender3CMissingOrMultiple                               8.499e-03  3.345e-02
-## filenamehints5_cycle2_public.sav                       -4.936e-02  2.295e-02
-## filenamehints5_cycle3_public.sav                       -3.395e-02  2.100e-02
-## filenamehints5_cycle4_public.sav                       -2.356e-02  2.254e-02
+## (Intercept)                                             2.340e+00  2.063e-02
+## HINTSIsRural_i                                          1.550e-01  2.203e-02
+## Age_c                                                   1.026e-02  9.098e-04
+## I(Age_c^2)                                             -2.359e-06  2.332e-05
+## RacePPBlack                                             3.038e-01  2.122e-02
+## RacePPMissing data (Not Ascertained)                    2.460e-01  3.397e-02
+## RacePPMultiple races selected                           2.875e-01  3.996e-02
+## RacePPChinese                                           9.563e-02  7.011e-02
+## RacePPFilipino                                          1.780e-01  7.763e-02
+## RacePPAsian Indian                                     -7.151e-02  8.088e-02
+## RacePPOther Asian                                       1.224e-01  8.278e-02
+## RacePPAmerican Indian or Alaska Native                  4.156e-01  9.062e-02
+## RacePPPacific Islander                                  4.943e-01  1.036e-01
+## RacePPVietnamese                                        1.458e-01  1.203e-01
+## RacePPMissing data (Web partial - Question Never Seen)  1.242e-02  1.654e-01
+## RacePPKorean                                            1.402e-01  1.509e-01
+## RacePPJapanese                                         -1.752e-01  1.757e-01
+## Gender3CMale                                           -3.624e-02  1.576e-02
+## Gender3CMissingOrMultiple                              -1.641e-03  3.282e-02
+## filenamehints5_cycle2_public.sav                       -4.781e-02  2.304e-02
+## filenamehints5_cycle3_public.sav                       -3.215e-02  2.107e-02
+## filenamehints5_cycle4_public.sav                       -1.969e-02  2.262e-02
 ##                                                        t value Pr(&gt;|t|)    
-## (Intercept)                                            109.561  &lt; 2e-16 ***
-## HINTSIsRural_i                                           7.401 1.42e-13 ***
-## Age_c                                                   12.020  &lt; 2e-16 ***
-## I(Age_c^2)                                              -0.644 0.519426    
-## RacePPBlack                                             14.501  &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)                     2.185 0.028911 *  
-## RacePPMultiple races selected                            6.954 3.71e-12 ***
-## RacePPChinese                                            1.778 0.075425 .  
-## RacePPFilipino                                           2.515 0.011909 *  
-## RacePPAsian Indian                                      -0.485 0.627930    
-## RacePPOther Asian                                        1.734 0.082971 .  
-## RacePPAmerican Indian or Alaska Native                   3.215 0.001307 ** 
-## RacePPPacific Islander                                   3.822 0.000133 ***
-## RacePPVietnamese                                         1.437 0.150847    
-## RacePPMissing data (Web partial - Question Never Seen)  -0.618 0.536670    
-## RacePPKorean                                             1.064 0.287357    
-## RacePPJapanese                                          -0.926 0.354522    
-## Hisp_Cat2Unknown                                         4.838 1.32e-06 ***
-## Hisp_Cat2Mexican                                        10.485  &lt; 2e-16 ***
-## Hisp_Cat2Other Hispanic                                  3.771 0.000163 ***
-## Hisp_Cat2Puerto Rican                                    3.733 0.000190 ***
-## Hisp_Cat2Multiple Hispanic ethnicities selected          2.272 0.023127 *  
-## Hisp_Cat2Cuban                                          -1.304 0.192391    
-## Gender3CMale                                            -2.234 0.025525 *  
-## Gender3CMissingOrMultiple                                0.254 0.799404    
-## filenamehints5_cycle2_public.sav                        -2.151 0.031514 *  
-## filenamehints5_cycle3_public.sav                        -1.617 0.105931    
-## filenamehints5_cycle4_public.sav                        -1.045 0.295968    
+## (Intercept)                                            113.442  &lt; 2e-16 ***
+## HINTSIsRural_i                                           7.035 2.08e-12 ***
+## Age_c                                                   11.275  &lt; 2e-16 ***
+## I(Age_c^2)                                              -0.101   0.9194    
+## RacePPBlack                                             14.316  &lt; 2e-16 ***
+## RacePPMissing data (Not Ascertained)                     7.242 4.64e-13 ***
+## RacePPMultiple races selected                            7.193 6.61e-13 ***
+## RacePPChinese                                            1.364   0.1726    
+## RacePPFilipino                                           2.293   0.0219 *  
+## RacePPAsian Indian                                      -0.884   0.3766    
+## RacePPOther Asian                                        1.479   0.1393    
+## RacePPAmerican Indian or Alaska Native                   4.586 4.56e-06 ***
+## RacePPPacific Islander                                   4.771 1.85e-06 ***
+## RacePPVietnamese                                         1.212   0.2253    
+## RacePPMissing data (Web partial - Question Never Seen)   0.075   0.9401    
+## RacePPKorean                                             0.929   0.3529    
+## RacePPJapanese                                          -0.997   0.3188    
+## Gender3CMale                                            -2.299   0.0215 *  
+## Gender3CMissingOrMultiple                               -0.050   0.9601    
+## filenamehints5_cycle2_public.sav                        -2.075   0.0380 *  
+## filenamehints5_cycle3_public.sav                        -1.526   0.1272    
+## filenamehints5_cycle4_public.sav                        -0.870   0.3841    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.9239 on 15397 degrees of freedom
+## Residual standard error: 0.9279 on 15403 degrees of freedom
 ##   (667 observations deleted due to missingness)
-## Multiple R-squared:  0.06171,    Adjusted R-squared:  0.06007 
-## F-statistic: 37.51 on 27 and 15397 DF,  p-value: &lt; 2.2e-16
-## 
-##                                                                 coef
-## (Intercept)                                             2.299994e+00
-## HINTSIsRural_i                                          1.628022e-01
-## Age_c                                                   1.093477e-02
-## I(Age_c^2)                                             -1.501633e-05
-## RacePPBlack                                             3.110136e-01
-## RacePPMissing data (Not Ascertained)                    8.064515e-02
-## RacePPMultiple races selected                           2.772889e-01
-## RacePPChinese                                           1.242286e-01
-## RacePPFilipino                                          1.945142e-01
-## RacePPAsian Indian                                     -3.906698e-02
-## RacePPOther Asian                                       1.429854e-01
-## RacePPAmerican Indian or Alaska Native                  2.923457e-01
-## RacePPPacific Islander                                  3.969252e-01
-## RacePPVietnamese                                        1.720881e-01
-## RacePPMissing data (Web partial - Question Never Seen) -1.028498e-01
-## RacePPKorean                                            1.599064e-01
-## RacePPJapanese                                         -1.619835e-01
-## Hisp_Cat2Unknown                                        1.483749e-01
-## Hisp_Cat2Mexican                                        3.371419e-01
-## Hisp_Cat2Other Hispanic                                 1.398525e-01
-## Hisp_Cat2Puerto Rican                                   2.358157e-01
-## Hisp_Cat2Multiple Hispanic ethnicities selected         2.057430e-01
-## Hisp_Cat2Cuban                                         -1.223095e-01
-## Gender3CMale                                           -3.506315e-02
-## Gender3CMissingOrMultiple                               8.499306e-03
-## filenamehints5_cycle2_public.sav                       -4.935788e-02
-## filenamehints5_cycle3_public.sav                       -3.394655e-02
-## filenamehints5_cycle4_public.sav                       -2.356011e-02
-##                                                                2.5 %
-## (Intercept)                                             2.258846e+00
-## HINTSIsRural_i                                          1.196831e-01
-## Age_c                                                   9.151677e-03
-## I(Age_c^2)                                             -6.070352e-05
-## RacePPBlack                                             2.689725e-01
-## RacePPMissing data (Not Ascertained)                    8.296629e-03
-## RacePPMultiple races selected                           1.991247e-01
-## RacePPChinese                                          -1.272523e-02
-## RacePPFilipino                                          4.292299e-02
-## RacePPAsian Indian                                     -1.970685e-01
-## RacePPOther Asian                                      -1.866301e-02
-## RacePPAmerican Indian or Alaska Native                  1.141103e-01
-## RacePPPacific Islander                                  1.933758e-01
-## RacePPVietnamese                                       -6.270844e-02
-## RacePPMissing data (Web partial - Question Never Seen) -4.291282e-01
-## RacePPKorean                                           -1.346830e-01
-## RacePPJapanese                                         -5.049073e-01
-## Hisp_Cat2Unknown                                        8.826315e-02
-## Hisp_Cat2Mexican                                        2.741120e-01
-## Hisp_Cat2Other Hispanic                                 6.716179e-02
-## Hisp_Cat2Puerto Rican                                   1.119916e-01
-## Hisp_Cat2Multiple Hispanic ethnicities selected         2.820867e-02
-## Hisp_Cat2Cuban                                         -3.062168e-01
-## Gender3CMale                                           -6.583343e-02
-## Gender3CMissingOrMultiple                              -5.705828e-02
-## filenamehints5_cycle2_public.sav                       -9.434168e-02
-## filenamehints5_cycle3_public.sav                       -7.510013e-02
-## filenamehints5_cycle4_public.sav                       -6.774557e-02
-##                                                               97.5 %
-## (Intercept)                                             2.341142e+00
-## HINTSIsRural_i                                          2.059213e-01
-## Age_c                                                   1.271786e-02
-## I(Age_c^2)                                              3.067086e-05
-## RacePPBlack                                             3.530547e-01
-## RacePPMissing data (Not Ascertained)                    1.529937e-01
-## RacePPMultiple races selected                           3.554531e-01
-## RacePPChinese                                           2.611824e-01
-## RacePPFilipino                                          3.461054e-01
-## RacePPAsian Indian                                      1.189346e-01
-## RacePPOther Asian                                       3.046338e-01
-## RacePPAmerican Indian or Alaska Native                  4.705811e-01
-## RacePPPacific Islander                                  6.004746e-01
-## RacePPVietnamese                                        4.068847e-01
-## RacePPMissing data (Web partial - Question Never Seen)  2.234286e-01
-## RacePPKorean                                            4.544958e-01
-## RacePPJapanese                                          1.809403e-01
-## Hisp_Cat2Unknown                                        2.084867e-01
-## Hisp_Cat2Mexican                                        4.001718e-01
-## Hisp_Cat2Other Hispanic                                 2.125432e-01
-## Hisp_Cat2Puerto Rican                                   3.596398e-01
-## Hisp_Cat2Multiple Hispanic ethnicities selected         3.832774e-01
-## Hisp_Cat2Cuban                                          6.159786e-02
-## Gender3CMale                                           -4.292879e-03
-## Gender3CMissingOrMultiple                               7.405689e-02
-## filenamehints5_cycle2_public.sav                       -4.374081e-03
-## filenamehints5_cycle3_public.sav                        7.207026e-03
-## filenamehints5_cycle4_public.sav                        2.062535e-02</code></pre>
+## Multiple R-squared:  0.05325,    Adjusted R-squared:  0.05195 
+## F-statistic: 41.25 on 21 and 15403 DF,  p-value: &lt; 2.2e-16</code></pre>
 <pre class="r"><code>formula_hbp &lt;- paste0(&quot;MedConditions_HighBP_i&quot;,formula_rhs)
 print(formula_hbp)</code></pre>
-<pre><code>## [1] &quot;MedConditions_HighBP_i~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;MedConditions_HighBP_i~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre class="r"><code>rural_disparity &lt;- glm(eval(formula_hbp),hints5, family = &quot;binomial&quot;)
 
-
-print_model_summary(rural_disparity)</code></pre>
+summary(rural_disparity)</code></pre>
 <pre><code>## 
 ## Call:
 ## glm(formula = eval(formula_hbp), family = &quot;binomial&quot;, data = hints5)
 ## 
 ## Deviance Residuals: 
 ##     Min       1Q   Median       3Q      Max  
-## -2.1714  -1.0079  -0.4135   1.0016   2.5837  
+## -2.1875  -1.0074  -0.4139   1.0013   2.5801  
 ## 
 ## Coefficients:
 ##                                                          Estimate Std. Error
-## (Intercept)                                            -1.709e+00  5.631e-02
-## HINTSIsRural_i                                          2.032e-01  5.252e-02
-## Age_c                                                   7.843e-02  2.975e-03
-## I(Age_c^2)                                             -5.376e-04  6.778e-05
-## RacePPBlack                                             8.775e-01  5.259e-02
-## RacePPMissing data (Not Ascertained)                   -2.303e-02  9.035e-02
-## RacePPMultiple races selected                           3.083e-01  9.810e-02
-## RacePPChinese                                          -4.829e-01  1.886e-01
-## RacePPFilipino                                          6.023e-01  1.845e-01
-## RacePPAsian Indian                                     -1.411e-01  2.156e-01
-## RacePPOther Asian                                      -1.671e-01  2.130e-01
-## RacePPAmerican Indian or Alaska Native                  4.388e-01  2.192e-01
-## RacePPPacific Islander                                  2.343e-01  2.599e-01
-## RacePPVietnamese                                       -1.272e-01  2.989e-01
-## RacePPMissing data (Web partial - Question Never Seen)  5.221e-02  4.638e-01
-## RacePPKorean                                           -1.104e-01  3.614e-01
-## RacePPJapanese                                          4.532e-01  4.231e-01
-## Hisp_Cat2Unknown                                        1.749e-01  7.446e-02
-## Hisp_Cat2Mexican                                        1.587e-01  8.071e-02
-## Hisp_Cat2Other Hispanic                                -6.364e-02  9.176e-02
-## Hisp_Cat2Puerto Rican                                   2.529e-01  1.493e-01
-## Hisp_Cat2Multiple Hispanic ethnicities selected         1.718e-01  2.281e-01
-## Hisp_Cat2Cuban                                          1.426e-01  2.339e-01
-## Gender3CMale                                            2.666e-01  3.799e-02
-## Gender3CMissingOrMultiple                              -7.571e-03  8.009e-02
-## filenamehints5_cycle2_public.sav                        1.783e-02  5.547e-02
-## filenamehints5_cycle3_public.sav                       -2.854e-02  5.074e-02
-## filenamehints5_cycle4_public.sav                       -4.542e-02  5.456e-02
+## (Intercept)                                            -1.693e+00  5.526e-02
+## HINTSIsRural_i                                          2.008e-01  5.233e-02
+## Age_c                                                   7.818e-02  2.966e-03
+## I(Age_c^2)                                             -5.255e-04  6.761e-05
+## RacePPBlack                                             8.849e-01  5.180e-02
+## RacePPMissing data (Not Ascertained)                    7.179e-02  8.269e-02
+## RacePPMultiple races selected                           3.178e-01  9.775e-02
+## RacePPChinese                                          -4.964e-01  1.886e-01
+## RacePPFilipino                                          5.987e-01  1.845e-01
+## RacePPAsian Indian                                     -1.502e-01  2.151e-01
+## RacePPOther Asian                                      -1.752e-01  2.128e-01
+## RacePPAmerican Indian or Alaska Native                  4.895e-01  2.171e-01
+## RacePPPacific Islander                                  2.684e-01  2.578e-01
+## RacePPVietnamese                                       -1.365e-01  2.987e-01
+## RacePPMissing data (Web partial - Question Never Seen)  1.915e-01  4.600e-01
+## RacePPKorean                                           -1.097e-01  3.604e-01
+## RacePPJapanese                                          4.482e-01  4.216e-01
+## Gender3CMale                                            2.656e-01  3.797e-02
+## Gender3CMissingOrMultiple                               1.198e-02  7.821e-02
+## filenamehints5_cycle2_public.sav                        1.793e-02  5.543e-02
+## filenamehints5_cycle3_public.sav                       -2.863e-02  5.069e-02
+## filenamehints5_cycle4_public.sav                       -4.493e-02  5.451e-02
 ##                                                        z value Pr(&gt;|z|)    
-## (Intercept)                                            -30.347  &lt; 2e-16 ***
-## HINTSIsRural_i                                           3.868  0.00011 ***
-## Age_c                                                   26.366  &lt; 2e-16 ***
-## I(Age_c^2)                                              -7.931 2.17e-15 ***
-## RacePPBlack                                             16.685  &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)                    -0.255  0.79881    
-## RacePPMultiple races selected                            3.143  0.00167 ** 
-## RacePPChinese                                           -2.560  0.01047 *  
-## RacePPFilipino                                           3.265  0.00110 ** 
-## RacePPAsian Indian                                      -0.654  0.51280    
-## RacePPOther Asian                                       -0.785  0.43268    
-## RacePPAmerican Indian or Alaska Native                   2.002  0.04531 *  
-## RacePPPacific Islander                                   0.902  0.36724    
-## RacePPVietnamese                                        -0.425  0.67050    
-## RacePPMissing data (Web partial - Question Never Seen)   0.113  0.91038    
-## RacePPKorean                                            -0.305  0.76008    
-## RacePPJapanese                                           1.071  0.28416    
-## Hisp_Cat2Unknown                                         2.349  0.01884 *  
-## Hisp_Cat2Mexican                                         1.966  0.04928 *  
-## Hisp_Cat2Other Hispanic                                 -0.694  0.48799    
-## Hisp_Cat2Puerto Rican                                    1.694  0.09036 .  
-## Hisp_Cat2Multiple Hispanic ethnicities selected          0.753  0.45138    
-## Hisp_Cat2Cuban                                           0.610  0.54207    
-## Gender3CMale                                             7.018 2.25e-12 ***
-## Gender3CMissingOrMultiple                               -0.095  0.92468    
-## filenamehints5_cycle2_public.sav                         0.321  0.74785    
-## filenamehints5_cycle3_public.sav                        -0.562  0.57378    
-## filenamehints5_cycle4_public.sav                        -0.832  0.40515    
+## (Intercept)                                            -30.639  &lt; 2e-16 ***
+## HINTSIsRural_i                                           3.838 0.000124 ***
+## Age_c                                                   26.358  &lt; 2e-16 ***
+## I(Age_c^2)                                              -7.772 7.70e-15 ***
+## RacePPBlack                                             17.082  &lt; 2e-16 ***
+## RacePPMissing data (Not Ascertained)                     0.868 0.385280    
+## RacePPMultiple races selected                            3.251 0.001149 ** 
+## RacePPChinese                                           -2.632 0.008483 ** 
+## RacePPFilipino                                           3.245 0.001175 ** 
+## RacePPAsian Indian                                      -0.698 0.485110    
+## RacePPOther Asian                                       -0.823 0.410302    
+## RacePPAmerican Indian or Alaska Native                   2.255 0.024143 *  
+## RacePPPacific Islander                                   1.041 0.297766    
+## RacePPVietnamese                                        -0.457 0.647566    
+## RacePPMissing data (Web partial - Question Never Seen)   0.416 0.677112    
+## RacePPKorean                                            -0.304 0.760881    
+## RacePPJapanese                                           1.063 0.287755    
+## Gender3CMale                                             6.995 2.65e-12 ***
+## Gender3CMissingOrMultiple                                0.153 0.878216    
+## filenamehints5_cycle2_public.sav                         0.324 0.746305    
+## filenamehints5_cycle3_public.sav                        -0.565 0.572178    
+## filenamehints5_cycle4_public.sav                        -0.824 0.409823    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
 ##     Null deviance: 21102  on 15324  degrees of freedom
-## Residual deviance: 17925  on 15297  degrees of freedom
+## Residual deviance: 17938  on 15303  degrees of freedom
 ##   (767 observations deleted due to missingness)
-## AIC: 17981
+## AIC: 17982
 ## 
 ## Number of Fisher Scoring iterations: 4</code></pre>
-<pre><code>## Waiting for profiling to be done...</code></pre>
-<pre><code>##                                                               OR     2.5 %
-## (Intercept)                                            0.1810745 0.1620614
-## HINTSIsRural_i                                         1.2252581 1.1054720
-## Age_c                                                  1.0815898 1.0753598
-## I(Age_c^2)                                             0.9994626 0.9993296
-## RacePPBlack                                            2.4047691 2.1698366
-## RacePPMissing data (Not Ascertained)                   0.9772330 0.8184048
-## RacePPMultiple races selected                          1.3610886 1.1224898
-## RacePPChinese                                          0.6169862 0.4233399
-## RacePPFilipino                                         1.8263199 1.2737079
-## RacePPAsian Indian                                     0.8684108 0.5640795
-## RacePPOther Asian                                      0.8461047 0.5529723
-## RacePPAmerican Indian or Alaska Native                 1.5508341 1.0086437
-## RacePPPacific Islander                                 1.2640496 0.7546671
-## RacePPVietnamese                                       0.8805899 0.4836721
-## RacePPMissing data (Web partial - Question Never Seen) 1.0535957 0.3959157
-## RacePPKorean                                           0.8955203 0.4366241
-## RacePPJapanese                                         1.5732681 0.6901760
-## Hisp_Cat2Unknown                                       1.1910999 1.0299205
-## Hisp_Cat2Mexican                                       1.1719819 1.0001414
-## Hisp_Cat2Other Hispanic                                0.9383436 0.7833011
-## Hisp_Cat2Puerto Rican                                  1.2877095 0.9600524
-## Hisp_Cat2Multiple Hispanic ethnicities selected        1.1874548 0.7567338
-## Hisp_Cat2Cuban                                         1.1532650 0.7266919
-## Gender3CMale                                           1.3055649 1.2119170
-## Gender3CMissingOrMultiple                              0.9924575 0.8482942
-## filenamehints5_cycle2_public.sav                       1.0179909 0.9131257
-## filenamehints5_cycle3_public.sav                       0.9718626 0.8798597
-## filenamehints5_cycle4_public.sav                       0.9555969 0.8586718
-##                                                           97.5 %
-## (Intercept)                                            0.2020934
-## HINTSIsRural_i                                         1.3582346
-## Age_c                                                  1.0879744
-## I(Age_c^2)                                             0.9995951
-## RacePPBlack                                            2.6666484
-## RacePPMissing data (Not Ascertained)                   1.1663267
-## RacePPMultiple races selected                          1.6491442
-## RacePPChinese                                          0.8880752
-## RacePPFilipino                                         2.6282688
-## RacePPAsian Indian                                     1.3156431
-## RacePPOther Asian                                      1.2766242
-## RacePPAmerican Indian or Alaska Native                 2.3864089
-## RacePPPacific Islander                                 2.0964479
-## RacePPVietnamese                                       1.5691515
-## RacePPMissing data (Web partial - Question Never Seen) 2.4983901
-## RacePPKorean                                           1.8174288
-## RacePPJapanese                                         3.6804571
-## Hisp_Cat2Unknown                                       1.3790873
-## Hisp_Cat2Mexican                                       1.3724666
-## Hisp_Cat2Other Hispanic                                1.1225443
-## Hisp_Cat2Puerto Rican                                  1.7248322
-## Hisp_Cat2Multiple Hispanic ethnicities selected        1.8536986
-## Hisp_Cat2Cuban                                         1.8217924
-## Gender3CMale                                           1.4065456
-## Gender3CMissingOrMultiple                              1.1612253
-## filenamehints5_cycle2_public.sav                       1.1349084
-## filenamehints5_cycle3_public.sav                       1.0734923
-## filenamehints5_cycle4_public.sav                       1.0634496</code></pre>
-<pre><code>## NULL</code></pre>
+<pre class="r"><code>print(exp(cbind(OR = coef(rural_disparity))))</code></pre>
+<pre><code>##                                                               OR
+## (Intercept)                                            0.1839664
+## HINTSIsRural_i                                         1.2224017
+## Age_c                                                  1.0813171
+## I(Age_c^2)                                             0.9994747
+## RacePPBlack                                            2.4228531
+## RacePPMissing data (Not Ascertained)                   1.0744277
+## RacePPMultiple races selected                          1.3740936
+## RacePPChinese                                          0.6087373
+## RacePPFilipino                                         1.8196952
+## RacePPAsian Indian                                     0.8605527
+## RacePPOther Asian                                      0.8393129
+## RacePPAmerican Indian or Alaska Native                 1.6314695
+## RacePPPacific Islander                                 1.3078510
+## RacePPVietnamese                                       0.8723728
+## RacePPMissing data (Web partial - Question Never Seen) 1.2111128
+## RacePPKorean                                           0.8961168
+## RacePPJapanese                                         1.5655173
+## Gender3CMale                                           1.3042144
+## Gender3CMissingOrMultiple                              1.0120566
+## filenamehints5_cycle2_public.sav                       1.0180934
+## filenamehints5_cycle3_public.sav                       0.9717720
+## filenamehints5_cycle4_public.sav                       0.9560691</code></pre>
 <p>Now we use the aggregate value.</p>
 <pre class="r"><code>formula_hbp &lt;- paste0(&quot;MedConditionsAggregate&quot;,formula_rhs)
 print(formula_hbp)</code></pre>
-<pre><code>## [1] &quot;MedConditionsAggregate~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;MedConditionsAggregate~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre class="r"><code>rural_disparity &lt;- lm(formula_hbp,hints5)
 
-
-
-print_model_summary(rural_disparity)</code></pre>
+summary(rural_disparity)</code></pre>
 <pre><code>## 
 ## Call:
 ## lm(formula = formula_hbp, data = hints5)
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -1.8106 -0.5738 -0.1175  0.4440  3.0834 
+## -1.8356 -0.5754 -0.1180  0.4431  3.0596 
 ## 
 ## Coefficients:
 ##                                                          Estimate Std. Error
-## (Intercept)                                             2.071e-01  1.781e-02
-## HINTSIsRural_i                                          7.281e-02  1.875e-02
-## Age_c                                                   2.231e-02  7.709e-04
-## I(Age_c^2)                                             -2.475e-05  1.989e-05
-## RacePPBlack                                             3.201e-01  1.832e-02
-## RacePPMissing data (Not Ascertained)                    9.392e-03  3.160e-02
-## RacePPMultiple races selected                           1.048e-01  3.380e-02
-## RacePPChinese                                          -3.106e-02  5.902e-02
-## RacePPFilipino                                          2.560e-01  6.558e-02
-## RacePPAsian Indian                                      3.594e-02  6.841e-02
-## RacePPOther Asian                                       8.431e-02  6.919e-02
-## RacePPAmerican Indian or Alaska Native                  2.585e-01  7.694e-02
-## RacePPPacific Islander                                  1.913e-01  8.911e-02
-## RacePPVietnamese                                        1.293e-01  1.009e-01
-## RacePPMissing data (Web partial - Question Never Seen) -1.136e-03  1.424e-01
-## RacePPKorean                                            3.333e-02  1.283e-01
-## RacePPJapanese                                         -9.929e-02  1.500e-01
-## Hisp_Cat2Unknown                                        1.247e-01  2.664e-02
-## Hisp_Cat2Mexican                                        1.588e-01  2.729e-02
-## Hisp_Cat2Other Hispanic                                 4.673e-02  3.150e-02
-## Hisp_Cat2Puerto Rican                                   1.660e-01  5.334e-02
-## Hisp_Cat2Multiple Hispanic ethnicities selected         2.309e-01  7.593e-02
-## Hisp_Cat2Cuban                                         -3.528e-02  8.067e-02
-## Gender3CMale                                            1.331e-01  1.333e-02
-## Gender3CMissingOrMultiple                               3.009e-02  2.856e-02
-## filenamehints5_cycle2_public.sav                        4.066e-03  1.954e-02
-## filenamehints5_cycle3_public.sav                        1.827e-03  1.784e-02
-## filenamehints5_cycle4_public.sav                        6.003e-03  1.914e-02
+## (Intercept)                                             2.272e-01  1.746e-02
+## HINTSIsRural_i                                          6.941e-02  1.873e-02
+## Age_c                                                   2.201e-02  7.692e-04
+## I(Age_c^2)                                             -1.571e-05  1.986e-05
+## RacePPBlack                                             3.211e-01  1.810e-02
+## RacePPMissing data (Not Ascertained)                    1.022e-01  2.901e-02
+## RacePPMultiple races selected                           1.146e-01  3.379e-02
+## RacePPChinese                                          -4.637e-02  5.907e-02
+## RacePPFilipino                                          2.495e-01  6.567e-02
+## RacePPAsian Indian                                      2.135e-02  6.847e-02
+## RacePPOther Asian                                       7.478e-02  6.928e-02
+## RacePPAmerican Indian or Alaska Native                  3.181e-01  7.650e-02
+## RacePPPacific Islander                                  2.438e-01  8.871e-02
+## RacePPVietnamese                                        1.168e-01  1.010e-01
+## RacePPMissing data (Web partial - Question Never Seen)  9.662e-02  1.411e-01
+## RacePPKorean                                            2.658e-02  1.285e-01
+## RacePPJapanese                                         -1.029e-01  1.503e-01
+## Gender3CMale                                            1.327e-01  1.335e-02
+## Gender3CMissingOrMultiple                               3.647e-02  2.796e-02
+## filenamehints5_cycle2_public.sav                        3.538e-03  1.956e-02
+## filenamehints5_cycle3_public.sav                        1.202e-03  1.787e-02
+## filenamehints5_cycle4_public.sav                        7.060e-03  1.916e-02
 ##                                                        t value Pr(&gt;|t|)    
-## (Intercept)                                             11.629  &lt; 2e-16 ***
-## HINTSIsRural_i                                           3.884 0.000103 ***
-## Age_c                                                   28.941  &lt; 2e-16 ***
-## I(Age_c^2)                                              -1.244 0.213396    
-## RacePPBlack                                             17.466  &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)                     0.297 0.766266    
-## RacePPMultiple races selected                            3.101 0.001932 ** 
-## RacePPChinese                                           -0.526 0.598755    
-## RacePPFilipino                                           3.904 9.51e-05 ***
-## RacePPAsian Indian                                       0.525 0.599310    
-## RacePPOther Asian                                        1.219 0.223021    
-## RacePPAmerican Indian or Alaska Native                   3.361 0.000780 ***
-## RacePPPacific Islander                                   2.146 0.031852 *  
-## RacePPVietnamese                                         1.282 0.199913    
-## RacePPMissing data (Web partial - Question Never Seen)  -0.008 0.993635    
-## RacePPKorean                                             0.260 0.794990    
-## RacePPJapanese                                          -0.662 0.508121    
-## Hisp_Cat2Unknown                                         4.681 2.88e-06 ***
-## Hisp_Cat2Mexican                                         5.819 6.05e-09 ***
-## Hisp_Cat2Other Hispanic                                  1.483 0.137998    
-## Hisp_Cat2Puerto Rican                                    3.112 0.001860 ** 
-## Hisp_Cat2Multiple Hispanic ethnicities selected          3.041 0.002360 ** 
-## Hisp_Cat2Cuban                                          -0.437 0.661880    
-## Gender3CMale                                             9.986  &lt; 2e-16 ***
-## Gender3CMissingOrMultiple                                1.053 0.292186    
-## filenamehints5_cycle2_public.sav                         0.208 0.835141    
-## filenamehints5_cycle3_public.sav                         0.102 0.918469    
-## filenamehints5_cycle4_public.sav                         0.314 0.753766    
+## (Intercept)                                             13.012  &lt; 2e-16 ***
+## HINTSIsRural_i                                           3.706 0.000212 ***
+## Age_c                                                   28.615  &lt; 2e-16 ***
+## I(Age_c^2)                                              -0.791 0.428881    
+## RacePPBlack                                             17.739  &lt; 2e-16 ***
+## RacePPMissing data (Not Ascertained)                     3.522 0.000430 ***
+## RacePPMultiple races selected                            3.391 0.000698 ***
+## RacePPChinese                                           -0.785 0.432455    
+## RacePPFilipino                                           3.799 0.000146 ***
+## RacePPAsian Indian                                       0.312 0.755205    
+## RacePPOther Asian                                        1.079 0.280410    
+## RacePPAmerican Indian or Alaska Native                   4.158 3.22e-05 ***
+## RacePPPacific Islander                                   2.748 0.006006 ** 
+## RacePPVietnamese                                         1.156 0.247587    
+## RacePPMissing data (Web partial - Question Never Seen)   0.685 0.493464    
+## RacePPKorean                                             0.207 0.836143    
+## RacePPJapanese                                          -0.685 0.493487    
+## Gender3CMale                                             9.938  &lt; 2e-16 ***
+## Gender3CMissingOrMultiple                                1.304 0.192238    
+## filenamehints5_cycle2_public.sav                         0.181 0.856505    
+## filenamehints5_cycle3_public.sav                         0.067 0.946342    
+## filenamehints5_cycle4_public.sav                         0.369 0.712494    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.7781 on 15128 degrees of freedom
+## Residual standard error: 0.7796 on 15134 degrees of freedom
 ##   (936 observations deleted due to missingness)
-## Multiple R-squared:  0.1985, Adjusted R-squared:  0.1971 
-## F-statistic: 138.8 on 27 and 15128 DF,  p-value: &lt; 2.2e-16
-## 
-##                                                                 coef
-## (Intercept)                                             2.071268e-01
-## HINTSIsRural_i                                          7.281166e-02
-## Age_c                                                   2.231057e-02
-## I(Age_c^2)                                             -2.475412e-05
-## RacePPBlack                                             3.200533e-01
-## RacePPMissing data (Not Ascertained)                    9.392206e-03
-## RacePPMultiple races selected                           1.048090e-01
-## RacePPChinese                                          -3.105502e-02
-## RacePPFilipino                                          2.560288e-01
-## RacePPAsian Indian                                      3.594114e-02
-## RacePPOther Asian                                       8.431485e-02
-## RacePPAmerican Indian or Alaska Native                  2.585484e-01
-## RacePPPacific Islander                                  1.912807e-01
-## RacePPVietnamese                                        1.293278e-01
-## RacePPMissing data (Web partial - Question Never Seen) -1.136067e-03
-## RacePPKorean                                            3.333206e-02
-## RacePPJapanese                                         -9.929344e-02
-## Hisp_Cat2Unknown                                        1.246741e-01
-## Hisp_Cat2Mexican                                        1.588001e-01
-## Hisp_Cat2Other Hispanic                                 4.673103e-02
-## Hisp_Cat2Puerto Rican                                   1.659967e-01
-## Hisp_Cat2Multiple Hispanic ethnicities selected         2.309324e-01
-## Hisp_Cat2Cuban                                         -3.528018e-02
-## Gender3CMale                                            1.331196e-01
-## Gender3CMissingOrMultiple                               3.008727e-02
-## filenamehints5_cycle2_public.sav                        4.065651e-03
-## filenamehints5_cycle3_public.sav                        1.826571e-03
-## filenamehints5_cycle4_public.sav                        6.003303e-03
-##                                                                2.5 %
-## (Intercept)                                             1.722151e-01
-## HINTSIsRural_i                                          3.606728e-02
-## Age_c                                                   2.079950e-02
-## I(Age_c^2)                                             -6.374768e-05
-## RacePPBlack                                             2.841356e-01
-## RacePPMissing data (Not Ascertained)                   -5.253786e-02
-## RacePPMultiple races selected                           3.856199e-02
-## RacePPChinese                                          -1.467359e-01
-## RacePPFilipino                                          1.274774e-01
-## RacePPAsian Indian                                     -9.814431e-02
-## RacePPOther Asian                                      -5.130757e-02
-## RacePPAmerican Indian or Alaska Native                  1.077444e-01
-## RacePPPacific Islander                                  1.660549e-02
-## RacePPVietnamese                                       -6.843084e-02
-## RacePPMissing data (Web partial - Question Never Seen) -2.802711e-01
-## RacePPKorean                                           -2.181102e-01
-## RacePPJapanese                                         -3.933886e-01
-## Hisp_Cat2Unknown                                        7.246558e-02
-## Hisp_Cat2Mexican                                        1.053064e-01
-## Hisp_Cat2Other Hispanic                                -1.501940e-02
-## Hisp_Cat2Puerto Rican                                   6.144947e-02
-## Hisp_Cat2Multiple Hispanic ethnicities selected         8.209633e-02
-## Hisp_Cat2Cuban                                         -1.934073e-01
-## Gender3CMale                                            1.069906e-01
-## Gender3CMissingOrMultiple                              -2.589910e-02
-## filenamehints5_cycle2_public.sav                       -3.422633e-02
-## filenamehints5_cycle3_public.sav                       -3.314937e-02
-## filenamehints5_cycle4_public.sav                       -3.150963e-02
-##                                                              97.5 %
-## (Intercept)                                            2.420385e-01
-## HINTSIsRural_i                                         1.095560e-01
-## Age_c                                                  2.382163e-02
-## I(Age_c^2)                                             1.423945e-05
-## RacePPBlack                                            3.559711e-01
-## RacePPMissing data (Not Ascertained)                   7.132227e-02
-## RacePPMultiple races selected                          1.710560e-01
-## RacePPChinese                                          8.462585e-02
-## RacePPFilipino                                         3.845803e-01
-## RacePPAsian Indian                                     1.700266e-01
-## RacePPOther Asian                                      2.199373e-01
-## RacePPAmerican Indian or Alaska Native                 4.093524e-01
-## RacePPPacific Islander                                 3.659559e-01
-## RacePPVietnamese                                       3.270865e-01
-## RacePPMissing data (Web partial - Question Never Seen) 2.779990e-01
-## RacePPKorean                                           2.847744e-01
-## RacePPJapanese                                         1.948018e-01
-## Hisp_Cat2Unknown                                       1.768827e-01
-## Hisp_Cat2Mexican                                       2.122938e-01
-## Hisp_Cat2Other Hispanic                                1.084815e-01
-## Hisp_Cat2Puerto Rican                                  2.705439e-01
-## Hisp_Cat2Multiple Hispanic ethnicities selected        3.797684e-01
-## Hisp_Cat2Cuban                                         1.228469e-01
-## Gender3CMale                                           1.592485e-01
-## Gender3CMissingOrMultiple                              8.607365e-02
-## filenamehints5_cycle2_public.sav                       4.235764e-02
-## filenamehints5_cycle3_public.sav                       3.680252e-02
-## filenamehints5_cycle4_public.sav                       4.351624e-02</code></pre>
+## Multiple R-squared:  0.1952, Adjusted R-squared:  0.194 
+## F-statistic: 174.7 on 21 and 15134 DF,  p-value: &lt; 2.2e-16</code></pre>
 <p>Finally, how do we do on the cancer score?</p>
 <pre class="r"><code>table(hints5$EverHadCancer_i,hints5$HINTSIsRural)</code></pre>
 <pre><code>##    
@@ -2381,171 +2111,76 @@ print_model_summary(rural_disparity)</code></pre>
 ##   1  2186   393</code></pre>
 <pre class="r"><code>formula_cancer &lt;- paste0(&quot;EverHadCancer_i&quot;,formula_rhs)
 print(formula_cancer)</code></pre>
-<pre><code>## [1] &quot;EverHadCancer_i~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;EverHadCancer_i~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre class="r"><code>rural_disparity &lt;- glm(eval(formula_cancer),hints5, family = &quot;binomial&quot;)
 
-
-
-print_model_summary(rural_disparity)</code></pre>
+summary(rural_disparity)</code></pre>
 <pre><code>## 
 ## Call:
 ## glm(formula = eval(formula_cancer), family = &quot;binomial&quot;, data = hints5)
 ## 
 ## Deviance Residuals: 
 ##     Min       1Q   Median       3Q      Max  
-## -1.1503  -0.6742  -0.4435  -0.1995   3.4310  
+## -1.1521  -0.6746  -0.4532  -0.2021   3.4186  
 ## 
 ## Coefficients:
 ##                                                          Estimate Std. Error
-## (Intercept)                                            -3.013e+00  8.958e-02
-## HINTSIsRural_i                                         -7.815e-02  6.468e-02
-## Age_c                                                   8.544e-02  5.214e-03
-## I(Age_c^2)                                             -6.248e-04  9.556e-05
-## RacePPBlack                                            -5.354e-01  7.111e-02
-## RacePPMissing data (Not Ascertained)                   -3.143e-01  1.290e-01
-## RacePPMultiple races selected                           5.439e-03  1.313e-01
-## RacePPChinese                                          -1.025e+00  3.095e-01
-## RacePPFilipino                                         -1.150e+00  3.351e-01
-## RacePPAsian Indian                                     -1.044e+00  3.997e-01
-## RacePPOther Asian                                      -7.353e-01  3.441e-01
-## RacePPAmerican Indian or Alaska Native                  2.331e-01  2.888e-01
-## RacePPPacific Islander                                 -7.496e-01  4.794e-01
-## RacePPVietnamese                                       -1.320e+00  6.047e-01
-## RacePPMissing data (Web partial - Question Never Seen) -8.951e+00  1.103e+02
-## RacePPKorean                                           -2.362e+00  1.021e+00
-## RacePPJapanese                                          1.002e-01  4.823e-01
-## Hisp_Cat2Unknown                                       -8.400e-02  8.541e-02
-## Hisp_Cat2Mexican                                       -6.891e-01  1.293e-01
-## Hisp_Cat2Other Hispanic                                -7.936e-01  1.511e-01
-## Hisp_Cat2Puerto Rican                                  -4.929e-01  2.310e-01
-## Hisp_Cat2Multiple Hispanic ethnicities selected        -3.973e-01  3.363e-01
-## Hisp_Cat2Cuban                                         -5.998e-02  2.906e-01
-## Gender3CMale                                           -4.262e-02  4.846e-02
-## Gender3CMissingOrMultiple                               5.994e-02  9.785e-02
-## filenamehints5_cycle2_public.sav                        8.418e-02  7.099e-02
-## filenamehints5_cycle3_public.sav                        2.307e-02  6.547e-02
-## filenamehints5_cycle4_public.sav                        6.729e-02  6.997e-02
+## (Intercept)                                            -3.104e+00  8.898e-02
+## HINTSIsRural_i                                         -5.282e-02  6.443e-02
+## Age_c                                                   8.702e-02  5.218e-03
+## I(Age_c^2)                                             -6.399e-04  9.541e-05
+## RacePPBlack                                            -5.026e-01  7.013e-02
+## RacePPMissing data (Not Ascertained)                   -5.780e-01  1.168e-01
+## RacePPMultiple races selected                          -2.036e-02  1.308e-01
+## RacePPChinese                                          -9.793e-01  3.095e-01
+## RacePPFilipino                                         -1.138e+00  3.355e-01
+## RacePPAsian Indian                                     -9.892e-01  3.999e-01
+## RacePPOther Asian                                      -7.094e-01  3.440e-01
+## RacePPAmerican Indian or Alaska Native                 -6.158e-02  2.855e-01
+## RacePPPacific Islander                                 -1.011e+00  4.746e-01
+## RacePPVietnamese                                       -1.276e+00  6.047e-01
+## RacePPMissing data (Web partial - Question Never Seen) -9.008e+00  1.102e+02
+## RacePPKorean                                           -2.319e+00  1.022e+00
+## RacePPJapanese                                          1.323e-01  4.826e-01
+## Gender3CMale                                           -4.502e-02  4.831e-02
+## Gender3CMissingOrMultiple                               1.214e-01  9.474e-02
+## filenamehints5_cycle2_public.sav                        7.632e-02  7.082e-02
+## filenamehints5_cycle3_public.sav                        1.579e-02  6.531e-02
+## filenamehints5_cycle4_public.sav                        5.788e-02  6.976e-02
 ##                                                        z value Pr(&gt;|z|)    
-## (Intercept)                                            -33.634  &lt; 2e-16 ***
-## HINTSIsRural_i                                          -1.208 0.227003    
-## Age_c                                                   16.386  &lt; 2e-16 ***
-## I(Age_c^2)                                              -6.538 6.22e-11 ***
-## RacePPBlack                                             -7.528 5.13e-14 ***
-## RacePPMissing data (Not Ascertained)                    -2.437 0.014801 *  
-## RacePPMultiple races selected                            0.041 0.966966    
-## RacePPChinese                                           -3.312 0.000926 ***
-## RacePPFilipino                                          -3.433 0.000598 ***
-## RacePPAsian Indian                                      -2.613 0.008966 ** 
-## RacePPOther Asian                                       -2.137 0.032599 *  
-## RacePPAmerican Indian or Alaska Native                   0.807 0.419593    
-## RacePPPacific Islander                                  -1.564 0.117887    
-## RacePPVietnamese                                        -2.183 0.029049 *  
-## RacePPMissing data (Web partial - Question Never Seen)  -0.081 0.935323    
-## RacePPKorean                                            -2.312 0.020767 *  
-## RacePPJapanese                                           0.208 0.835422    
-## Hisp_Cat2Unknown                                        -0.984 0.325337    
-## Hisp_Cat2Mexican                                        -5.329 9.87e-08 ***
-## Hisp_Cat2Other Hispanic                                 -5.252 1.51e-07 ***
-## Hisp_Cat2Puerto Rican                                   -2.134 0.032826 *  
-## Hisp_Cat2Multiple Hispanic ethnicities selected         -1.182 0.237384    
-## Hisp_Cat2Cuban                                          -0.206 0.836494    
-## Gender3CMale                                            -0.880 0.379083    
-## Gender3CMissingOrMultiple                                0.613 0.540195    
-## filenamehints5_cycle2_public.sav                         1.186 0.235659    
-## filenamehints5_cycle3_public.sav                         0.352 0.724517    
-## filenamehints5_cycle4_public.sav                         0.962 0.336237    
+## (Intercept)                                            -34.883  &lt; 2e-16 ***
+## HINTSIsRural_i                                          -0.820 0.412294    
+## Age_c                                                   16.678  &lt; 2e-16 ***
+## I(Age_c^2)                                              -6.707 1.99e-11 ***
+## RacePPBlack                                             -7.166 7.71e-13 ***
+## RacePPMissing data (Not Ascertained)                    -4.948 7.49e-07 ***
+## RacePPMultiple races selected                           -0.156 0.876263    
+## RacePPChinese                                           -3.165 0.001552 ** 
+## RacePPFilipino                                          -3.391 0.000697 ***
+## RacePPAsian Indian                                      -2.474 0.013371 *  
+## RacePPOther Asian                                       -2.062 0.039166 *  
+## RacePPAmerican Indian or Alaska Native                  -0.216 0.829244    
+## RacePPPacific Islander                                  -2.129 0.033248 *  
+## RacePPVietnamese                                        -2.109 0.034924 *  
+## RacePPMissing data (Web partial - Question Never Seen)  -0.082 0.934849    
+## RacePPKorean                                            -2.270 0.023225 *  
+## RacePPJapanese                                           0.274 0.784018    
+## Gender3CMale                                            -0.932 0.351406    
+## Gender3CMissingOrMultiple                                1.281 0.200189    
+## filenamehints5_cycle2_public.sav                         1.078 0.281156    
+## filenamehints5_cycle3_public.sav                         0.242 0.808896    
+## filenamehints5_cycle4_public.sav                         0.830 0.406740    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
 ##     Null deviance: 13782  on 15520  degrees of freedom
-## Residual deviance: 12140  on 15493  degrees of freedom
+## Residual deviance: 12203  on 15499  degrees of freedom
 ##   (571 observations deleted due to missingness)
-## AIC: 12196
+## AIC: 12247
 ## 
 ## Number of Fisher Scoring iterations: 10</code></pre>
-<pre><code>## Waiting for profiling to be done...</code></pre>
-<pre><code>## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred
-
-## Warning: glm.fit: fitted probabilities numerically 0 or 1 occurred</code></pre>
-<pre><code>##                                                                  OR       2.5 %
-## (Intercept)                                            0.0491480078 0.041121526
-## HINTSIsRural_i                                         0.9248288414 0.813888135
-## Age_c                                                  1.0891960731 1.078343869
-## I(Age_c^2)                                             0.9993753558 0.999185729
-## RacePPBlack                                            0.5854485019 0.508510466
-## RacePPMissing data (Not Ascertained)                   0.7302979572 0.565097488
-## RacePPMultiple races selected                          1.0054533569 0.772521784
-## RacePPChinese                                          0.3587378700 0.185704698
-## RacePPFilipino                                         0.3165055263 0.153889721
-## RacePPAsian Indian                                     0.3518903173 0.146289519
-## RacePPOther Asian                                      0.4793686500 0.229699862
-## RacePPAmerican Indian or Alaska Native                 1.2624901629 0.693951526
-## RacePPPacific Islander                                 0.4725651139 0.161699184
-## RacePPVietnamese                                       0.2671286175 0.064076173
-## RacePPMissing data (Web partial - Question Never Seen) 0.0001295797          NA
-## RacePPKorean                                           0.0942663490 0.005267872
-## RacePPJapanese                                         1.1054021847 0.393432537
-## Hisp_Cat2Unknown                                       0.9194307160 0.776543858
-## Hisp_Cat2Mexican                                       0.5020070234 0.386960179
-## Hisp_Cat2Other Hispanic                                0.4522253980 0.332786014
-## Hisp_Cat2Puerto Rican                                  0.6108540509 0.379071562
-## Hisp_Cat2Multiple Hispanic ethnicities selected        0.6721160203 0.329939541
-## Hisp_Cat2Cuban                                         0.9417847057 0.516134086
-## Gender3CMale                                           0.9582743891 0.871336758
-## Gender3CMissingOrMultiple                              1.0617678333 0.874723984
-## filenamehints5_cycle2_public.sav                       1.0878263848 0.946651577
-## filenamehints5_cycle3_public.sav                       1.0233422761 0.900442004
-## filenamehints5_cycle4_public.sav                       1.0696009387 0.932695304
-##                                                              97.5 %
-## (Intercept)                                              0.05842692
-## HINTSIsRural_i                                           1.04884175
-## Age_c                                                    1.10061688
-## I(Age_c^2)                                               0.99956020
-## RacePPBlack                                              0.67205311
-## RacePPMissing data (Not Ascertained)                     0.93717742
-## RacePPMultiple races selected                            1.29349505
-## RacePPChinese                                            0.63152586
-## RacePPFilipino                                           0.58045478
-## RacePPAsian Indian                                       0.71749557
-## RacePPOther Asian                                        0.89726712
-## RacePPAmerican Indian or Alaska Native                   2.16793592
-## RacePPPacific Islander                                   1.10089348
-## RacePPVietnamese                                         0.74618038
-## RacePPMissing data (Web partial - Question Never Seen) 229.89992349
-## RacePPKorean                                             0.44614608
-## RacePPJapanese                                           2.69365344
-## Hisp_Cat2Unknown                                         1.08545226
-## Hisp_Cat2Mexican                                         0.64281858
-## Hisp_Cat2Other Hispanic                                  0.60242918
-## Hisp_Cat2Puerto Rican                                    0.94110334
-## Hisp_Cat2Multiple Hispanic ethnicities selected          1.24804079
-## Hisp_Cat2Cuban                                           1.62418438
-## Gender3CMale                                             1.05362403
-## Gender3CMissingOrMultiple                                1.28388123
-## filenamehints5_cycle2_public.sav                         1.25042933
-## filenamehints5_cycle3_public.sav                         1.16395207
-## filenamehints5_cycle4_public.sav                         1.22710283</code></pre>
-<pre><code>## NULL</code></pre>
 <p>Right, so the finding is significant for everything we have examined.
 Controlling for age, race, and gender, rural respondents had:</p>
 <ul>
@@ -2568,9 +2203,9 @@ mediation factors.</p>
 consumption.</h2>
 <pre class="r"><code>run_HINTS_mediation &lt;- function(outcome,mediator,is_logistic=FALSE){
   data_to_measure &lt;- hints5[!is.na(hints5[[outcome]]),] %&gt;% filter(Gender3C %in% c(&quot;Male&quot;,&quot;Female&quot;))
-  mb_formula &lt;&lt;-paste0(mediator,&quot;~HINTSIsRural_i+Age_c+I(Age_c^2)+&quot;,race_vars,&quot;+Gender3C+filename&quot;)
+  mb_formula &lt;&lt;-paste0(mediator,&quot;~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;)
   mb &lt;&lt;- lm(eval(mb_formula),data_to_measure)
-  mc_formula&lt;&lt;- paste0(outcome, &quot;~&quot;, mediator, &quot;+HINTSIsRural_i+Age_c+I(Age_c^2)+&quot;,race_vars,&quot;+Gender3C+filename&quot;)
+  mc_formula&lt;&lt;- paste0(outcome, &quot;~&quot;, mediator, &quot;+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;)
   #mc_direct &lt;- paste0(outcome, &quot;~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;)
   ## these have to be global scope because they have to be accessed within the mediate function. d
   if(is_logistic){
@@ -2605,8 +2240,8 @@ consumption.</h2>
 set.seed(7042643)
 
 mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;Fruit_vegetables_z&quot;, is_logistic=FALSE)</code></pre>
-<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;GeneralHealth_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;GeneralHealth_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -2614,68 +2249,56 @@ mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;Fruit_
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -2.4795 -0.6103 -0.0204  0.5451  3.1975 
+## -2.4221 -0.6193 -0.0218  0.5435  3.1579 
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error t value
-## (Intercept)                                      2.340e+00  2.901e-02  80.646
-## Fruit_vegetables_z                              -1.944e-01  1.146e-02 -16.957
-## HINTSIsRural_i                                   1.409e-01  3.392e-02   4.154
-## Age_c                                            1.167e-02  1.402e-03   8.321
-## I(Age_c^2)                                      -7.109e-05  3.705e-05  -1.919
-## RacePPBlack                                      3.076e-01  3.267e-02   9.414
-## RacePPMissing data (Not Ascertained)             1.458e-01  6.245e-02   2.335
-## RacePPMultiple races selected                    3.368e-01  6.017e-02   5.597
-## RacePPChinese                                    1.127e-01  1.045e-01   1.079
-## RacePPFilipino                                   3.811e-01  1.169e-01   3.259
-## RacePPAsian Indian                              -1.179e-01  1.193e-01  -0.989
-## RacePPOther Asian                                2.398e-01  1.499e-01   1.599
-## RacePPAmerican Indian or Alaska Native           5.555e-01  1.578e-01   3.520
-## RacePPPacific Islander                           3.696e-01  1.704e-01   2.169
-## RacePPVietnamese                                 5.480e-02  1.634e-01   0.335
-## RacePPKorean                                     1.355e-01  1.818e-01   0.746
-## RacePPJapanese                                  -7.670e-02  2.031e-01  -0.378
-## Hisp_Cat2Unknown                                 1.548e-01  5.201e-02   2.976
-## Hisp_Cat2Mexican                                 2.989e-01  4.882e-02   6.123
-## Hisp_Cat2Other Hispanic                          8.516e-02  5.720e-02   1.489
-## Hisp_Cat2Puerto Rican                            2.314e-01  9.916e-02   2.333
-## Hisp_Cat2Multiple Hispanic ethnicities selected  1.396e-01  1.380e-01   1.011
-## Hisp_Cat2Cuban                                  -1.127e-01  1.423e-01  -0.792
-## Gender3CMale                                    -5.400e-02  2.305e-02  -2.343
-## filenamehints5_cycle3_public.sav                -5.812e-02  2.563e-02  -2.268
-##                                                 Pr(&gt;|t|)    
-## (Intercept)                                      &lt; 2e-16 ***
-## Fruit_vegetables_z                               &lt; 2e-16 ***
-## HINTSIsRural_i                                  3.31e-05 ***
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                      0.055073 .  
-## RacePPBlack                                      &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)            0.019597 *  
-## RacePPMultiple races selected                   2.27e-08 ***
-## RacePPChinese                                   0.280750    
-## RacePPFilipino                                  0.001122 ** 
-## RacePPAsian Indian                              0.322725    
-## RacePPOther Asian                               0.109843    
-## RacePPAmerican Indian or Alaska Native          0.000434 ***
-## RacePPPacific Islander                          0.030120 *  
-## RacePPVietnamese                                0.737392    
-## RacePPKorean                                    0.455938    
-## RacePPJapanese                                  0.705758    
-## Hisp_Cat2Unknown                                0.002934 ** 
-## Hisp_Cat2Mexican                                9.70e-10 ***
-## Hisp_Cat2Other Hispanic                         0.136579    
-## Hisp_Cat2Puerto Rican                           0.019663 *  
-## Hisp_Cat2Multiple Hispanic ethnicities selected 0.311952    
-## Hisp_Cat2Cuban                                  0.428116    
-## Gender3CMale                                    0.019163 *  
-## filenamehints5_cycle3_public.sav                0.023351 *  
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                             2.371e+00  2.845e-02  83.337  &lt; 2e-16
+## Fruit_vegetables_z                     -1.961e-01  1.149e-02 -17.065  &lt; 2e-16
+## HINTSIsRural_i                          1.333e-01  3.394e-02   3.927 8.70e-05
+## Age_c                                   1.124e-02  1.402e-03   8.021 1.24e-15
+## I(Age_c^2)                             -6.121e-05  3.707e-05  -1.651  0.09876
+## RacePPBlack                             3.012e-01  3.229e-02   9.328  &lt; 2e-16
+## RacePPMissing data (Not Ascertained)    3.065e-01  5.747e-02   5.333 9.97e-08
+## RacePPMultiple races selected           3.403e-01  6.019e-02   5.654 1.64e-08
+## RacePPChinese                           9.023e-02  1.047e-01   0.862  0.38883
+## RacePPFilipino                          3.716e-01  1.172e-01   3.170  0.00153
+## RacePPAsian Indian                     -1.479e-01  1.195e-01  -1.237  0.21604
+## RacePPOther Asian                       2.306e-01  1.503e-01   1.534  0.12520
+## RacePPAmerican Indian or Alaska Native  6.995e-01  1.566e-01   4.467 8.06e-06
+## RacePPPacific Islander                  4.263e-01  1.695e-01   2.516  0.01191
+## RacePPVietnamese                        2.751e-02  1.639e-01   0.168  0.86669
+## RacePPKorean                            1.179e-01  1.823e-01   0.647  0.51787
+## RacePPJapanese                         -8.948e-02  2.038e-01  -0.439  0.66056
+## Gender3CMale                           -5.642e-02  2.311e-02  -2.441  0.01468
+## filenamehints5_cycle3_public.sav       -5.520e-02  2.568e-02  -2.149  0.03163
+##                                           
+## (Intercept)                            ***
+## Fruit_vegetables_z                     ***
+## HINTSIsRural_i                         ***
+## Age_c                                  ***
+## I(Age_c^2)                             .  
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)   ***
+## RacePPMultiple races selected          ***
+## RacePPChinese                             
+## RacePPFilipino                         ** 
+## RacePPAsian Indian                        
+## RacePPOther Asian                         
+## RacePPAmerican Indian or Alaska Native ***
+## RacePPPacific Islander                 *  
+## RacePPVietnamese                          
+## RacePPKorean                              
+## RacePPJapanese                            
+## Gender3CMale                           *  
+## filenamehints5_cycle3_public.sav       *  
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.9057 on 6452 degrees of freedom
+## Residual standard error: 0.9087 on 6458 degrees of freedom
 ##   (8124 observations deleted due to missingness)
-## Multiple R-squared:  0.1008, Adjusted R-squared:  0.09743 
-## F-statistic: 30.13 on 24 and 6452 DF,  p-value: &lt; 2.2e-16
+## Multiple R-squared:  0.09401,    Adjusted R-squared:  0.09148 
+## F-statistic: 37.23 on 18 and 6458 DF,  p-value: &lt; 2.2e-16
 ## 
 ## 
 ## Causal Mediation Analysis 
@@ -2683,10 +2306,10 @@ mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;Fruit_
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
 ##                Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.0297       0.0156         0.04  &lt;2e-16 ***
-## ADE              0.1409       0.0733         0.21  &lt;2e-16 ***
-## Total Effect     0.1705       0.1012         0.24  &lt;2e-16 ***
-## Prop. Mediated   0.1739       0.0983         0.35  &lt;2e-16 ***
+## ACME             0.0293       0.0151         0.04  &lt;2e-16 ***
+## ADE              0.1333       0.0662         0.20   2e-04 ***
+## Total Effect     0.1626       0.0936         0.23  &lt;2e-16 ***
+## Prop. Mediated   0.1802       0.1012         0.37  &lt;2e-16 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
@@ -2702,8 +2325,8 @@ mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;Fruit_
 set.seed(7422649)
 
 mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot;Fruit_vegetables_z&quot;, is_logistic=TRUE)</code></pre>
-<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;MedConditions_HighBP_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -2711,70 +2334,58 @@ mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot
 ## 
 ## Deviance Residuals: 
 ##     Min       1Q   Median       3Q      Max  
-## -2.0927  -0.9877  -0.4166   0.9953   2.5523  
+## -2.1148  -0.9847  -0.4179   0.9936   2.5924  
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error z value
-## (Intercept)                                     -1.7633657  0.0816889 -21.586
-## Fruit_vegetables_z                              -0.1234556  0.0286795  -4.305
-## HINTSIsRural_i                                   0.1782370  0.0837451   2.128
-## Age_c                                            0.0799819  0.0047372  16.884
-## I(Age_c^2)                                      -0.0005037  0.0001112  -4.531
-## RacePPBlack                                      0.8275740  0.0816631  10.134
-## RacePPMissing data (Not Ascertained)             0.0092708  0.1572421   0.059
-## RacePPMultiple races selected                    0.3674472  0.1526872   2.407
-## RacePPChinese                                   -0.3026728  0.2848535  -1.063
-## RacePPFilipino                                   0.6001758  0.2857304   2.100
-## RacePPAsian Indian                               0.2763628  0.3152631   0.877
-## RacePPOther Asian                                0.1393411  0.3920102   0.355
-## RacePPAmerican Indian or Alaska Native           0.6557470  0.3922071   1.672
-## RacePPPacific Islander                          -0.1145657  0.4465162  -0.257
-## RacePPVietnamese                                 0.1236711  0.4192803   0.295
-## RacePPKorean                                    -0.0376680  0.4499927  -0.084
-## RacePPJapanese                                   0.6803723  0.5183398   1.313
-## Hisp_Cat2Unknown                                 0.2878993  0.1307141   2.203
-## Hisp_Cat2Mexican                                 0.1338383  0.1259808   1.062
-## Hisp_Cat2Other Hispanic                         -0.0184659  0.1467204  -0.126
-## Hisp_Cat2Puerto Rican                            0.2465048  0.2371351   1.040
-## Hisp_Cat2Multiple Hispanic ethnicities selected  0.2816865  0.3628994   0.776
-## Hisp_Cat2Cuban                                   0.2907831  0.3665988   0.793
-## Gender3CMale                                     0.2666746  0.0572980   4.654
-## filenamehints5_cycle3_public.sav                -0.0585643  0.0637535  -0.919
-##                                                 Pr(&gt;|z|)    
-## (Intercept)                                      &lt; 2e-16 ***
-## Fruit_vegetables_z                              1.67e-05 ***
-## HINTSIsRural_i                                    0.0333 *  
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                      5.86e-06 ***
-## RacePPBlack                                      &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)              0.9530    
-## RacePPMultiple races selected                     0.0161 *  
-## RacePPChinese                                     0.2880    
-## RacePPFilipino                                    0.0357 *  
-## RacePPAsian Indian                                0.3807    
-## RacePPOther Asian                                 0.7223    
-## RacePPAmerican Indian or Alaska Native            0.0945 .  
-## RacePPPacific Islander                            0.7975    
-## RacePPVietnamese                                  0.7680    
-## RacePPKorean                                      0.9333    
-## RacePPJapanese                                    0.1893    
-## Hisp_Cat2Unknown                                  0.0276 *  
-## Hisp_Cat2Mexican                                  0.2881    
-## Hisp_Cat2Other Hispanic                           0.8998    
-## Hisp_Cat2Puerto Rican                             0.2986    
-## Hisp_Cat2Multiple Hispanic ethnicities selected   0.4376    
-## Hisp_Cat2Cuban                                    0.4277    
-## Gender3CMale                                    3.25e-06 ***
-## filenamehints5_cycle3_public.sav                  0.3583    
+##                                          Estimate Std. Error z value Pr(&gt;|z|)
+## (Intercept)                            -1.7428653  0.0800297 -21.778  &lt; 2e-16
+## Fruit_vegetables_z                     -0.1237897  0.0286321  -4.323 1.54e-05
+## HINTSIsRural_i                          0.1757977  0.0833983   2.108   0.0350
+## Age_c                                   0.0798186  0.0047184  16.916  &lt; 2e-16
+## I(Age_c^2)                             -0.0004899  0.0001109  -4.418 9.95e-06
+## RacePPBlack                             0.8388156  0.0804162  10.431  &lt; 2e-16
+## RacePPMissing data (Not Ascertained)    0.0982961  0.1444747   0.680   0.4963
+## RacePPMultiple races selected           0.3806827  0.1519595   2.505   0.0122
+## RacePPChinese                          -0.3140701  0.2853211  -1.101   0.2710
+## RacePPFilipino                          0.6094791  0.2856230   2.134   0.0329
+## RacePPAsian Indian                      0.2615484  0.3151308   0.830   0.4066
+## RacePPOther Asian                       0.1460653  0.3910479   0.374   0.7088
+## RacePPAmerican Indian or Alaska Native  0.7386824  0.3886282   1.901   0.0573
+## RacePPPacific Islander                 -0.1068350  0.4429953  -0.241   0.8094
+## RacePPVietnamese                        0.1010739  0.4194302   0.241   0.8096
+## RacePPKorean                           -0.0346546  0.4480976  -0.077   0.9384
+## RacePPJapanese                          0.6761216  0.5163015   1.310   0.1903
+## Gender3CMale                            0.2665193  0.0572429   4.656 3.23e-06
+## filenamehints5_cycle3_public.sav       -0.0610967  0.0636526  -0.960   0.3371
+##                                           
+## (Intercept)                            ***
+## Fruit_vegetables_z                     ***
+## HINTSIsRural_i                         *  
+## Age_c                                  ***
+## I(Age_c^2)                             ***
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)      
+## RacePPMultiple races selected          *  
+## RacePPChinese                             
+## RacePPFilipino                         *  
+## RacePPAsian Indian                        
+## RacePPOther Asian                         
+## RacePPAmerican Indian or Alaska Native .  
+## RacePPPacific Islander                    
+## RacePPVietnamese                          
+## RacePPKorean                              
+## RacePPJapanese                            
+## Gender3CMale                           ***
+## filenamehints5_cycle3_public.sav          
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
 ##     Null deviance: 8834.8  on 6438  degrees of freedom
-## Residual deviance: 7421.9  on 6414  degrees of freedom
+## Residual deviance: 7429.6  on 6420  degrees of freedom
 ##   (8066 observations deleted due to missingness)
-## AIC: 7471.9
+## AIC: 7467.6
 ## 
 ## Number of Fisher Scoring iterations: 4
 ## 
@@ -2784,16 +2395,16 @@ mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
 ##                          Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME (control)            0.00377      0.00171         0.01  &lt;2e-16 ***
-## ACME (treated)            0.00378      0.00172         0.01  &lt;2e-16 ***
-## ADE (control)             0.03534      0.00208         0.07   0.039 *  
-## ADE (treated)             0.03535      0.00208         0.07   0.039 *  
-## Total Effect              0.03912      0.00601         0.07   0.022 *  
-## Prop. Mediated (control)  0.09636      0.03442         0.78   0.022 *  
-## Prop. Mediated (treated)  0.09670      0.03457         0.79   0.022 *  
-## ACME (average)            0.00378      0.00172         0.01  &lt;2e-16 ***
-## ADE (average)             0.03535      0.00208         0.07   0.039 *  
-## Prop. Mediated (average)  0.09653      0.03450         0.78   0.022 *  
+## ACME (control)            0.00369      0.00166         0.01  &lt;2e-16 ***
+## ACME (treated)            0.00371      0.00166         0.01  &lt;2e-16 ***
+## ADE (control)             0.03490      0.00145         0.07   0.041 *  
+## ADE (treated)             0.03491      0.00146         0.07   0.041 *  
+## Total Effect              0.03860      0.00527         0.07   0.023 *  
+## Prop. Mediated (control)  0.09566      0.07260         9.76   0.023 *  
+## Prop. Mediated (treated)  0.09598      0.07265         9.56   0.023 *  
+## ACME (average)            0.00370      0.00166         0.01  &lt;2e-16 ***
+## ADE (average)             0.03490      0.00146         0.07   0.041 *  
+## Prop. Mediated (average)  0.09582      0.07261         9.66   0.023 *  
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
@@ -2810,8 +2421,8 @@ mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot
 
 set.seed(4194457)
 mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot;Fruit_vegetables_z&quot;, is_logistic=FALSE)</code></pre>
-<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;MedConditionsAggregate~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;MedConditionsAggregate~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -2819,68 +2430,56 @@ mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -1.6963 -0.5627 -0.1089  0.4161  3.1304 
+## -1.6372 -0.5619 -0.1138  0.4152  3.1061 
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error t value
-## (Intercept)                                      1.974e-01  2.477e-02   7.971
-## Fruit_vegetables_z                              -5.180e-02  9.780e-03  -5.297
-## HINTSIsRural_i                                   6.509e-02  2.911e-02   2.236
-## Age_c                                            2.200e-02  1.195e-03  18.405
-## I(Age_c^2)                                      -6.394e-06  3.175e-05  -0.201
-## RacePPBlack                                      3.157e-01  2.809e-02  11.240
-## RacePPMissing data (Not Ascertained)             2.808e-02  5.321e-02   0.528
-## RacePPMultiple races selected                    1.456e-01  5.133e-02   2.836
-## RacePPChinese                                    8.572e-03  8.857e-02   0.097
-## RacePPFilipino                                   2.758e-01  9.991e-02   2.760
-## RacePPAsian Indian                               1.128e-01  1.011e-01   1.116
-## RacePPOther Asian                                1.975e-01  1.254e-01   1.574
-## RacePPAmerican Indian or Alaska Native           3.460e-01  1.338e-01   2.586
-## RacePPPacific Islander                           3.360e-01  1.495e-01   2.247
-## RacePPVietnamese                                 1.280e-01  1.385e-01   0.924
-## RacePPKorean                                     1.893e-02  1.541e-01   0.123
-## RacePPJapanese                                  -3.142e-02  1.766e-01  -0.178
-## Hisp_Cat2Unknown                                 1.901e-01  4.537e-02   4.191
-## Hisp_Cat2Mexican                                 1.590e-01  4.170e-02   3.814
-## Hisp_Cat2Other Hispanic                          7.095e-02  4.906e-02   1.446
-## Hisp_Cat2Puerto Rican                            9.114e-02  8.360e-02   1.090
-## Hisp_Cat2Multiple Hispanic ethnicities selected  2.443e-01  1.170e-01   2.087
-## Hisp_Cat2Cuban                                  -2.100e-02  1.236e-01  -0.170
-## Gender3CMale                                     1.246e-01  1.969e-02   6.327
-## filenamehints5_cycle3_public.sav                -5.895e-03  2.191e-02  -0.269
-##                                                 Pr(&gt;|t|)    
-## (Intercept)                                     1.85e-15 ***
-## Fruit_vegetables_z                              1.22e-07 ***
-## HINTSIsRural_i                                  0.025382 *  
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                      0.840389    
-## RacePPBlack                                      &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)            0.597677    
-## RacePPMultiple races selected                   0.004577 ** 
-## RacePPChinese                                   0.922901    
-## RacePPFilipino                                  0.005792 ** 
-## RacePPAsian Indian                              0.264425    
-## RacePPOther Asian                               0.115464    
-## RacePPAmerican Indian or Alaska Native          0.009732 ** 
-## RacePPPacific Islander                          0.024675 *  
-## RacePPVietnamese                                0.355509    
-## RacePPKorean                                    0.902224    
-## RacePPJapanese                                  0.858808    
-## Hisp_Cat2Unknown                                2.82e-05 ***
-## Hisp_Cat2Mexican                                0.000138 ***
-## Hisp_Cat2Other Hispanic                         0.148175    
-## Hisp_Cat2Puerto Rican                           0.275690    
-## Hisp_Cat2Multiple Hispanic ethnicities selected 0.036899 *  
-## Hisp_Cat2Cuban                                  0.865117    
-## Gender3CMale                                    2.67e-10 ***
-## filenamehints5_cycle3_public.sav                0.787894    
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                             2.182e-01  2.425e-02   8.997  &lt; 2e-16
+## Fruit_vegetables_z                     -5.313e-02  9.793e-03  -5.425  6.0e-08
+## HINTSIsRural_i                          6.238e-02  2.910e-02   2.144  0.03209
+## Age_c                                   2.173e-02  1.194e-03  18.207  &lt; 2e-16
+## I(Age_c^2)                              5.152e-06  3.173e-05   0.162  0.87102
+## RacePPBlack                             3.188e-01  2.777e-02  11.479  &lt; 2e-16
+## RacePPMissing data (Not Ascertained)    1.220e-01  4.894e-02   2.493  0.01269
+## RacePPMultiple races selected           1.523e-01  5.128e-02   2.971  0.00298
+## RacePPChinese                          -2.839e-03  8.867e-02  -0.032  0.97446
+## RacePPFilipino                          2.749e-01  1.001e-01   2.748  0.00602
+## RacePPAsian Indian                      9.465e-02  1.012e-01   0.935  0.34966
+## RacePPOther Asian                       1.979e-01  1.256e-01   1.575  0.11532
+## RacePPAmerican Indian or Alaska Native  4.361e-01  1.326e-01   3.289  0.00101
+## RacePPPacific Islander                  3.849e-01  1.487e-01   2.589  0.00966
+## RacePPVietnamese                        1.098e-01  1.388e-01   0.791  0.42902
+## RacePPKorean                            1.328e-02  1.544e-01   0.086  0.93143
+## RacePPJapanese                         -3.320e-02  1.770e-01  -0.188  0.85118
+## Gender3CMale                            1.235e-01  1.972e-02   6.260  4.1e-10
+## filenamehints5_cycle3_public.sav       -6.676e-03  2.193e-02  -0.304  0.76081
+##                                           
+## (Intercept)                            ***
+## Fruit_vegetables_z                     ***
+## HINTSIsRural_i                         *  
+## Age_c                                  ***
+## I(Age_c^2)                                
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)   *  
+## RacePPMultiple races selected          ** 
+## RacePPChinese                             
+## RacePPFilipino                         ** 
+## RacePPAsian Indian                        
+## RacePPOther Asian                         
+## RacePPAmerican Indian or Alaska Native ** 
+## RacePPPacific Islander                 ** 
+## RacePPVietnamese                          
+## RacePPKorean                              
+## RacePPJapanese                            
+## Gender3CMale                           ***
+## filenamehints5_cycle3_public.sav          
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.7677 on 6349 degrees of freedom
+## Residual standard error: 0.7694 on 6355 degrees of freedom
 ##   (7972 observations deleted due to missingness)
-## Multiple R-squared:  0.209,  Adjusted R-squared:  0.2061 
-## F-statistic: 69.91 on 24 and 6349 DF,  p-value: &lt; 2.2e-16
+## Multiple R-squared:  0.2048, Adjusted R-squared:  0.2025 
+## F-statistic: 90.91 on 18 and 6355 DF,  p-value: &lt; 2.2e-16
 ## 
 ## 
 ## Causal Mediation Analysis 
@@ -2888,10 +2487,10 @@ mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
 ##                Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME            0.00771      0.00364         0.01  &lt;2e-16 ***
-## ADE             0.06509      0.00694         0.12   0.031 *  
-## Total Effect    0.07280      0.01481         0.13   0.016 *  
-## Prop. Mediated  0.10590      0.05715         3.67   0.016 *  
+## ACME            0.00770      0.00358         0.01  &lt;2e-16 ***
+## ADE             0.06238      0.00423         0.12   0.037 *  
+## Total Effect    0.07007      0.01181         0.13   0.020 *  
+## Prop. Mediated  0.10983      0.06738         7.57   0.020 *  
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
@@ -2908,8 +2507,8 @@ mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot
 
 set.seed(9966743)
 mediation_result = run_HINTS_mediation(&quot;EverHadCancer_i&quot;, &quot;Fruit_vegetables_z&quot;, is_logistic=FALSE)</code></pre>
-<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;EverHadCancer_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;Fruit_vegetables_z~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;EverHadCancer_i~Fruit_vegetables_z+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -2917,81 +2516,67 @@ mediation_result = run_HINTS_mediation(&quot;EverHadCancer_i&quot;, &quot;Fruit_
 ## 
 ## Residuals:
 ##      Min       1Q   Median       3Q      Max 
-## -0.55307 -0.20281 -0.10407 -0.01036  1.07652 
+## -0.54414 -0.20084 -0.10705 -0.01477  1.08909 
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error t value
-## (Intercept)                                      7.233e-02  1.103e-02   6.556
-## Fruit_vegetables_z                               3.866e-03  4.346e-03   0.890
-## HINTSIsRural_i                                  -2.286e-02  1.289e-02  -1.774
-## Age_c                                            4.547e-03  5.333e-04   8.525
-## I(Age_c^2)                                       4.860e-05  1.408e-05   3.453
-## RacePPBlack                                     -7.693e-02  1.240e-02  -6.204
-## RacePPMissing data (Not Ascertained)            -1.378e-02  2.372e-02  -0.581
-## RacePPMultiple races selected                    3.095e-02  2.289e-02   1.352
-## RacePPChinese                                   -1.103e-01  3.982e-02  -2.771
-## RacePPFilipino                                  -6.764e-02  4.457e-02  -1.518
-## RacePPAsian Indian                              -7.981e-02  4.508e-02  -1.770
-## RacePPOther Asian                               -5.455e-02  5.640e-02  -0.967
-## RacePPAmerican Indian or Alaska Native           1.187e-01  5.851e-02   2.029
-## RacePPPacific Islander                          -6.207e-03  6.495e-02  -0.096
-## RacePPVietnamese                                -4.931e-02  6.229e-02  -0.792
-## RacePPKorean                                    -1.362e-01  6.929e-02  -1.965
-## RacePPJapanese                                   2.758e-02  7.743e-02   0.356
-## Hisp_Cat2Unknown                                -2.404e-02  1.979e-02  -1.215
-## Hisp_Cat2Mexican                                -9.062e-02  1.856e-02  -4.882
-## Hisp_Cat2Other Hispanic                         -8.977e-02  2.169e-02  -4.138
-## Hisp_Cat2Puerto Rican                           -9.212e-02  3.741e-02  -2.463
-## Hisp_Cat2Multiple Hispanic ethnicities selected  1.115e-03  5.261e-02   0.021
-## Hisp_Cat2Cuban                                  -1.588e-02  5.359e-02  -0.296
-## Gender3CMale                                     5.301e-03  8.753e-03   0.606
-## filenamehints5_cycle3_public.sav                -8.322e-04  9.745e-03  -0.085
-##                                                 Pr(&gt;|t|)    
-## (Intercept)                                     5.95e-11 ***
-## Fruit_vegetables_z                              0.373727    
-## HINTSIsRural_i                                  0.076059 .  
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                      0.000559 ***
-## RacePPBlack                                     5.83e-10 ***
-## RacePPMissing data (Not Ascertained)            0.561180    
-## RacePPMultiple races selected                   0.176318    
-## RacePPChinese                                   0.005612 ** 
-## RacePPFilipino                                  0.129142    
-## RacePPAsian Indian                              0.076704 .  
-## RacePPOther Asian                               0.333475    
-## RacePPAmerican Indian or Alaska Native          0.042475 *  
-## RacePPPacific Islander                          0.923861    
-## RacePPVietnamese                                0.428637    
-## RacePPKorean                                    0.049412 *  
-## RacePPJapanese                                  0.721704    
-## Hisp_Cat2Unknown                                0.224571    
-## Hisp_Cat2Mexican                                1.07e-06 ***
-## Hisp_Cat2Other Hispanic                         3.55e-05 ***
-## Hisp_Cat2Puerto Rican                           0.013821 *  
-## Hisp_Cat2Multiple Hispanic ethnicities selected 0.983100    
-## Hisp_Cat2Cuban                                  0.766935    
-## Gender3CMale                                    0.544751    
-## filenamehints5_cycle3_public.sav                0.931949    
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                             5.928e-02  1.081e-02   5.483 4.34e-08
+## Fruit_vegetables_z                      4.717e-03  4.354e-03   1.083 0.278639
+## HINTSIsRural_i                         -1.839e-02  1.288e-02  -1.427 0.153538
+## Age_c                                   4.694e-03  5.328e-04   8.811  &lt; 2e-16
+## I(Age_c^2)                              4.722e-05  1.407e-05   3.355 0.000797
+## RacePPBlack                            -7.054e-02  1.224e-02  -5.762 8.70e-09
+## RacePPMissing data (Not Ascertained)   -7.132e-02  2.181e-02  -3.270 0.001080
+## RacePPMultiple races selected           2.977e-02  2.288e-02   1.301 0.193197
+## RacePPChinese                          -1.005e-01  3.988e-02  -2.521 0.011719
+## RacePPFilipino                         -6.054e-02  4.465e-02  -1.356 0.175138
+## RacePPAsian Indian                     -6.710e-02  4.514e-02  -1.486 0.137216
+## RacePPOther Asian                      -4.814e-02  5.651e-02  -0.852 0.394353
+## RacePPAmerican Indian or Alaska Native  7.514e-02  5.798e-02   1.296 0.195038
+## RacePPPacific Islander                 -4.310e-02  6.455e-02  -0.668 0.504317
+## RacePPVietnamese                       -4.026e-02  6.243e-02  -0.645 0.519048
+## RacePPKorean                           -1.263e-01  6.944e-02  -1.819 0.068916
+## RacePPJapanese                          3.557e-02  7.761e-02   0.458 0.646784
+## Gender3CMale                            5.897e-03  8.771e-03   0.672 0.501409
+## filenamehints5_cycle3_public.sav       -2.107e-03  9.758e-03  -0.216 0.829088
+##                                           
+## (Intercept)                            ***
+## Fruit_vegetables_z                        
+## HINTSIsRural_i                            
+## Age_c                                  ***
+## I(Age_c^2)                             ***
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)   ** 
+## RacePPMultiple races selected             
+## RacePPChinese                          *  
+## RacePPFilipino                            
+## RacePPAsian Indian                        
+## RacePPOther Asian                         
+## RacePPAmerican Indian or Alaska Native    
+## RacePPPacific Islander                    
+## RacePPVietnamese                          
+## RacePPKorean                           .  
+## RacePPJapanese                            
+## Gender3CMale                              
+## filenamehints5_cycle3_public.sav          
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.3452 on 6504 degrees of freedom
+## Residual standard error: 0.3461 on 6510 degrees of freedom
 ##   (8129 observations deleted due to missingness)
-## Multiple R-squared:  0.09784,    Adjusted R-squared:  0.09451 
-## F-statistic: 29.39 on 24 and 6504 DF,  p-value: &lt; 2.2e-16
+## Multiple R-squared:  0.0923, Adjusted R-squared:  0.08979 
+## F-statistic: 36.77 on 18 and 6510 DF,  p-value: &lt; 2.2e-16
 ## 
 ## 
 ## Causal Mediation Analysis 
 ## 
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
-##                 Estimate 95% CI Lower 95% CI Upper p-value  
-## ACME           -0.000579    -0.002162         0.00   0.370  
-## ADE            -0.022863    -0.047271         0.00   0.080 .
-## Total Effect   -0.023442    -0.048051         0.00   0.074 .
-## Prop. Mediated  0.024708    -0.405567         0.14   0.422  
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+##                Estimate 95% CI Lower 95% CI Upper p-value
+## ACME           -0.00069     -0.00231         0.00    0.28
+## ADE            -0.01839     -0.04279         0.01    0.16
+## Total Effect   -0.01908     -0.04356         0.01    0.14
+## Prop. Mediated  0.03616      0.00957         4.31    0.39
 ## 
 ## Sample Size Used: 6529 
 ## 
@@ -3010,8 +2595,8 @@ library(mediation)
 set.seed(06803234)
 
 mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;IncomeRanges_r&quot;, is_logistic=FALSE)</code></pre>
-<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;GeneralHealth_i~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;GeneralHealth_i~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -3019,72 +2604,60 @@ mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;Income
 ## 
 ## Residuals:
 ##      Min       1Q   Median       3Q      Max 
-## -2.49068 -0.58282 -0.05319  0.61445  3.12869 
+## -2.45043 -0.58512 -0.05891  0.62006  3.10966 
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error t value
-## (Intercept)                                      2.320e+00  2.121e-02 109.380
-## IncomeRanges_r                                  -1.242e-01  3.699e-03 -33.566
-## HINTSIsRural_i                                   7.869e-02  2.287e-02   3.440
-## Age_c                                            1.179e-02  9.263e-04  12.733
-## I(Age_c^2)                                      -1.313e-04  2.474e-05  -5.308
-## RacePPBlack                                      1.280e-01  2.273e-02   5.632
-## RacePPMissing data (Not Ascertained)             4.266e-02  4.422e-02   0.965
-## RacePPMultiple races selected                    1.993e-01  4.018e-02   4.960
-## RacePPChinese                                    6.937e-02  7.060e-02   0.983
-## RacePPFilipino                                   2.237e-01  7.574e-02   2.954
-## RacePPAsian Indian                               1.714e-04  8.095e-02   0.002
-## RacePPOther Asian                                1.159e-01  8.135e-02   1.424
-## RacePPAmerican Indian or Alaska Native           1.714e-01  9.030e-02   1.898
-## RacePPPacific Islander                           1.623e-01  1.072e-01   1.513
-## RacePPVietnamese                                 8.326e-02  1.210e-01   0.688
-## RacePPKorean                                     2.024e-01  1.501e-01   1.348
-## RacePPJapanese                                  -6.928e-02  1.775e-01  -0.390
-## Hisp_Cat2Unknown                                 6.806e-02  3.573e-02   1.905
-## Hisp_Cat2Mexican                                 2.211e-01  3.294e-02   6.710
-## Hisp_Cat2Other Hispanic                          5.908e-02  3.804e-02   1.553
-## Hisp_Cat2Puerto Rican                            7.869e-02  6.391e-02   1.231
-## Hisp_Cat2Multiple Hispanic ethnicities selected  1.558e-01  9.267e-02   1.682
-## Hisp_Cat2Cuban                                  -2.020e-01  9.436e-02  -2.141
-## Gender3CMale                                     2.457e-02  1.566e-02   1.569
-## filenamehints5_cycle2_public.sav                -2.544e-02  2.350e-02  -1.082
-## filenamehints5_cycle3_public.sav                -4.874e-03  2.145e-02  -0.227
-## filenamehints5_cycle4_public.sav                 1.481e-02  2.304e-02   0.643
-##                                                 Pr(&gt;|t|)    
-## (Intercept)                                      &lt; 2e-16 ***
-## IncomeRanges_r                                   &lt; 2e-16 ***
-## HINTSIsRural_i                                  0.000583 ***
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                      1.13e-07 ***
-## RacePPBlack                                     1.82e-08 ***
-## RacePPMissing data (Not Ascertained)            0.334776    
-## RacePPMultiple races selected                   7.14e-07 ***
-## RacePPChinese                                   0.325795    
-## RacePPFilipino                                  0.003141 ** 
-## RacePPAsian Indian                              0.998310    
-## RacePPOther Asian                               0.154400    
-## RacePPAmerican Indian or Alaska Native          0.057717 .  
-## RacePPPacific Islander                          0.130184    
-## RacePPVietnamese                                0.491366    
-## RacePPKorean                                    0.177607    
-## RacePPJapanese                                  0.696308    
-## Hisp_Cat2Unknown                                0.056829 .  
-## Hisp_Cat2Mexican                                2.02e-11 ***
-## Hisp_Cat2Other Hispanic                         0.120406    
-## Hisp_Cat2Puerto Rican                           0.218268    
-## Hisp_Cat2Multiple Hispanic ethnicities selected 0.092666 .  
-## Hisp_Cat2Cuban                                  0.032299 *  
-## Gender3CMale                                    0.116639    
-## filenamehints5_cycle2_public.sav                0.279063    
-## filenamehints5_cycle3_public.sav                0.820276    
-## filenamehints5_cycle4_public.sav                0.520324    
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                             2.343e+00  2.083e-02 112.489  &lt; 2e-16
+## IncomeRanges_r                         -1.269e-01  3.671e-03 -34.566  &lt; 2e-16
+## HINTSIsRural_i                          7.264e-02  2.283e-02   3.182 0.001468
+## Age_c                                   1.135e-02  9.243e-04  12.282  &lt; 2e-16
+## I(Age_c^2)                             -1.265e-04  2.474e-05  -5.111 3.24e-07
+## RacePPBlack                             1.166e-01  2.237e-02   5.210 1.92e-07
+## RacePPMissing data (Not Ascertained)    1.552e-01  4.065e-02   3.817 0.000135
+## RacePPMultiple races selected           2.017e-01  4.017e-02   5.020 5.25e-07
+## RacePPChinese                           5.308e-02  7.065e-02   0.751 0.452436
+## RacePPFilipino                          2.154e-01  7.583e-02   2.841 0.004505
+## RacePPAsian Indian                     -1.645e-02  8.102e-02  -0.203 0.839058
+## RacePPOther Asian                       1.016e-01  8.143e-02   1.247 0.212345
+## RacePPAmerican Indian or Alaska Native  2.438e-01  8.983e-02   2.714 0.006663
+## RacePPPacific Islander                  2.075e-01  1.068e-01   1.943 0.052027
+## RacePPVietnamese                        6.637e-02  1.212e-01   0.548 0.583870
+## RacePPKorean                            1.920e-01  1.503e-01   1.277 0.201523
+## RacePPJapanese                         -7.345e-02  1.778e-01  -0.413 0.679487
+## Gender3CMale                            2.497e-02  1.568e-02   1.592 0.111311
+## filenamehints5_cycle2_public.sav       -2.405e-02  2.354e-02  -1.021 0.307083
+## filenamehints5_cycle3_public.sav       -2.624e-03  2.147e-02  -0.122 0.902720
+## filenamehints5_cycle4_public.sav        1.772e-02  2.305e-02   0.769 0.442097
+##                                           
+## (Intercept)                            ***
+## IncomeRanges_r                         ***
+## HINTSIsRural_i                         ** 
+## Age_c                                  ***
+## I(Age_c^2)                             ***
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)   ***
+## RacePPMultiple races selected          ***
+## RacePPChinese                             
+## RacePPFilipino                         ** 
+## RacePPAsian Indian                        
+## RacePPOther Asian                         
+## RacePPAmerican Indian or Alaska Native ** 
+## RacePPPacific Islander                 .  
+## RacePPVietnamese                          
+## RacePPKorean                              
+## RacePPJapanese                            
+## Gender3CMale                              
+## filenamehints5_cycle2_public.sav          
+## filenamehints5_cycle3_public.sav          
+## filenamehints5_cycle4_public.sav          
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.8853 on 13403 degrees of freedom
+## Residual standard error: 0.8869 on 13409 degrees of freedom
 ##   (1171 observations deleted due to missingness)
-## Multiple R-squared:  0.1328, Adjusted R-squared:  0.1312 
-## F-statistic: 78.97 on 26 and 13403 DF,  p-value: &lt; 2.2e-16
+## Multiple R-squared:  0.1293, Adjusted R-squared:  0.128 
+## F-statistic: 99.56 on 20 and 13409 DF,  p-value: &lt; 2.2e-16
 ## 
 ## 
 ## Causal Mediation Analysis 
@@ -3092,10 +2665,10 @@ mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;Income
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
 ##                Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.0856       0.0720         0.10  &lt;2e-16 ***
-## ADE              0.0787       0.0314         0.12   6e-04 ***
-## Total Effect     0.1643       0.1162         0.21  &lt;2e-16 ***
-## Prop. Mediated   0.5210       0.4120         0.77  &lt;2e-16 ***
+## ACME             0.0829       0.0692         0.10  &lt;2e-16 ***
+## ADE              0.0726       0.0252         0.12   0.002 ** 
+## Total Effect     0.1556       0.1080         0.20  &lt;2e-16 ***
+## Prop. Mediated   0.5330       0.4186         0.81  &lt;2e-16 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
@@ -3111,8 +2684,8 @@ mediation_result = run_HINTS_mediation(&quot;GeneralHealth_i&quot;, &quot;Income
 set.seed(96079559)
 
 mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot;IncomeRanges_r&quot;, is_logistic=TRUE)</code></pre>
-<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;MedConditions_HighBP_i~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;MedConditions_HighBP_i~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -3120,74 +2693,62 @@ mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot
 ## 
 ## Deviance Residuals: 
 ##     Min       1Q   Median       3Q      Max  
-## -2.1931  -0.9718  -0.4209   0.9830   2.6126  
+## -2.2055  -0.9738  -0.4216   0.9830   2.6089  
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error z value
-## (Intercept)                                     -1.664e+00  5.931e-02 -28.050
-## IncomeRanges_r                                  -1.079e-01  9.382e-03 -11.500
-## HINTSIsRural_i                                   1.332e-01  5.738e-02   2.320
-## Age_c                                            7.950e-02  3.139e-03  25.322
-## I(Age_c^2)                                      -6.338e-04  7.428e-05  -8.533
-## RacePPBlack                                      7.489e-01  5.807e-02  12.898
-## RacePPMissing data (Not Ascertained)            -2.314e-01  1.162e-01  -1.991
-## RacePPMultiple races selected                    2.267e-01  1.044e-01   2.171
-## RacePPChinese                                   -5.112e-01  2.012e-01  -2.541
-## RacePPFilipino                                   7.168e-01  1.894e-01   3.784
-## RacePPAsian Indian                              -7.266e-02  2.227e-01  -0.326
-## RacePPOther Asian                               -2.204e-01  2.203e-01  -1.000
-## RacePPAmerican Indian or Alaska Native           2.457e-01  2.281e-01   1.077
-## RacePPPacific Islander                          -5.832e-02  2.822e-01  -0.207
-## RacePPVietnamese                                -9.180e-02  3.171e-01  -0.289
-## RacePPKorean                                     3.080e-02  3.776e-01   0.082
-## RacePPJapanese                                   6.523e-01  4.573e-01   1.426
-## Hisp_Cat2Unknown                                 1.348e-01  9.201e-02   1.465
-## Hisp_Cat2Mexican                                 1.131e-01  8.688e-02   1.302
-## Hisp_Cat2Other Hispanic                         -1.231e-01  9.954e-02  -1.236
-## Hisp_Cat2Puerto Rican                            1.187e-01  1.600e-01   0.742
-## Hisp_Cat2Multiple Hispanic ethnicities selected  1.104e-01  2.456e-01   0.449
-## Hisp_Cat2Cuban                                   2.112e-01  2.443e-01   0.864
-## Gender3CMale                                     3.290e-01  3.993e-02   8.238
-## filenamehints5_cycle2_public.sav                -1.704e-02  5.979e-02  -0.285
-## filenamehints5_cycle3_public.sav                -4.620e-02  5.456e-02  -0.847
-## filenamehints5_cycle4_public.sav                -5.682e-02  5.872e-02  -0.968
-##                                                 Pr(&gt;|z|)    
-## (Intercept)                                      &lt; 2e-16 ***
-## IncomeRanges_r                                   &lt; 2e-16 ***
-## HINTSIsRural_i                                  0.020319 *  
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                       &lt; 2e-16 ***
-## RacePPBlack                                      &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)            0.046436 *  
-## RacePPMultiple races selected                   0.029949 *  
-## RacePPChinese                                   0.011067 *  
-## RacePPFilipino                                  0.000154 ***
-## RacePPAsian Indian                              0.744249    
-## RacePPOther Asian                               0.317094    
-## RacePPAmerican Indian or Alaska Native          0.281338    
-## RacePPPacific Islander                          0.836250    
-## RacePPVietnamese                                0.772215    
-## RacePPKorean                                    0.934994    
-## RacePPJapanese                                  0.153785    
-## Hisp_Cat2Unknown                                0.142820    
-## Hisp_Cat2Mexican                                0.192879    
-## Hisp_Cat2Other Hispanic                         0.216285    
-## Hisp_Cat2Puerto Rican                           0.458197    
-## Hisp_Cat2Multiple Hispanic ethnicities selected 0.653158    
-## Hisp_Cat2Cuban                                  0.387360    
-## Gender3CMale                                     &lt; 2e-16 ***
-## filenamehints5_cycle2_public.sav                0.775667    
-## filenamehints5_cycle3_public.sav                0.397099    
-## filenamehints5_cycle4_public.sav                0.333234    
+##                                          Estimate Std. Error z value Pr(&gt;|z|)
+## (Intercept)                            -1.654e+00  5.828e-02 -28.378  &lt; 2e-16
+## IncomeRanges_r                         -1.091e-01  9.297e-03 -11.737  &lt; 2e-16
+## HINTSIsRural_i                          1.313e-01  5.714e-02   2.299  0.02153
+## Age_c                                   7.931e-02  3.130e-03  25.340  &lt; 2e-16
+## I(Age_c^2)                             -6.258e-04  7.418e-05  -8.436  &lt; 2e-16
+## RacePPBlack                             7.531e-01  5.710e-02  13.188  &lt; 2e-16
+## RacePPMissing data (Not Ascertained)   -1.956e-01  1.070e-01  -1.827  0.06763
+## RacePPMultiple races selected           2.286e-01  1.041e-01   2.196  0.02813
+## RacePPChinese                          -5.186e-01  2.012e-01  -2.578  0.00993
+## RacePPFilipino                          7.151e-01  1.895e-01   3.774  0.00016
+## RacePPAsian Indian                     -7.615e-02  2.224e-01  -0.342  0.73202
+## RacePPOther Asian                      -2.276e-01  2.201e-01  -1.034  0.30106
+## RacePPAmerican Indian or Alaska Native  2.740e-01  2.261e-01   1.211  0.22571
+## RacePPPacific Islander                 -5.753e-02  2.805e-01  -0.205  0.83750
+## RacePPVietnamese                       -9.909e-02  3.170e-01  -0.313  0.75462
+## RacePPKorean                            3.769e-02  3.770e-01   0.100  0.92035
+## RacePPJapanese                          6.514e-01  4.557e-01   1.429  0.15292
+## Gender3CMale                            3.289e-01  3.990e-02   8.241  &lt; 2e-16
+## filenamehints5_cycle2_public.sav       -1.702e-02  5.976e-02  -0.285  0.77584
+## filenamehints5_cycle3_public.sav       -4.732e-02  5.450e-02  -0.868  0.38532
+## filenamehints5_cycle4_public.sav       -5.764e-02  5.864e-02  -0.983  0.32564
+##                                           
+## (Intercept)                            ***
+## IncomeRanges_r                         ***
+## HINTSIsRural_i                         *  
+## Age_c                                  ***
+## I(Age_c^2)                             ***
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)   .  
+## RacePPMultiple races selected          *  
+## RacePPChinese                          ** 
+## RacePPFilipino                         ***
+## RacePPAsian Indian                        
+## RacePPOther Asian                         
+## RacePPAmerican Indian or Alaska Native    
+## RacePPPacific Islander                    
+## RacePPVietnamese                          
+## RacePPKorean                              
+## RacePPJapanese                            
+## Gender3CMale                           ***
+## filenamehints5_cycle2_public.sav          
+## filenamehints5_cycle3_public.sav          
+## filenamehints5_cycle4_public.sav          
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
 ##     Null deviance: 18343  on 13352  degrees of freedom
-## Residual deviance: 15388  on 13326  degrees of freedom
+## Residual deviance: 15395  on 13332  degrees of freedom
 ##   (1152 observations deleted due to missingness)
-## AIC: 15442
+## AIC: 15437
 ## 
 ## Number of Fisher Scoring iterations: 4
 ## 
@@ -3197,16 +2758,16 @@ mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
 ##                          Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME (control)            0.01479      0.01177         0.02  &lt;2e-16 ***
-## ACME (treated)            0.01482      0.01179         0.02  &lt;2e-16 ***
-## ADE (control)             0.02638      0.00321         0.05  0.0226 *  
-## ADE (treated)             0.02642      0.00322         0.05  0.0226 *  
-## Total Effect              0.04120      0.01851         0.06  0.0004 ***
-## Prop. Mediated (control)  0.35892      0.26104         1.50  0.0004 ***
-## Prop. Mediated (treated)  0.35970      0.26161         1.50  0.0004 ***
-## ACME (average)            0.01481      0.01177         0.02  &lt;2e-16 ***
-## ADE (average)             0.02640      0.00322         0.05  0.0226 *  
-## Prop. Mediated (average)  0.35931      0.26130         1.50  0.0004 ***
+## ACME (control)            0.01416      0.01123         0.02  &lt;2e-16 ***
+## ACME (treated)            0.01419      0.01123         0.02  &lt;2e-16 ***
+## ADE (control)             0.02604      0.00299         0.05  0.0250 *  
+## ADE (treated)             0.02607      0.00301         0.05  0.0250 *  
+## Total Effect              0.04023      0.01742         0.06  0.0006 ***
+## Prop. Mediated (control)  0.35199      0.26134         3.46  0.0006 ***
+## Prop. Mediated (treated)  0.35274      0.26183         3.45  0.0006 ***
+## ACME (average)            0.01418      0.01123         0.02  &lt;2e-16 ***
+## ADE (average)             0.02605      0.00299         0.05  0.0250 *  
+## Prop. Mediated (average)  0.35236      0.26159         3.46  0.0006 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
@@ -3223,8 +2784,8 @@ mediation_result = run_HINTS_mediation(&quot;MedConditions_HighBP_i&quot;, &quot
 
 set.seed(30738241)
 mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot;IncomeRanges_r&quot;, is_logistic=FALSE)</code></pre>
-<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;MedConditionsAggregate~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;MedConditionsAggregate~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -3232,72 +2793,60 @@ mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -1.8431 -0.5486 -0.1168  0.4483  2.9084 
+## -1.8693 -0.5479 -0.1178  0.4488  2.8844 
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error t value
-## (Intercept)                                      2.250e-01  1.847e-02  12.178
-## IncomeRanges_r                                  -5.335e-02  3.226e-03 -16.537
-## HINTSIsRural_i                                   2.892e-02  1.997e-02   1.449
-## Age_c                                            2.275e-02  8.059e-04  28.230
-## I(Age_c^2)                                      -6.909e-05  2.169e-05  -3.185
-## RacePPBlack                                      2.420e-01  1.990e-02  12.166
-## RacePPMissing data (Not Ascertained)            -3.751e-02  3.873e-02  -0.968
-## RacePPMultiple races selected                    8.325e-02  3.495e-02   2.382
-## RacePPChinese                                   -4.729e-02  6.124e-02  -0.772
-## RacePPFilipino                                   2.951e-01  6.573e-02   4.489
-## RacePPAsian Indian                               5.070e-02  7.029e-02   0.721
-## RacePPOther Asian                                5.569e-02  7.006e-02   0.795
-## RacePPAmerican Indian or Alaska Native           1.919e-01  7.847e-02   2.446
-## RacePPPacific Islander                           1.378e-01  9.475e-02   1.455
-## RacePPVietnamese                                 1.615e-01  1.046e-01   1.543
-## RacePPKorean                                     3.037e-02  1.317e-01   0.231
-## RacePPJapanese                                  -2.875e-02  1.566e-01  -0.184
-## Hisp_Cat2Unknown                                 1.108e-01  3.198e-02   3.463
-## Hisp_Cat2Mexican                                 1.207e-01  2.866e-02   4.211
-## Hisp_Cat2Other Hispanic                          6.734e-03  3.317e-02   0.203
-## Hisp_Cat2Puerto Rican                            8.723e-02  5.542e-02   1.574
-## Hisp_Cat2Multiple Hispanic ethnicities selected  2.109e-01  7.972e-02   2.645
-## Hisp_Cat2Cuban                                  -5.891e-02  8.348e-02  -0.706
-## Gender3CMale                                     1.605e-01  1.364e-02  11.766
-## filenamehints5_cycle2_public.sav                -9.680e-05  2.051e-02  -0.005
-## filenamehints5_cycle3_public.sav                 9.944e-04  1.871e-02   0.053
-## filenamehints5_cycle4_public.sav                 1.402e-02  2.007e-02   0.699
-##                                                 Pr(&gt;|t|)    
-## (Intercept)                                      &lt; 2e-16 ***
-## IncomeRanges_r                                   &lt; 2e-16 ***
-## HINTSIsRural_i                                  0.147486    
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                      0.001449 ** 
-## RacePPBlack                                      &lt; 2e-16 ***
-## RacePPMissing data (Not Ascertained)            0.332850    
-## RacePPMultiple races selected                   0.017248 *  
-## RacePPChinese                                   0.440011    
-## RacePPFilipino                                  7.21e-06 ***
-## RacePPAsian Indian                              0.470738    
-## RacePPOther Asian                               0.426751    
-## RacePPAmerican Indian or Alaska Native          0.014472 *  
-## RacePPPacific Islander                          0.145781    
-## RacePPVietnamese                                0.122855    
-## RacePPKorean                                    0.817595    
-## RacePPJapanese                                  0.854352    
-## Hisp_Cat2Unknown                                0.000536 ***
-## Hisp_Cat2Mexican                                2.56e-05 ***
-## Hisp_Cat2Other Hispanic                         0.839112    
-## Hisp_Cat2Puerto Rican                           0.115496    
-## Hisp_Cat2Multiple Hispanic ethnicities selected 0.008170 ** 
-## Hisp_Cat2Cuban                                  0.480361    
-## Gender3CMale                                     &lt; 2e-16 ***
-## filenamehints5_cycle2_public.sav                0.996235    
-## filenamehints5_cycle3_public.sav                0.957611    
-## filenamehints5_cycle4_public.sav                0.484684    
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                             2.391e-01  1.812e-02  13.194  &lt; 2e-16
+## IncomeRanges_r                         -5.538e-02  3.200e-03 -17.305  &lt; 2e-16
+## HINTSIsRural_i                          2.582e-02  1.992e-02   1.296  0.19484
+## Age_c                                   2.255e-02  8.037e-04  28.054  &lt; 2e-16
+## I(Age_c^2)                             -6.382e-05  2.168e-05  -2.944  0.00324
+## RacePPBlack                             2.410e-01  1.958e-02  12.310  &lt; 2e-16
+## RacePPMissing data (Not Ascertained)    2.593e-02  3.560e-02   0.728  0.46642
+## RacePPMultiple races selected           8.898e-02  3.492e-02   2.548  0.01085
+## RacePPChinese                          -5.686e-02  6.125e-02  -0.928  0.35327
+## RacePPFilipino                          2.923e-01  6.576e-02   4.445 8.85e-06
+## RacePPAsian Indian                      4.274e-02  7.030e-02   0.608  0.54320
+## RacePPOther Asian                       4.845e-02  7.009e-02   0.691  0.48941
+## RacePPAmerican Indian or Alaska Native  2.327e-01  7.802e-02   2.982  0.00286
+## RacePPPacific Islander                  1.673e-01  9.432e-02   1.774  0.07612
+## RacePPVietnamese                        1.518e-01  1.047e-01   1.450  0.14712
+## RacePPKorean                            3.021e-02  1.318e-01   0.229  0.81867
+## RacePPJapanese                         -2.599e-02  1.568e-01  -0.166  0.86832
+## Gender3CMale                            1.611e-01  1.365e-02  11.803  &lt; 2e-16
+## filenamehints5_cycle2_public.sav       -5.177e-04  2.053e-02  -0.025  0.97988
+## filenamehints5_cycle3_public.sav        2.720e-04  1.871e-02   0.015  0.98840
+## filenamehints5_cycle4_public.sav        1.422e-02  2.007e-02   0.709  0.47855
+##                                           
+## (Intercept)                            ***
+## IncomeRanges_r                         ***
+## HINTSIsRural_i                            
+## Age_c                                  ***
+## I(Age_c^2)                             ** 
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)      
+## RacePPMultiple races selected          *  
+## RacePPChinese                             
+## RacePPFilipino                         ***
+## RacePPAsian Indian                        
+## RacePPOther Asian                         
+## RacePPAmerican Indian or Alaska Native ** 
+## RacePPPacific Islander                 .  
+## RacePPVietnamese                          
+## RacePPKorean                              
+## RacePPJapanese                            
+## Gender3CMale                           ***
+## filenamehints5_cycle2_public.sav          
+## filenamehints5_cycle3_public.sav          
+## filenamehints5_cycle4_public.sav          
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.7655 on 13194 degrees of freedom
+## Residual standard error: 0.7664 on 13200 degrees of freedom
 ##   (1125 observations deleted due to missingness)
-## Multiple R-squared:  0.2186, Adjusted R-squared:  0.2171 
-## F-statistic:   142 on 26 and 13194 DF,  p-value: &lt; 2.2e-16
+## Multiple R-squared:  0.2165, Adjusted R-squared:  0.2153 
+## F-statistic: 182.3 on 20 and 13200 DF,  p-value: &lt; 2.2e-16
 ## 
 ## 
 ## Causal Mediation Analysis 
@@ -3305,10 +2854,10 @@ mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
 ##                Estimate 95% CI Lower 95% CI Upper p-value    
-## ACME             0.0368       0.0299         0.04  &lt;2e-16 ***
-## ADE              0.0289      -0.0109         0.07  0.1596    
-## Total Effect     0.0657       0.0263         0.11  0.0008 ***
-## Prop. Mediated   0.5598       0.4122         2.40  0.0008 ***
+## ACME             0.0360       0.0291         0.04  &lt;2e-16 ***
+## ADE              0.0258      -0.0140         0.07   0.204    
+## Total Effect     0.0619       0.0225         0.10   0.002 ** 
+## Prop. Mediated   0.5827       0.4191         2.99   0.002 ** 
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
@@ -3325,8 +2874,8 @@ mediation_result = run_HINTS_mediation(&quot;MedConditionsAggregate&quot;, &quot
 
 set.seed(76567222)
 mediation_result = run_HINTS_mediation(&quot;EverHadCancer_i&quot;, &quot;IncomeRanges_r&quot;, is_logistic=FALSE)</code></pre>
-<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;
-## [1] &quot;EverHadCancer_i~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename&quot;</code></pre>
+<pre><code>## [1] &quot;IncomeRanges_r~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;
+## [1] &quot;EverHadCancer_i~IncomeRanges_r+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename&quot;</code></pre>
 <pre><code>## Running nonparametric bootstrap</code></pre>
 <pre><code>## 
 ## Call:
@@ -3334,89 +2883,78 @@ mediation_result = run_HINTS_mediation(&quot;EverHadCancer_i&quot;, &quot;Income
 ## 
 ## Residuals:
 ##      Min       1Q   Median       3Q      Max 
-## -0.57007 -0.19941 -0.10484 -0.01791  1.07731 
+## -0.56431 -0.19851 -0.10583 -0.01969  1.07200 
 ## 
 ## Coefficients:
-##                                                   Estimate Std. Error t value
-## (Intercept)                                      7.478e-02  8.265e-03   9.048
-## IncomeRanges_r                                   1.315e-03  1.439e-03   0.914
-## HINTSIsRural_i                                  -1.213e-02  8.902e-03  -1.363
-## Age_c                                            4.107e-03  3.612e-04  11.370
-## I(Age_c^2)                                       6.059e-05  9.636e-06   6.288
-## RacePPBlack                                     -6.380e-02  8.851e-03  -7.208
-## RacePPMissing data (Not Ascertained)            -2.505e-02  1.721e-02  -1.456
-## RacePPMultiple races selected                    8.958e-04  1.565e-02   0.057
-## RacePPChinese                                   -9.571e-02  2.749e-02  -3.481
-## RacePPFilipino                                  -1.161e-01  2.948e-02  -3.938
-## RacePPAsian Indian                              -8.991e-02  3.149e-02  -2.855
-## RacePPOther Asian                               -6.703e-02  3.152e-02  -2.127
-## RacePPAmerican Indian or Alaska Native           1.250e-02  3.510e-02   0.356
-## RacePPPacific Islander                          -6.236e-02  4.188e-02  -1.489
-## RacePPVietnamese                                -9.493e-02  4.727e-02  -2.008
-## RacePPKorean                                    -1.753e-01  5.863e-02  -2.990
-## RacePPJapanese                                  -3.944e-03  6.933e-02  -0.057
-## Hisp_Cat2Unknown                                -9.175e-03  1.391e-02  -0.660
-## Hisp_Cat2Mexican                                -6.753e-02  1.283e-02  -5.265
-## Hisp_Cat2Other Hispanic                         -7.033e-02  1.479e-02  -4.756
-## Hisp_Cat2Puerto Rican                           -4.590e-02  2.481e-02  -1.850
-## Hisp_Cat2Multiple Hispanic ethnicities selected -3.874e-02  3.601e-02  -1.076
-## Hisp_Cat2Cuban                                  -1.672e-02  3.666e-02  -0.456
-## Gender3CMale                                    -7.525e-03  6.095e-03  -1.235
-## filenamehints5_cycle2_public.sav                 6.594e-03  9.155e-03   0.720
-## filenamehints5_cycle3_public.sav                -4.697e-04  8.349e-03  -0.056
-## filenamehints5_cycle4_public.sav                 4.344e-03  8.978e-03   0.484
-##                                                 Pr(&gt;|t|)    
-## (Intercept)                                      &lt; 2e-16 ***
-## IncomeRanges_r                                  0.360754    
-## HINTSIsRural_i                                  0.172901    
-## Age_c                                            &lt; 2e-16 ***
-## I(Age_c^2)                                      3.31e-10 ***
-## RacePPBlack                                     5.97e-13 ***
-## RacePPMissing data (Not Ascertained)            0.145521    
-## RacePPMultiple races selected                   0.954357    
-## RacePPChinese                                   0.000501 ***
-## RacePPFilipino                                  8.25e-05 ***
-## RacePPAsian Indian                              0.004309 ** 
-## RacePPOther Asian                               0.033467 *  
-## RacePPAmerican Indian or Alaska Native          0.721871    
-## RacePPPacific Islander                          0.136475    
-## RacePPVietnamese                                0.044610 *  
-## RacePPKorean                                    0.002799 ** 
-## RacePPJapanese                                  0.954638    
-## Hisp_Cat2Unknown                                0.509421    
-## Hisp_Cat2Mexican                                1.43e-07 ***
-## Hisp_Cat2Other Hispanic                         2.00e-06 ***
-## Hisp_Cat2Puerto Rican                           0.064272 .  
-## Hisp_Cat2Multiple Hispanic ethnicities selected 0.282014    
-## Hisp_Cat2Cuban                                  0.648313    
-## Gender3CMale                                    0.216966    
-## filenamehints5_cycle2_public.sav                0.471367    
-## filenamehints5_cycle3_public.sav                0.955133    
-## filenamehints5_cycle4_public.sav                0.628509    
+##                                          Estimate Std. Error t value Pr(&gt;|t|)
+## (Intercept)                             6.433e-02  8.112e-03   7.931 2.35e-15
+## IncomeRanges_r                          2.429e-03  1.428e-03   1.701 0.088920
+## HINTSIsRural_i                         -7.911e-03  8.882e-03  -0.891 0.373136
+## Age_c                                   4.258e-03  3.603e-04  11.819  &lt; 2e-16
+## I(Age_c^2)                              6.021e-05  9.630e-06   6.253 4.15e-10
+## RacePPBlack                            -5.651e-02  8.707e-03  -6.490 8.89e-11
+## RacePPMissing data (Not Ascertained)   -6.927e-02  1.581e-02  -4.381 1.19e-05
+## RacePPMultiple races selected          -1.952e-04  1.564e-02  -0.012 0.990044
+## RacePPChinese                          -8.800e-02  2.750e-02  -3.200 0.001380
+## RacePPFilipino                         -1.117e-01  2.950e-02  -3.787 0.000153
+## RacePPAsian Indian                     -8.155e-02  3.151e-02  -2.588 0.009652
+## RacePPOther Asian                      -6.051e-02  3.154e-02  -1.919 0.055053
+## RacePPAmerican Indian or Alaska Native -1.310e-02  3.490e-02  -0.375 0.707433
+## RacePPPacific Islander                 -8.829e-02  4.170e-02  -2.117 0.034255
+## RacePPVietnamese                       -8.737e-02  4.732e-02  -1.847 0.064839
+## RacePPKorean                           -1.682e-01  5.870e-02  -2.866 0.004159
+## RacePPJapanese                         -1.199e-03  6.942e-02  -0.017 0.986217
+## Gender3CMale                           -7.844e-03  6.102e-03  -1.285 0.198652
+## filenamehints5_cycle2_public.sav        6.119e-03  9.166e-03   0.668 0.504394
+## filenamehints5_cycle3_public.sav       -1.474e-03  8.353e-03  -0.177 0.859898
+## filenamehints5_cycle4_public.sav        2.381e-03  8.980e-03   0.265 0.790925
+##                                           
+## (Intercept)                            ***
+## IncomeRanges_r                         .  
+## HINTSIsRural_i                            
+## Age_c                                  ***
+## I(Age_c^2)                             ***
+## RacePPBlack                            ***
+## RacePPMissing data (Not Ascertained)   ***
+## RacePPMultiple races selected             
+## RacePPChinese                          ** 
+## RacePPFilipino                         ***
+## RacePPAsian Indian                     ** 
+## RacePPOther Asian                      .  
+## RacePPAmerican Indian or Alaska Native    
+## RacePPPacific Islander                 *  
+## RacePPVietnamese                       .  
+## RacePPKorean                           ** 
+## RacePPJapanese                            
+## Gender3CMale                              
+## filenamehints5_cycle2_public.sav          
+## filenamehints5_cycle3_public.sav          
+## filenamehints5_cycle4_public.sav          
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 0.3458 on 13502 degrees of freedom
+## Residual standard error: 0.3463 on 13508 degrees of freedom
 ##   (1129 observations deleted due to missingness)
-## Multiple R-squared:  0.09397,    Adjusted R-squared:  0.09222 
-## F-statistic: 53.86 on 26 and 13502 DF,  p-value: &lt; 2.2e-16
+## Multiple R-squared:  0.09096,    Adjusted R-squared:  0.08961 
+## F-statistic: 67.58 on 20 and 13508 DF,  p-value: &lt; 2.2e-16
 ## 
 ## 
 ## Causal Mediation Analysis 
 ## 
 ## Nonparametric Bootstrap Confidence Intervals with the BCa Method
 ## 
-##                 Estimate 95% CI Lower 95% CI Upper p-value
-## ACME           -0.000914    -0.002873         0.00    0.33
-## ADE            -0.012134    -0.029925         0.01    0.19
-## Total Effect   -0.013048    -0.030728         0.00    0.16
-## Prop. Mediated  0.070027     0.023103         7.20    0.44
+##                 Estimate 95% CI Lower 95% CI Upper p-value  
+## ACME            -0.00160     -0.00350         0.00   0.076 .
+## ADE             -0.00791     -0.02574         0.01   0.383  
+## Total Effect    -0.00951     -0.02714         0.01   0.295  
+## Prop. Mediated   0.16814    -11.22706         0.31   0.345  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## Sample Size Used: 13529 
 ## 
 ## 
 ## Simulations: 10000</code></pre>
-<pre class="r"><code>save.image(file=paste0(config::get(&quot;rural_data_dir&quot;),&quot;HINTS_health_outcomes_bt_&quot;,as.character(boot_times),&quot;_hs_&quot;,as.character(include_hispanic_status),&quot;.Rdata&quot;))</code></pre>
 </div>
 
 

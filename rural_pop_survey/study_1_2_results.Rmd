@@ -12,6 +12,7 @@ We'll work across two datasets here: DEV and ORFCS.
 First, we need to do the pre-registered finding exactly as presented. It was for the ORFCS, so we need to load that first.
 
 ```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 library(stringr)
 library(rstatix)
 ```
@@ -22,10 +23,10 @@ library(dplyr)
 
 
 
-data_dir <- "/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/"
+data_dir <- config::get("rural_data_dir")
 
-#preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
-preprocessed_data_filepath <- paste0(config::get("orfcs_shareable_folder"),"oregon_dataset_anon.csv")
+preprocessed_data_filepath <- paste0(data_dir,"cloudresearch_survey_results/orfcs_preprocessed2_anon_by_subj.csv")
+#preprocessed_data_filepath <- paste0(config::get("orfcs_shareable_folder"),"oregon_dataset_anon.csv")
 library(readr)
 library(ggplot2)
 library(GGally)
@@ -106,6 +107,12 @@ summary(predict_ffq)
 confint(predict_ffq)
 ```
 
+
+```{r}
+library(papaja)
+library(apaTables)
+```
+
 In each of these analyses, MESA_healthyfoodavailability is important, and is related to lower BMIs (b=-0.7, p<0.05) and FFQ (b=-0.07, p<0.001). That is, for every 1 SD in healthy food availability, we get -0.7 points on the BMI scale and -0.13 points on the z-scored Food Frequency Questionnaire.
 
 We can also measures these while controlling for age as a quadratic variable:
@@ -129,6 +136,20 @@ summary(predict_ffq)
 confint(predict_ffq)
 ```
 
+
+
+```{r}
+apaTables::apa.reg.table(predict_bmi,filename = "study_1_2_results_predict_bmi_from_food_availability.doc")
+```
+
+
+
+
+```{r}
+apaTables::apa.reg.table(predict_ffq,filename = "study_1_2_results_predict_ffq_from_food_availability.doc")
+```
+
+
 ## Mediation
 
 
@@ -148,7 +169,17 @@ mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+RaceC2+MESA_healthyfoodavailability_
 
 mediate_result <- mediate(mb,mc,sims=boot_times, boot=TRUE,boot.ci.type = "bca", treat="RuralZIP_i",mediator="MESA_healthyfoodavailability_z")
 summary(mediate_result)
+summary(mb)
 summary(mc)
+```
+
+```{r}
+
+```
+
+
+```{r}
+save.image(file=paste0(config::get("rural_data_dir"),"study_1_2_output.Rdata"))
 ```
 
 

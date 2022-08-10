@@ -47,6 +47,15 @@ Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 source("HINTS_preprocessing.R")
 hints5 <-get_hints5(paste0(config::get("hints_protected_data_folderpath"),"/"))
 boot_times<-10000
+include_hispanic_status <- TRUE
+if(include_hispanic_status){
+  race_vars <- "RacePP+Hisp_Cat2"
+}else{
+  race_vars <- "RacePP"
+}
+
+
+
 ```
 
 
@@ -122,7 +131,7 @@ So here, we're testing general health for a start.
 
 
 #health_measures <- c("GeneralHealth", "MedConditions_Diabetes", "MedConditions_HighBP", "MedConditions_HeartCondition", EverHadCancer)
-formula_rhs<-"~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Hisp_Cat2+Gender3C+filename"
+formula_rhs<-paste0("~HINTSIsRural_i+Age_c+I(Age_c^2)+",race_vars,"+Gender3C+filename")
 formula_general <- paste0("GeneralHealth_i",formula_rhs)
 
 print(formula_general)
@@ -195,9 +204,9 @@ Overall, that's a strong result, and we can proceed to look at mediation factors
 
 run_HINTS_mediation <- function(outcome,mediator,is_logistic=FALSE){
   data_to_measure <- hints5[!is.na(hints5[[outcome]]),] %>% filter(Gender3C %in% c("Male","Female"))
-  mb_formula <<-paste0(mediator,"~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename")
+  mb_formula <<-paste0(mediator,"~HINTSIsRural_i+Age_c+I(Age_c^2)+",race_vars,"+Gender3C+filename")
   mb <<- lm(eval(mb_formula),data_to_measure)
-  mc_formula<<- paste0(outcome, "~", mediator, "+HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename")
+  mc_formula<<- paste0(outcome, "~", mediator, "+HINTSIsRural_i+Age_c+I(Age_c^2)+",race_vars,"+Gender3C+filename")
   #mc_direct <- paste0(outcome, "~HINTSIsRural_i+Age_c+I(Age_c^2)+RacePP+Gender3C+filename")
   ## these have to be global scope because they have to be accessed within the mediate function. d
   if(is_logistic){
@@ -350,7 +359,7 @@ mediation_result = run_HINTS_mediation("EverHadCancer_i", "IncomeRanges_r", is_l
 ```
 
 ```{r}
-save.image(file="HINTS_health_outcomes.Rmd")
+save.image(file=paste0(config::get("rural_data_dir"),"HINTS_health_outcomes_bt_",as.character(boot_times),"_hs_",as.character(include_hispanic_status),".Rdata"))
 ```
 
 

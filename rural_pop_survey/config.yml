@@ -14,3 +14,4 @@ UO-2010763:
   dev_dropbox_data_dir: 
   rubric_dir: /Users/bensmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/DEV_scoring_rubrics
   qualtrics_credentials: ~/qualtrics_credentials.yaml
+  orfcs_shareable_folder: /Users/bensmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/shareable/
