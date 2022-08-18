@@ -1,0 +1,116 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+cwd<-getwd()
+
+setwd("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/")
+
+source("DEV-OutcomesPreintervent_R_2022-08-17_2348.r")
+
+#setwd(cwd)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+```{r}
+#let's use good old data.table, I miss it
+library(data.table)
+library(dplyr)
+
+dev2_pp_dt_all_sessions<- data.table(data)
+
+#dev2_ru_session01 <- dev2_ru_dt_all_sessions[redcap_event_name %in% c("session_0_arm_1","t1_arm_1","session_1_arm_1")]
+
+table(dev2_pp_dt_all_sessions$redcap_event_name)
+
+```
+
+Let's get some participant information....
+
+```{r}
+ppt_id <- c("dev_id","date_0"#,"address"
+            ,"birthsex","dob","race___1","race___2","race___3","race___4","race___5","race___6","race___7","race___8")
+#only store info relevant to participant ID
+participant_list_raw <- dev2_pp_dt_all_sessions[,ppt_id,with=FALSE]
+#now remove missing data columns
+blank_by_row <- rowSums(is.na(participant_list_raw))+rowSums(participant_list_raw=="",na.rm = TRUE)
+#remove rows with the least amount of information
+ppt_list_clean.1 <- participant_list_raw[blank_by_row<max(blank_by_row)]
+ppt_list_clean <- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_id,"DEV\\d\\d\\d") & ppt_list_clean.1$dob!="",]
+
+```
+
+Let's strip out irrelevant rows.
+
+```{r}
+blank_by_row <- rowSums(is.na(dev2_pp_dt_all_sessions))+rowSums(dev2_pp_dt_all_sessions=="",na.rm = TRUE)
+
+#remove rows with no content other than a DEV ID.
+dev2_pp_dt_all_sessions.1 <- dev2_pp_dt_all_sessions[blank_by_row<max(blank_by_row)]
+
+```
+
+Then combine to get rows representing subjects rather than events. Columns are already unique, we just need to make it so.
+
+First let's test that:
+ - Group by dev_id
+ - within each group, count the number of rows
+
+```{r}
+vars_per_subj_by_columns <- dev2_pp_dt_all_sessions.1 %>% group_by(dev_id) %>% summarise_each(
+  funs=list(function(x){sum(!is.na(x))}))
+
+max_var_count <- apply(vars_per_subj_by_columns,2,max)
+max_var_count[max_var_count>1]
+cols_with_one_entry_per_subject <- names(max_var_count)[max_var_count==1]
+```
+
+
+```{r}
+dev2_pp_dt_all_sessions.1 %>% select(dev_id, bmi_category,redcap_event_name.factor,bmi_category.factor)
+```
+
+So we need to separate out the columns that are already recorded across sessions....alternatively we can COMBINE the multiple columns that store multiple values.
+
+Do that with columns that:
+ - end in a numeric value
+ - have max one entry per subject.
+ 
+```{r}
+cols_ending_in_numeric <- colnames(dev2_pp_dt_all_sessions.1)[stringr::str_which(colnames(dev2_pp_dt_all_sessions.1),"^((?!race).)*_\\d$") %>% .[!is.na(.)]]
+
+cols_to_coalesce <- intersect(cols_with_one_entry_per_subject,cols_ending_in_numeric)
+```
+
+
+```{r}
+#only store info relevant to participant ID
+ppt_anon_list_raw <- dev2_pp_dt_all_sessions.1[,ppt_id,with=FALSE]
+#now remove missing data columns
+blank_by_row <- rowSums(is.na(ppt_anon_list_raw))+rowSums(ppt_anon_list_raw=="",na.rm = TRUE)
+#remove rows with the least amount of information
+ppt_list_clean.1 <- ppt_anon_list_raw[blank_by_row<max(blank_by_row)]
+ppt_list_clean <- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_id,"DEV\\d\\d\\d") & ppt_list_clean.1$dob!="",]
+```
+
+
+```{r}
+ppt_list_w_data <- ppt_list_clean
+for (cname in cols_to_coalesce){
+  
+  non_null_rows <- !is.na(dev2_pp_dt_all_sessions.1[,cname,with=FALSE])[,1]
+  
+  ppt_list_w_data <- merge(ppt_list_w_data, dev2_pp_dt_all_sessions.1[non_null_rows,c("dev_id",cname),with=FALSE],by="dev_id",all.x=TRUE)
+}
+
+
+save(ppt_list_w_data,file = paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/ppt_list_w_data_",today(),".Rdata"))
+```
+
+ 

@@ -5,14 +5,16 @@ output: html_notebook
 
 ```{r}
 library(dplyr)
+
 knitr::opts_chunk$set(echo = TRUE)
-data_path <- "../../../files/data/"
+#data_path <- "../../../files/data/"
+data_path <- config::get("dev_analysis_data_dir")
 ```
 
 
 
 ```{r}
-wtp_raw <- readr::read_csv(paste0(data_path, "wtp_behavdesign_clean.csv"))
+  wtp_raw <- readr::read_csv(paste0(data_path, "wtp_behavdesign_clean.csv"))
 wtp_raw <- wtp_raw[,2:ncol(wtp_raw)]
 ```
 What behavioral measures do we want here? we could do something with duration, but we're primarily interested in response rating

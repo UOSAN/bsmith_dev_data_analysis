@@ -15,7 +15,7 @@ library(dplyr)
 library(ggplot2)
 library(rstatix)
 library(data.table)
-data_path <- "../../../files/data/"
+data_path <- "../../grant-writing-workshop/files/data/"
 
 load(paste0(config::get("dev_analysis_data_dir"),"scored_data_w_demographics.RData"))
 dropbox_file_dir = config::get("dev_analysis_data_dir")
@@ -39,7 +39,7 @@ scored$scale_name %>% unique
 Now get BMI
 
 ```{r}
-load("../../../files/data/ppt_list_w_data.RData")
+load(paste0(config::get("dev_analysis_data_dir"),"ppt_list_w_data.Rdata"))
 
 ppt_list_w_data$date_0<-as.Date(ppt_list_w_data$date_0)
 ppt_list_w_data$dob<-as.Date(ppt_list_w_data$dob)
@@ -643,6 +643,7 @@ for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
 #remove implausible TRSQ score
 data_by_ppt$TRSQ[data_by_ppt$TRSQ<5]<-NA
 ```
+
 
 
 ```{r}
