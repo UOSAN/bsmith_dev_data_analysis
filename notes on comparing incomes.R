@@ -1,0 +1,5 @@
+hints_buckets_middle_value <- c(5000,12500,17500,27500,40000,62500,87500,150000)
+orfcs_buckets_middle_value <- c(12500,30000,42500,62500,87500,125000)
+plot(orfcs_buckets_middle_value,hints_buckets_middle_value)
+table(hints5$IncomeRanges)
+table(orfcs_dataset$aSES_02)
