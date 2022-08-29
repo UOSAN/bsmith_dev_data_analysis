@@ -27,18 +27,18 @@ dev_scripts_path <- config::get("dev_scripts_path")
 dropbox_path <- config::get("dropbox_path")
 sst_on_dropbox <- paste0(dropbox_path, "/Berkman Lab/Devaluation/Tasks/SST_DEV")
 
-```
+```   
 
 
 
 ```{r}
-raw_rull_duration_file <- readr::read_csv(paste0(
+raw_full_duration_file <- readr::read_csv(paste0(
   dev_scripts_path,
   "fMRI/fx/multiconds/SST/full_duration_multicond_out.csv"
   )
 )
 
-old_behavioral_format <- readr::read_csv(file = paste0(data_path,"sst_behavioral_data_all_old.csv"))
+# old_behavioral_format <- readr::read_csv(file = paste0(data_path,"sst_behavioral_data_all_old.csv"))
 
 ```
 
@@ -48,7 +48,7 @@ old_behavioral_format <- readr::read_csv(file = paste0(data_path,"sst_behavioral
 #this was written because the preceding data pipeline uses different labels to the parts that come after this, due to a change in the pipeline:
 #previously the data was directly exported from the mat files in this Rmd.
 #this is now done in the multiconds file.
-study_df <- raw_rull_duration_file %>% mutate(
+study_df <- raw_full_duration_file %>% mutate(
   subject_id=paste0("DEV",subject_id),
   runid=1,
   go_no_go_condition_label = case_when(

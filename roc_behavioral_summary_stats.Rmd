@@ -8,12 +8,14 @@ output: html_document
 ```{r setup, include=FALSE}
 library(dplyr)
 knitr::opts_chunk$set(echo = TRUE)
-data_path <- "../../../files/data/"
+#data_path <- "../../../files/data/"
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+data_dir <- config::get("dev_analysis_data_dir")
 ```
 
 
 ```{r}
-roc_events_raw <- readr::read_csv("/Users/benjaminsmith/Google Drive/oregon/preprocessing/DEV_scripts/fMRI/fx/multiconds/ROC/betaseries/events.csv")
+roc_events_raw <- readr::read_csv("/Users/benjaminsmith/Google Drive/oregon/code/DEV_scripts/fMRI/fx/multiconds/ROC/betaseries/events.csv")
 ```
 
 
@@ -45,7 +47,7 @@ table(roc_events_raw$condition_label)
 
 
 ```{r}
-readr::write_csv(roc_events_raw,file = paste0(data_path,"roc_behavioral_data_all.csv"))
+readr::write_csv(roc_events_raw,file = paste0(data_dir,"roc_behavioral_data_all.csv"))
 ```
 
 
@@ -88,6 +90,6 @@ mean_ratings
 ```
 
 ```{r}
-readr::write_csv(mean_ratings,file=paste0(data_path,"roc_summary_stats.csv"))
+readr::write_csv(mean_ratings,file=paste0(data_dir,"roc_summary_stats.csv"))
 ```
 
