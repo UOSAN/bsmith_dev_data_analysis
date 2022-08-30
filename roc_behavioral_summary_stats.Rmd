@@ -11,11 +11,12 @@ knitr::opts_chunk$set(echo = TRUE)
 #data_path <- "../../../files/data/"
 Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 data_dir <- config::get("dev_analysis_data_dir")
+roc_task_dir <- paste0(config::get("dropbox_path"),"/Berkman Lab/Devaluation/Tasks/ROC/output")
 ```
 
 
 ```{r}
-roc_events_raw <- readr::read_csv("/Users/benjaminsmith/Google Drive/oregon/code/DEV_scripts/fMRI/fx/multiconds/ROC/betaseries/events.csv")
+roc_events_raw <- readr::read_csv(paste0(config::get("dev_scripts_path"), "/fMRI/fx/multiconds/ROC/betaseries/events.csv"))
 ```
 
 
@@ -44,6 +45,24 @@ roc_events_raw$condition_label<-paste0(roc_events_raw$stimulus,"_",roc_events_ra
 ```{r}
 table(roc_events_raw$condition_label)
 ```
+
+Now, let's import the data about each stimulus that was presented.
+
+```{r}
+library(rmatio)
+
+matfile2<-rmatio::read.mat(paste0(roc_task_dir,"/DEV025_5_stimuli_10-Oct-2019_08-50.mat"))[[1]]
+
+matfile_df_list <- lapply(matfile2,function(stimulus_item){
+  return(data.frame("instruction_filename"=stimulus_item[[1]],"food_filename"=stimulus_item[[2]],"food_name"=stimulus_item[[3]]))
+})
+
+stimulus_key_df <- do.call(rbind,matfile_df_list)
+stimulus_key_df$stimulus_key_index=1:nrow(stimulus_key_df)
+
+
+```
+
 
 
 ```{r}

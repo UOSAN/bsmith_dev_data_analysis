@@ -98,7 +98,7 @@ data_dir <- config::get("dev_analysis_data_dir")
 #hunger data
 setwd(paste0(paste0(data_dir,"hunger/")))
 
-source("DEV-Session1Data_R_2022-04-19_2347.r")
+source("DEV-Session1Data_R_2022-08-29_2358.r")
 redcap_data<-data
 rm(data)
 ```
@@ -121,9 +121,7 @@ roc_behavioral_data <- readr::read_csv(file = paste0(data_dir,"roc_behavioral_da
 
 ```
 
-```{r}
 
-```
 
 ```{r}
 library(dplyr)
@@ -140,7 +138,7 @@ Now let's adapt the columns to normed columns with hte names we used in the synt
 
 ```{r}
 #clean the rating column
-regress_data$rating_int<-as.integer(str_extract(regress_data$rating,"\\d*"))
+#regress_data$rating_int<-as.integer(str_extract(regress_data$rating,"\\d*"))
 #regress_data<-regress_data[1:1000,]
 #regress_data[regress_data$response=="NULL","response"] <- NA
 #regress_data$response<-as.numeric(regress_data$response)
@@ -153,7 +151,7 @@ regress_data$rating_int<-as.integer(str_extract(regress_data$rating,"\\d*"))
 #value_adjustment <- 0 - 4*(regress_data$min_response>4)
 #regress_data$value_level <- regress_data$response + value_adjustment
 #regress_data$value <- factor(regress_data$value_level,levels = c(1,2,3,4),labels="$0.00","$0.50","$1.00","$1.50")
-regress_data[regress_data$liking_rating==0,"liking_rating"]<-NA
+#regress_data[regress_data$liking_rating==0,"liking_rating"]<-NA
 ```
 
 
@@ -162,23 +160,28 @@ regress_data[regress_data$liking_rating==0,"liking_rating"]<-NA
 #must have tried for half an hour to et this to work within the loop and it didn't...
 standardize<-function(x){return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))}
 
-regress_data$rating_norm<-standardize(regress_data$rating_int)
+regress_data$rating_i<-as.integer(regress_data$rating)
 
+regress_data$rating_norm<-standardize(regress_data$rating_i)
 
-# regress_data$bid <- (regress_data$value_level-1)*0.5
-# regress_data$bid_norm <- standardize(regress_data$bid)
-#all food is unhealthy in the ROC task.
-#regress_data$health_rating <- factor(regress_data$health_cond)
-regress_data$liking_rating_norm <- standardize(regress_data$liking_rating)
+#regress_data$stimulus_f <- standardize(regress_data$liking_rating)
 
 regress_data$hunger_norm <- standardize(regress_data$hunger_1)
+
+regress_data$stimulus_f<-factor(regress_data$stimulus,levels=c("No Crave","Neutral","Crave"))
+
+regress_data <- regress_data %>% group_by(subjectID,file,wave,run) %>% 
+  mutate(trial_n=1:n())
+
+
 ```
 
 ```{r}
 library(lme4)
-
+#compared to "No Crave", Neutral and Craved stimuli were rated much more highly.
+#don't really undersatnd why thre is no substantial differnce between Neutral and Crave foods
 model <- lme4::lmer(
-  bid_norm ~ health_rating + liking_rating_norm + (1 | subject),
+  rating_norm ~ stimulus_f + (1 | subjectID),
   regress_data
   )
 summary(model)
@@ -188,31 +191,31 @@ summary(model)
 hist(regress_data$hunger_1)
 ```
 ```{r}
-mean_by_food <- regress_data %>% #filter(health_cond=="unhealthy") %>% 
-  group_by(food_pic) %>% summarise(
-  #hunger=mean(hunger_1,na.rm=TRUE),
-  liking_for_food = mean(liking_rating,na.rm=TRUE),
-  bid=mean(bid,na.rm=TRUE)
-  )
-
-cor.test(mean_by_food$liking_for_food,mean_by_food$bid)
-
-
-
-plot(mean_by_food$liking_for_food,mean_by_food$bid)
+# mean_by_food <- regress_data %>% #filter(health_cond=="unhealthy") %>% 
+#   group_by(food_pic) %>% summarise(
+#   #hunger=mean(hunger_1,na.rm=TRUE),
+#   liking_for_food = mean(liking_rating,na.rm=TRUE),
+#   bid=mean(bid,na.rm=TRUE)
+#   )
+# 
+# cor.test(mean_by_food$liking_for_food,mean_by_food$bid)
+# 
+# 
+# 
+# plot(mean_by_food$liking_for_food,mean_by_food$bid)
 ```
 
 ```{r}
-mean_by_subject <- regress_data %>% filter(health_cond=="unhealthy" & liking_rating==4) %>% group_by(subject) %>% summarise(
-  hunger=mean(hunger_1,na.rm=TRUE),
-  bid=mean(bid,na.rm=TRUE)
-  )
-
-cor.test(mean_by_subject$hunger,mean_by_subject$bid)
-
-
-
-plot(mean_by_subject$hunger,mean_by_subject$bid)
+# mean_by_subject <- regress_data %>% filter(health_cond=="unhealthy" & liking_rating==4) %>% group_by(subject) %>% summarise(
+#   hunger=mean(hunger_1,na.rm=TRUE),
+#   bid=mean(bid,na.rm=TRUE)
+#   )
+# 
+# cor.test(mean_by_subject$hunger,mean_by_subject$bid)
+# 
+# 
+# 
+# plot(mean_by_subject$hunger,mean_by_subject$bid)
 ```
 
 We don't really care whether or not there are individual-level differences in the interaction between taste ratings and hunger norms. we just want to know, overall, whether they interact and whether modeling that interaction can make the model more predictive.
@@ -225,12 +228,12 @@ In fact, individual-level differences in interaction between taste ratings and h
 library(lme4)
 
 model1 <- lme4::lmer(
-  bid_norm ~ run + health_rating + liking_rating_norm + hunger_norm + (1+ liking_rating_norm + health_rating | subject),
+  rating_norm ~ run + stimulus_f + hunger_norm + (1+ stimulus_f | subjectID),
   regress_data
   )
 summary(model1)
 
-#coef(model1)
+
 ```
 
 
@@ -239,32 +242,36 @@ That's a non-significant effect for hunger. It is in the reverse direction to wh
 
 ```{r}
 
-model2 <- lme4::lmer(
-  bid_norm ~ run + health_rating + liking_rating_norm*hunger_norm + (1 + liking_rating_norm | food_pic) + (1+ liking_rating_norm + health_rating | subject),
-  regress_data
-  )
+#commented out because we don't have the specific food data currently
+# 
+# model2 <- lme4::lmer(
+#   rating_norm ~ run + health_rating + stimulus_f*hunger_norm + (1 + stimulus_f | food_pic) + (1+ stimulus_f + health_rating | subjectID),
+#   regress_data
+#   )
+# 
+# summary(model2)
+# 
 
-summary(model2)
+```
+
+
+```{r}
+
+#commented out because we don't have the specific food data currently
+# 
+# model3 <- lme4::lmer(
+#   rating_norm ~ run + health_rating*hunger_norm + stimulus_f*hunger_norm + (1+ stimulus_f + health_rating | subjectID),
+#   regress_data
+#   )
+# 
+# summary(model3)
 
 
 ```
 
 
 ```{r}
-
-model3 <- lme4::lmer(
-  bid_norm ~ run + health_rating*hunger_norm + liking_rating_norm*hunger_norm + (1+ liking_rating_norm + health_rating | subject),
-  regress_data
-  )
-
-summary(model3)
-
-
-```
-
-
-```{r}
-anova(model1, model2, model3)
+#anova(model1, model2, model3)
 ```
 
 Alright. miserable :-(
@@ -272,10 +279,12 @@ Alright. miserable :-(
 
 ## Some investigation of a simpler model.
 
+
+
 ```{r}
 
 model3a <- lme4::lmer(
-  bid_norm ~ run + health_rating + liking_rating_norm + (1 | subject),
+  rating_norm ~ run + stimulus_f + hunger_norm + trial_n + (1 | subjectID),
   regress_data[!is.na(regress_data$hunger_norm),]
   )
 
@@ -283,12 +292,18 @@ summary(model3a)
 
 ```
 
-Health ratings are the same for every subject, so it makes no sense to model the interaction of health_rating and hunger.
+
+
+
+
+Health ratings are the same for every subjectID, so it makes no sense to model the interaction of health_rating and hunger.
+
+
 
 ```{r}
 
 model3b <- lme4::lmer(
-  bid_norm ~ run + health_rating + liking_rating_norm*hunger_norm + (1 | subject),
+  rating_norm ~ run + stimulus_f*hunger_norm + trial_n + (1 | subjectID),
   regress_data[!is.na(regress_data$hunger_norm),]
   )
 
@@ -303,38 +318,141 @@ anova(model3a,model3b)
 ```
 
 
+If we didn't include random effects of stimulus_f, then this would be significant.
+
+However, it is possible that the effect of the stimulus likeability on ratings differs by subject.
+
+In order to control for this we include it in the random effects of subject.
+
+If we do that we will lose some power to detect interactions of stimulus and hunger.
+
+However, if we don't do this, we will risk labeling some of those individual subject effects on stimulus as effects of stimulus on rating.
+
+But I think we must include random effects of trial.
+
+Possibly this means it is time for some Bayesian mixed effects modeling...
+
+
+```{r}
+
+model3a <- lme4::lmer(
+  rating_norm ~ run + stimulus_f + hunger_norm + trial_n + (1 + stimulus_f | subjectID),
+  regress_data[!is.na(regress_data$hunger_norm),]
+  )
+
+summary(model3a)
+
+```
+
+Health ratings are the same for every subjectID, so it makes no sense to model the interaction of health_rating and hunger.
+
+```{r}
+
+model3b <- lme4::lmer(
+  rating_norm ~ run + stimulus_f*hunger_norm + trial_n + (1 + stimulus_f | subjectID),
+  regress_data[!is.na(regress_data$hunger_norm),]
+  )
+
+summary(model3b)
+
+
+```
+
+
+```{r}
+anova(model3a,model3b)
+```
+
+
+That is too bad. The interaction makes sense theoretically. It seems plausible that for "neutral" stimuli, craving ratings would be high but only when the subject is in a very hungry state. This is what we are seeing!
+
 ## Some visualization
+
+## exploratory
+
 
 
 
 ```{r}
 library(ggplot2)
 data_by_subj <- regress_data[!is.na(regress_data$hunger_norm),] %>% 
-         group_by(subject) %>%
+         group_by(subjectID) %>%
          summarize(
-           subj_liking_rating_norm = mean(liking_rating_norm,na.rm=TRUE),
-           subj_health_rating = mean(as.integer(health_rating),na.rm=TRUE),
-           subj_bid_norm=mean(bid_norm,na.rm=TRUE),
-           subj_bid=mean(bid,na.rm=TRUE),
+           subj_stimulus_f = mean(as.integer(stimulus_f),na.rm=TRUE),
+           #subj_health_rating = mean(as.integer(health_rating),na.rm=TRUE),
+           subj_rating_norm=mean(rating_norm,na.rm=TRUE),
+           #subj_bid=mean(bid,na.rm=TRUE),
            hunger = mean(hunger_1,na.rm=TRUE)
            )
   
 ```
+
+```{r}
+table(data_by_subj$hunger)
+```
+OK. Only 14 subjects at hunger level 5. That is not nearly enough subjects to do this analysis on.
+
+Might revisit once we get the wave 2 data but this isn't worth considering.
+
+Make it stacked and then break out hunger vs. not hungry
+
+
+```{r}
+
+rating_stimulus_by_hunger <- 
+  regress_data[!is.na(regress_data$hunger_1) & !is.na(regress_data$rating_i),] %>%
+  group_by(hunger_1,rating_i,stimulus_f) %>%
+  summarise(value=n()) %>%
+  group_by(hunger_1, stimulus_f) %>%
+  mutate(total_over_ratings=sum(value)) %>%
+  ungroup() %>%
+  mutate(prop=value/total_over_ratings) %>%
+  data.frame
+ggplot(
+  rating_stimulus_by_hunger,
+  aes(x=stimulus_f,y=prop,group=interaction(hunger_1),fill=rating_i)
+)+geom_bar(stat="identity")+facet_wrap(~hunger_1)+
+  scale_y_continuous(labels=scales::percent_format())
+```
+
+If we had a simpler subject-average linear model, is it significant?
+
+In a subject average model, each subject had some food that was no crave, neutral, and crave.
+some subjects were very hungry, others not so hungry.
+We want to know: does the interaction between crave level and hunger change the rating?
+
+```{r}
+subject_avg_data<-regress_data[!is.na(regress_data$hunger_numeric) & !is.na(regress_data$rating_i),] %>%
+  group_by(subjectID,stimulus_f,hunger_numeric,run) %>%
+  summarize(mean_rating=mean(rating_i))
+
+subject_avg_data$run_i<-as.integer(factor(subject_avg_data$run,levels=paste0("run",1:4)))
+#including run is cheatinb but only a little bit.
+
+summary(lm(mean_rating~stimulus_f + stimulus_f:hunger_numeric+run_i,subject_avg_data))
+```
+
+
+### copied from SST
+
+
 OK. Let's plot slopes for liking and bid, by hunger...
 
 ```{r}
 data_by_subj$hunger_factor <- factor(data_by_subj$hunger)
 ggplot(data_by_subj,
-       aes(x=subj_bid, y=subj_liking_rating_norm, group=hunger_factor, color=hunger_factor)
+       aes(x=subj_rating_norm, y=subj_stimulus_f, group=hunger_factor, color=hunger_factor)
        )+
   geom_smooth(method='lm', formula= y~x)+
-  scale_x_continuous(name="subject average bid",labels = scales::dollar_format())+
+  scale_x_continuous(name="subject average crave rating")+
   geom_point()+
-  labs(main="subject average bid to subject liking rating: across subjects")
+  labs(main="subject average crave rating vs. subject average food liking rating: across subjects")
   
 ```
+
+
 ```{r}
-summary(lm(subj_bid_norm~subj_liking_rating_norm*hunger,
+summary(lm(subj_rating_norm~subj_stimulus_f*hunger,
            data_by_subj))
 
 #this is across subjects variance only! 
@@ -343,20 +461,20 @@ summary(lm(subj_bid_norm~subj_liking_rating_norm*hunger,
 
 ```{r}
 regress_data$hunger_numeric<-as.numeric(regress_data$hunger_1)
-ggplot(regress_data %>% filter(subject %in% names(table(regress_data$subject)[1:20])), 
-       aes(x=bid_norm, y=liking_rating_norm,color=hunger_numeric)) +
+ggplot(regress_data %>% filter(subjectID %in% names(table(regress_data$subjectID)[1:20])), 
+       aes(x=rating_norm, y=stimulus_f,color=hunger_numeric)) +
   geom_smooth(method='lm', formula= y~x) +
   geom_point()+
   #scale_x_continuous(name="subject average bid", labels = scales::dollar_format()) +
-  facet_wrap(subject~.,nrow = 5)
+  facet_wrap(subjectID~.,nrow = 5)
   
 
 ```
 ```{r}
 
 regress_data$hunger_factor<-as.factor(regress_data$hunger_1)
-ggplot(regress_data %>% filter(hunger_1 %in% c(1,5)) %>% filter(subject %in% names(table(.$subject)[1:100])), 
-       aes(x=liking_rating, y=bid,color=hunger_factor,group=subject)) +
+ggplot(regress_data %>% filter(hunger_1 %in% c(1,5)) %>% filter(subjectID %in% names(table(.$subjectID)[1:100])), 
+       aes(x=liking_rating, y=bid,color=hunger_factor,group=subjectID)) +
   geom_line(stat="smooth",method = "lm", formula = y ~ x,
               size = 0.5,
               se=FALSE,
@@ -371,7 +489,7 @@ The slopes show, for each subject, how bids change as a factor of liking.
 ```{r}
 regress_data$bid_over_like <- regress_data$bid/regress_data$liking_rating
 
-grouped_regress_data <- regress_data %>% group_by(subject) %>% summarize(
+grouped_regress_data <- regress_data %>% group_by(subjectID) %>% summarize(
   mean_bid_over_like = mean(bid_over_like,na.rm=TRUE),
   hunger = mean(hunger_1,na.rm=TRUE))
 
@@ -385,14 +503,14 @@ ggplot(grouped_regress_data,aes(x=hunger,y=mean_bid_over_like))+geom_point() +
 ```{r}
 
 model_no_liking <- lme4::lmer(
-  bid_norm ~ run + health_rating + (1 + health_rating | subject),
+  rating_norm ~ run + health_rating + (1 + health_rating | subjectID),
   regress_data
   )
 
 summary(model_no_liking)
 
 model_no_health <- lme4::lmer(
-  bid_norm ~ run + liking_rating_norm + (1+ liking_rating_norm | subject),
+  rating_norm ~ run + stimulus_f + (1+ stimulus_f | subjectID),
   regress_data
   )
 
@@ -403,7 +521,7 @@ summary(model_no_health)
 
 ```{r}
 model_liking_health <- lme4::lmer(
-  bid_norm ~ run + liking_rating_norm +health_rating + (1+ liking_rating_norm +health_rating | subject),
+  rating_norm ~ run + stimulus_f +health_rating + (1+ stimulus_f +health_rating | subjectID),
   regress_data
   )
 
