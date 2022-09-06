@@ -223,61 +223,7 @@ We don't really care whether or not there are individual-level differences in th
 In fact, individual-level differences in interaction between taste ratings and hunger norms don't make sense. there aren't individual-level differences because there's not an interaction ath the individual-level because there's only one hunger norm per subject. So it's nonsensical to include group-level variables in that bracket.
 
 
-
-```{r}
-library(lme4)
-
-model1 <- lme4::lmer(
-  rating_norm ~ run + stimulus_f + hunger_norm + (1+ stimulus_f | subjectID),
-  regress_data
-  )
-summary(model1)
-
-
-```
-
-
-That's a non-significant effect for hunger. It is in the reverse direction to what we'd predict. But we weren't interestd in the main effct, particularly. What does it do as an interaction term?
-
-
-```{r}
-
-#commented out because we don't have the specific food data currently
-# 
-# model2 <- lme4::lmer(
-#   rating_norm ~ run + health_rating + stimulus_f*hunger_norm + (1 + stimulus_f | food_pic) + (1+ stimulus_f + health_rating | subjectID),
-#   regress_data
-#   )
-# 
-# summary(model2)
-# 
-
-```
-
-
-```{r}
-
-#commented out because we don't have the specific food data currently
-# 
-# model3 <- lme4::lmer(
-#   rating_norm ~ run + health_rating*hunger_norm + stimulus_f*hunger_norm + (1+ stimulus_f + health_rating | subjectID),
-#   regress_data
-#   )
-# 
-# summary(model3)
-
-
-```
-
-
-```{r}
-#anova(model1, model2, model3)
-```
-
-Alright. miserable :-(
-
-
-## Some investigation of a simpler model.
+# Simple model
 
 
 
@@ -317,6 +263,8 @@ summary(model3b)
 anova(model3a,model3b)
 ```
 
+
+# With stimulus random effects
 
 If we didn't include random effects of stimulus_f, then this would be significant.
 
@@ -366,6 +314,52 @@ anova(model3a,model3b)
 
 That is too bad. The interaction makes sense theoretically. It seems plausible that for "neutral" stimuli, craving ratings would be high but only when the subject is in a very hungry state. This is what we are seeing!
 
+We can demonstrate what the result would be if there really was a strong, subject-level interaction effect between `stimulus_f` and a subject-level variable with some synthetic data. We create a new fake variable, `psy_level`, the subject's level of extrasensory perception (ESP). Then you create a fake interaction of that with the stimulus_f, which necessarily happens at the subject level, and model its causal effect on teh rating norm. Then, control for random effects of the stimulus, butn ot psy level, just as we did with hunger norm. 
+
+We see that unlike the hunger norm model, we don't need to keep stimulus_f out of random effects in order to see a subject-level interaction effect of psyc_level and stimulus_f on the rating. We can also see psy level picking up fake precision (tho not fake point estimates) by omitting stimulus_f from the model.
+
+
+Also seems to be the way they do it in Applied Multiple Regression/Correlation for the Behavioral Sciences (Cohen, Cohen, West, & Aiken), p551 14.7.2-3.
+## Testing with fake dummy data
+
+```{r}
+
+subject_psy_level <- data.frame(
+  "subjectID" =unique(regress_data$subjectID), 
+  "psy_level" = rnorm(n=unique(regress_data$subjectID))
+)
+regress_data_synth<-merge(regress_data,subject_psy_level)
+
+#now let's say the subject's psy level interacts with stimulus_f to change ratings
+#as well as having a main effect
+regress_data_synth$rating_norm<-regress_data_synth$rating_norm+ regress_data_synth$psy_level*as.integer(regress_data_synth$stimulus_f)*0.1
+
+
+model_fake0 <- lme4::lmer(
+  rating_norm ~ run + stimulus_f + psy_level + trial_n + (1 + stimulus_f | subjectID),
+  regress_data_synth[!is.na(regress_data_synth$hunger_norm),]
+  )
+
+summary(model_fake0)
+
+
+
+model_fake1 <- lme4::lmer(
+  rating_norm ~ run+stimulus_f*psy_level + trial_n + (1 + stimulus_f | subjectID),
+  regress_data_synth[!is.na(regress_data_synth$hunger_norm),]
+  )
+
+summary(model_fake1)
+
+anova(model_fake0,model_fake1)
+
+
+```
+
+Perhaps what we'd need to be absolutely sure is a Bayesian model using rstanarm, but considering the descriptive stats below, I would judge we're not chasing anything substantial.
+
+
+
 ## Some visualization
 
 ## exploratory
@@ -407,13 +401,25 @@ rating_stimulus_by_hunger <-
   mutate(total_over_ratings=sum(value)) %>%
   ungroup() %>%
   mutate(prop=value/total_over_ratings) %>%
+  mutate(hunger_level=paste0("hunger level = ",hunger_1)) %>%
   data.frame
 ggplot(
   rating_stimulus_by_hunger,
   aes(x=stimulus_f,y=prop,group=interaction(hunger_1),fill=rating_i)
-)+geom_bar(stat="identity")+facet_wrap(~hunger_1)+
+)+geom_bar(stat="identity")+facet_wrap(~hunger_level)+
   scale_y_continuous(labels=scales::percent_format())
 ```
+
+
+```{r}
+ggplot(
+  rating_stimulus_by_hunger,
+  aes(x=hunger_1,y=prop,group=stimulus_f,fill=rating_i)
+)+geom_bar(stat="identity")+facet_wrap(~stimulus_f)+
+  scale_y_continuous(labels=scales::percent_format())
+```
+
+
 
 If we had a simpler subject-average linear model, is it significant?
 
@@ -484,60 +490,3 @@ ggplot(regress_data %>% filter(hunger_1 %in% c(1,5)) %>% filter(subjectID %in% n
 #table(regress_data$liking_rating)
 ```
 The slopes show, for each subject, how bids change as a factor of liking. 
-## plotting bid-liking ratio over hunger level
-
-```{r}
-regress_data$bid_over_like <- regress_data$bid/regress_data$liking_rating
-
-grouped_regress_data <- regress_data %>% group_by(subjectID) %>% summarize(
-  mean_bid_over_like = mean(bid_over_like,na.rm=TRUE),
-  hunger = mean(hunger_1,na.rm=TRUE))
-
-ggplot(grouped_regress_data,aes(x=hunger,y=mean_bid_over_like))+geom_point() +
-  geom_smooth(method='lm', formula= y~x,se=FALSE,alpha=0.2)
-```
-
-
-## no liking
-
-```{r}
-
-model_no_liking <- lme4::lmer(
-  rating_norm ~ run + health_rating + (1 + health_rating | subjectID),
-  regress_data
-  )
-
-summary(model_no_liking)
-
-model_no_health <- lme4::lmer(
-  rating_norm ~ run + stimulus_f + (1+ stimulus_f | subjectID),
-  regress_data
-  )
-
-summary(model_no_health)
-
-
-```
-
-```{r}
-model_liking_health <- lme4::lmer(
-  rating_norm ~ run + stimulus_f +health_rating + (1+ stimulus_f +health_rating | subjectID),
-  regress_data
-  )
-
-summary(model_liking_health)
-```
-
-
-```{r}
-anova(model_liking_health, model_no_health)
-```
-
-
-```{r}
-anova(model_liking_health, model_no_liking)
-```
-
-
-
-
