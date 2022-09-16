@@ -15,7 +15,6 @@ knitr::opts_chunk$set(echo = TRUE)
 library(R.matlab)#install.packages("R.matlab")
 library(dplyr)
 library(stringr)
-library(stringi)
 
 Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 
@@ -28,113 +27,59 @@ dev_scripts_path <- config::get("dev_scripts_path")
 dropbox_path <- config::get("dropbox_path")
 sst_on_dropbox <- paste0(dropbox_path, "/Berkman Lab/Devaluation/Tasks/SST_DEV")
 
-input_mat_path =config::get("input_mat_path")
-
 ```   
 
 
 
-
 ```{r}
-get_run_df <- function(run_mat_file){
-  conditions <- unlist(run_mat_file$names)
-  run_df <- NULL
-  for (c_i in 1:length(conditions)){
-    print(paste(length(run_mat_file$duration[[c_i]][[1]]),length(run_mat_file$onsets[[c_i]][[1]])))
-    #need to handle cases where the lengths are zero
-    if(length(run_mat_file$duration[[c_i]][[1]])!=length(run_mat_file$onsets[[c_i]][[1]])){
-      stop("found different length duration and onset. these should be the same.")
-    }
-    if(length(run_mat_file$duration[[c_i]][[1]])==0){
-      #no items for this condition  
-      print(paste("no events found for condition",conditions[[c_i]]))
-      next
-    }
-    
-    condition_df <- data.frame(onset=run_mat_file$onsets[[c_i]][[1]],duration=run_mat_file$duration[[c_i]][[1]],condition=conditions[[c_i]])
-    if (is.null(run_df)){
-      run_df <- condition_df
-    }else{
-      run_df <- rbind(run_df,condition_df)
-    }
-  }
-  
-  run_df <- run_df %>% arrange(onset)
-  return(run_df)
-}
+raw_full_duration_file <- readr::read_csv(paste0(
+  dev_scripts_path,
+  "fMRI/fx/multiconds/SST/full_duration_multicond_out.csv"
+  )
+)
+
+# old_behavioral_format <- readr::read_csv(file = paste0(data_path,"sst_behavioral_data_all_old.csv"))
+
 ```
 
 
-```{r}
-get_run_def_from_mat_filepath <- function(filepath){
-  run_mat_file <- readMat(filepath)
-  run_df <- get_run_df(run_mat_file)
-  return(run_df)
-}
-```
 
-The code below reads in raw data from the SST task
 ```{r}
-raw_behavioral_data_filepath <- paste0(sst_on_dropbox,"/output/")
-fname_list <- list.files(raw_behavioral_data_filepath,pattern = "DEV\\d*\\_run\\d\\_.*\\.mat")
-subj_ids <- unique(str_match(fname_list,"(DEV\\d{3})_.*")[,2])
-study_df_list <- list()
-#loop through each subject because the waves are not pre-labelled. this way we can control the number of runs per subject.
-for (subj in subj_ids){
-#subj<-subj_ids[[1]]
-  if(subj!=subj_ids[[1]]){cat(", ")}
-  cat(paste0(subj))
-  subj_fnames <- sort(fname_list[str_detect(fname_list,subj)])
-  for(fname in subj_fnames){
-    fname<-fname_list[[1]]
-    finfo <- str_match(fname,"(DEV\\d{3})_run(\\d)_(\\d*-[a-zA-Z]*-\\d*)\\_(\\d*-\\d*.*)\\.mat")
-    subid<-finfo[,2]
-    waveid<-finfo[,3]
-    run_date<-finfo[,4]
-    run_time<-finfo[,5]
-    run_mat_file <- readMat(paste0(raw_behavioral_data_filepath,"/",fname))
-    seeker <- data.frame(run_mat_file$Seeker)
-    #labels taken from:
-    #https://github.com/UOSAN/SST_DEV/blob/8e297ff0f003d65157f8a9d8fa28a655f94d75e5/code/experiment/runSST.m#L233
-    colnames(seeker) <- c("trial_n","numchunks_reciprocal","go_no_go_condition","arrow_presented","ladder_number","LadderX","subject_response","ladder_movement","reaction_time","SSD_technical","SSD_observed","onset","arrow_appearance_t","SSD_error_check","trial_duration","time_course","health_condition")
-    seeker$subid<-subid
-    seeker$waveid<-waveid
-    seeker$runid<-1 #there's always only one run.
-    seeker$rundatetime<-lubridate::parse_date_time(paste(run_date,run_time),c("%d-%m-%y %H-%M"),tz="US/Pacific")
-    seeker <- seeker %>% mutate(
-      go_no_go_condition_label = case_when(
-            go_no_go_condition == 0 ~ "Go",
-            go_no_go_condition == 1 ~ "Stop",
-            go_no_go_condition == 2 ~ "Cue",
-            TRUE ~ as.character(NA)
-          )
-      ) %>% mutate(
-        condition = case_when(
-            go_no_go_condition == 0 & reaction_time!=0 ~ "CorrectGo",
-            go_no_go_condition == 0 & reaction_time==0 ~ "FailedGo",
-            go_no_go_condition == 1 & reaction_time!=0 ~ "FailedStop",
-            go_no_go_condition == 1 & reaction_time==0 ~ "CorrectStop",
-            go_no_go_condition == 2 ~ "Cue",
-            TRUE ~ as.character(NA)
-          )
+#this was written because the preceding data pipeline uses different labels to the parts that come after this, due to a change in the pipeline:
+#previously the data was directly exported from the mat files in this Rmd.
+#this is now done in the multiconds file.
+study_df <- raw_full_duration_file %>% mutate(
+  subject_id=paste0("DEV",subject_id),
+  runid=1,
+  go_no_go_condition_label = case_when(
+        go_no_go_condition == 0 ~ "Go",
+        go_no_go_condition == 1 ~ "Stop",
+        go_no_go_condition == 2 ~ "Cue",
+        TRUE ~ as.character(NA)
       )
-    study_df_list<-append(study_df_list,list(seeker))
-  }
-}
+  ) %>% mutate(
+    condition = case_when(
+        go_no_go_condition == 0 & reaction_time!=0 ~ "CorrectGo",
+        go_no_go_condition == 0 & reaction_time==0 ~ "FailedGo",
+        go_no_go_condition == 1 & reaction_time!=0 ~ "FailedStop",
+        go_no_go_condition == 1 & reaction_time==0 ~ "CorrectStop",
+        go_no_go_condition == 2 ~ "Cue",
+        TRUE ~ as.character(NA)
+      )
+  ) %>%
+    rename(onset=trial_start_time,subid=subject_id,waveid=wave_number)
 
-study_df <- data.frame(data.table::rbindlist(study_df_list))
 
-```
-
-
-```{r}
 readr::write_csv(study_df,file = paste0(data_path,"sst_behavioral_data_all.csv"))
-
 ```
 
 
 ```{r}
+# fname <- "DEV004_3_SST1.mat"
+# run_mat_file <- readMat(paste0(behavioral_data_filepath,fname))
+```
 
+```{r}
 #now we get summary statistics for each subject:
 #direction errors, proportion of successful stops, reaction time on Go trials, and stop signal reaction time (SSRT).
 #add runid to the group_by clause to group by run; but for our purposes we are happy to count across run!
@@ -151,7 +96,6 @@ prop_successful_stops <- condition_count %>% group_by(subid) %>%
 for(cname in c("CorrectGo","CorrectStop","FailedGo","FailedStop")){
   prop_successful_stops[is.na(prop_successful_stops[[cname]]),cname]<-0
 }
-
 
 summary_stats <- prop_successful_stops %>% merge(stop_signal_mean_reaction_time) %>% merge(go_trial_mean_reaction_time)
 

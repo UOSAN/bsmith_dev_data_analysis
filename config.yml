@@ -20,4 +20,5 @@ Benjamins-MacBook-Pro-2.local:
   rubric_dir: /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/DEV_scoring_rubrics
   qualtrics_credentials: ~/qualtrics_credentials.yaml  
   dev_analysis_data_dir: /Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/
+  input_mat_path: /Users/benjaminsmith/oregon/code/DEV_scripts/fMRI/fx/multiconds/SST/full_duration/conditions
 
