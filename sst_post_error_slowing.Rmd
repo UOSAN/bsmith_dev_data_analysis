@@ -256,3 +256,52 @@ t.test(sst_PES$PECG_mean, sst_PES$PCCG_mean, paired = TRUE, alternative = "two.s
 #Exploring the data to investigate why duration is being bucketed
 #sst_all_data_raw %>% filter(condition=="CorrectGo" & waveid==3) %>% .$duration %>% table
 ```
+
+
+### Calculate with respect to the pre-stop trial so that we can measure slowing/speeding in CS
+
+We can be agnostic about it. simply record, for every trial where there is a reaction time before and after the trial, regardless of the trial type, what was the change?
+
+First, we need to clean RTs
+```{r}
+sst_all_data<-sst_all_data_raw
+sst_all_data$reaction_time_clean<-sst_all_data$reaction_time
+sst_all_data$reaction_time_clean[sst_all_data$reaction_time==0]<-NA
+
+hist(sst_all_data$reaction_time_clean[sst_all_data$reaction_time_clean<0.3])
+
+```
+Based on eyeballing this histogram, reaction times start to increase around 0.2. So let's make the cut-off at 0.15. Less than that, and they aren't really a reaction.
+
+```{r}
+sst_all_data$reaction_time_clean[sst_all_data$reaction_time_clean<0.15]<-NA
+```
+
+```{r}
+sst_all_data<- 
+  sst_all_data %>% 
+  mutate(has_response=!is.na(reaction_time_clean)) %>%
+  mutate(follows_response_trial=lag(has_response,2),
+         precedes_response_trial=lead(has_response,2)
+         ) %>%
+  mutate(post_pre_rt_change=lead(reaction_time_clean,2)-lag(reaction_time_clean,2))
+
+#right. now we can view distributions of post_pre_rt_change by condition
+ggplot(sst_all_data %>% filter(condition!="Cue"),
+       aes(x=post_pre_rt_change,fill=condition))+
+  geom_histogram()+facet_wrap(~condition,scales = "free")+
+  geom_vline(xintercept=0)
+
+for(cond in unique(sst_all_data$condition)){
+  if(cond=="Cue"){next}
+  print(cond)
+  print("post minus pre trial reaction time change")
+  sst_all_data_condition<-sst_all_data %>% filter(condition==cond)
+  print(t.test(sst_all_data_condition$post_pre_rt_change))
+}
+
+
+```
+
+This is kind of against my hypothesis
+

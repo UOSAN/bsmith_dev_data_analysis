@@ -1,0 +1,193 @@
+---
+title: "sst_post_error_slowing"
+output: html_notebook
+---
+
+Steps:
+
+ - load file
+ - number each trial consecutively based on the onset time
+ - number the following trial for each trial
+ - merge the file with itself, merging each trial with its following trial
+ - for each measure the post-trial time for a correct result
+ 
+
+ 
+ 
+ This paper probably has a good method, 'How to measure post-error slowing: A confound and a simple solution',
+ 
+ Look at their "simple solution", and follow the method there. https://www.sciencedirect.com/science/article/abs/pii/S0022249612000454
+ https://www.sciencedirect.com/science/article/pii/S0022249612000454
+ 
+ https://www.frontiersin.org/articles/10.3389/fpsyg.2014.00119/full
+ 
+ 
+ For the variables, see https://www.dropbox.com/scl/fi/acc3pmvb28b9swz0cnr82/Info-about-Stop-Signal-Task-Baseline-Analysis.docx?dl=0&rlkey=18mfzinj70pmuhdv8d00nh84e
+ found in /Berkman Lab/Devaluation/Papers/Frontiers - Health Special Issue
+ we should use: 
+        PostErrorSlowW1_mean
+        PostErrorSlowW1_median
+not sst_pes_limited
+ 
+ 
+## load file
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+sst_all_data_filepath <- "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/sst_behavioral_data_all.csv"
+
+sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+```
+```{r}
+library(dplyr)
+```
+
+ ## About the Stop Signal Task
+ 
+Task format 
+The participant must respond to an arrow stimulus, by selecting one of two options, depending on the direction in which the arrow points. If an audio tone is present, the subject must withhold making that response (inhibition). The test consists of two parts: In the first part, the participant is introduced to the test and told to select the left-hand button when they see a left-pointing arrow and the right-hand button when they see a right-pointing arrow. There is one block of 16 trials for the participant to practice this. In the second part, the participant is told to continue selecting the buttons when they see the arrows but, if they hear an auditory signal (a beep), they should withhold their response and not select the button. 
+Go task (e.g. press left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears) 
+Stop signal (e.g. a cross replacing the arrow OR a tone?) appears after a variable stop-signal delay (SSD), instructing participants to suppress the imminent go response.  
+Conceptualizes the ability to inhibit the response as a race between a Go- and a Stop process that are triggered by the presentation of the Go and Stop-signal, respectively. If the Go process finishes first, the response will be executed. If the Stop process finishes first, the response will be inhibited (Teichert, 2015).
+Condition Type
+ 1 CorrectGo (i.e. pressed left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears)
+ 2 FailedGo (i.e. did NOT press left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears)
+ 3 CorrectStop (i.e. Suppressed the go response)
+ 4 FailedStop: (i.e. Failed to suppressed the go response)
+ 
+
+
+### Calculate with respect to the pre-stop trial so that we can measure slowing/speeding in CS
+
+We can be agnostic about it. simply record, for every trial where there is a reaction time before and after the trial, regardless of the trial type, what was the change?
+
+First, we need to clean RTs
+```{r}
+sst_all_data<-sst_all_data_raw
+sst_all_data$reaction_time_clean<-sst_all_data$reaction_time
+sst_all_data$reaction_time_clean[sst_all_data$reaction_time==0]<-NA
+
+hist(sst_all_data$reaction_time_clean[sst_all_data$reaction_time_clean<0.3])
+
+```
+Based on eyeballing this histogram, reaction times start to increase around 0.2. So let's make the cut-off at 0.15. Less than that, and they aren't really a reaction.
+
+```{r}
+sst_all_data$reaction_time_clean[sst_all_data$reaction_time_clean<0.15]<-NA
+```
+
+```{r}
+sst_all_data<- 
+  sst_all_data %>% 
+  mutate(has_response=!is.na(reaction_time_clean)) %>%
+  mutate(follows_response_trial=lag(has_response,2),
+         precedes_response_trial=lead(has_response,2)
+         ) %>%
+  mutate(post_pre_rt_change=lead(reaction_time_clean,2)-lag(reaction_time_clean,2))
+
+#right. now we can view distributions of post_pre_rt_change by condition
+ggplot(sst_all_data %>% filter(condition!="Cue"),
+       aes(x=post_pre_rt_change,fill=condition))+
+  geom_histogram()+facet_wrap(~condition,scales = "free")+
+  geom_vline(xintercept=0)
+
+for(cond in unique(sst_all_data$condition)){
+  if(cond=="Cue"){next}
+  print(cond)
+  print("post minus pre trial reaction time change")
+  sst_all_data_condition<-sst_all_data %>% filter(condition==cond)
+  print(t.test(sst_all_data_condition$post_pre_rt_change))
+}
+
+#what about only if it's a trial preceded and followed by a CG trial?
+
+
+```
+
+This is kind of against my hypothesis. I thought that in CorrectStop trials, subjects would update that they have correct impulses in the trials and can therefore respond _faster_ in subsequent trials. But overall, they don't do that. Instead, after a correctstop trial, reaction time _increases_, probably because subjects use the trial as evidence of more Stop trials and therefore respond by slowing down.
+
+However, it is possible that there is more than one evidential process happening, and they countervail.
+
+We also know that the tone timing is adjusted. it isn't fixed; when the participants correctly stop in response to a tone, the tone delay is lengthened. When they fail to inhibit, the tone delay is shortened. So rational subjects also take that into account
+
+In FailedStop trials, subjects increase their reaction times, by even more, because they want to avoid making an error. This can be seen as the compound of:
+
+ - the fact of a stop trial increases evidence that stop trials occur and subjects should be prepared for them, DELAYING reaction time
+ - response was punished and subjects update against the possibility of a response given the evidence they were presented in by raising the evidence threshold/lowering the pre-potent response, DELAYING reaction time.
+ - On the other hand, tone delay is shortened in these cases, to make the task easier (runSST.m line 730), and rational subjects would actually wait less in response to that, DECREASING reaction time
+ 
+Overall, subjects respond to a Failed
+ 
+ so in CS trials, you have
+
+- the fact of a stop trial increases evidence that stop trials occur and subjects should be prepared for them, DELAYING reaction time
+- tone delay is lengthened, to make the task more difficult (runSST.m line 748), and rational subjects would therefore wait longer before pressing the button, DELAYING reaction time
+
+but you do not have a punished response.
+
+in CG trials:
+
+ - evidence that Stop trials occur decreases, DECREASING reaction time
+ - reward of Go response occurs, DECREASING raction time
+
+No tone delay change in these trials.
+
+In FG trials:
+ - punishment of no go occurs, DECREASING reaction time
+
+So when calculating when it is rational to respond, you need to consider:
+ - prior probability that a trial is a stop trial
+ - prior probability, given a certain amount of evidence accumulated, that the trial is a stop trial
+ - adjustment of the tone delay
+
+Together these three factors could predict behavior.
+
+This model might need revision if it turns out participants are told in advance that the amount of Correct Stop trials will match the amount of Failed Stop trials. I don't think they are.
+
+Let's calculate this. First, the prior probability that a trial is a stop trial, given all the evidence gathered by the participant:
+
+```{r}
+
+sst_all_data <- sst_all_data %>% group_by(subid,waveid,runid) %>%
+  mutate(
+    CumulativeGoTrials=cumsum(go_no_go_condition_label=="Go"),
+    CumulativeStopTrials=cumsum(go_no_go_condition_label=="Stop")
+  ) %>% mutate(
+    PP_IsGo=(lag(CumulativeGoTrials,2)/
+      (lag(CumulativeGoTrials,2)+lag(CumulativeStopTrials,2))
+    ),
+    PP_IsStop=(lag(CumulativeStopTrials,2)/
+      (lag(CumulativeGoTrials,2)+lag(CumulativeStopTrials,2))
+    )
+  )
+    
+#table(sst_all_data$go_no_go_condition_label,sst_all_data$condition)
+
+#sst_all_data %>% select(subid,waveid,trial_number,go_no_go_condition_label,condition,CumulativeGoTrials,CumulativeStopTrials,PP_IsGo,PP_IsStop)
+
+```
+
+Then we have subjective uncertainty around when a tone occurs, given that we are in a stop trial and a tone will occur $P(t_o|S)$. Let's say it's a normal distribution with mean $\mu_t$, sd $\sigma_t$, $N(\mu_t,\sigma_t)$. Given $\mu_t$ and $\sigma_t$, we calculate the probability, given we're in a stop trial, of a tone occuring as modeled by that normal distribution, $P(T_t|S)=N(\mu_t,\sigma_t)$. Combined with the prior probability of a tone occuring, $P(S)$, we can calculate the posterior likelihood of $P(S)$ as:
+
+$$
+P(S|~T_t)=\frac{P(~T_t|S) P(S)}{P(~T_t)}
+$$
+where $P(~T_t)$ is 1 while no tone occurs, then 0.
+
+$\mu_t$ will be the past observations of tone times, while $\sigma_t$ is the subjective error in perception of tone delay; uncertain how to quantify this but we could make it $\sigma_t=0.15\text{ s}$ to start.
+
+More generally $\mu_t$ would be some function of all the past tone times, somewhere between an average of all of them, and the latest tone time. As a compromise let's define it as the average of each.
+
+Then let's define our $\mu_t$ as
+
+```{r}
+sst_all_data[,c("trial_duration","condition")]
+sst_all_data <- sst_all_data %>% group_by(subid,waveid,runid) %>%
+  mutate(last_tone_delay = 
+  mutate(expected_tone_delay_given_stop_trial = )
+
+```
+
+
+
