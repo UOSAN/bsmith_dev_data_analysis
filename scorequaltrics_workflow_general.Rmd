@@ -18,6 +18,7 @@ output:
     variant: markdown_github
 ---
 ```{r}
+library(tidyverse)
 library(stringr)
 ```
 
@@ -103,7 +104,8 @@ credentials = scorequaltrics::creds_from_file(cred_file_location)
 surveysAvail = scorequaltrics::get_surveys(credentials)
 surveysFiltered = filter(surveysAvail, grepl(survey_name_filter, SurveyName))
 
-knitr::kable(arrange(select(surveysFiltered, SurveyName), SurveyName))
+library(dplyr) 
+knitr::kable(arrange(dplyr::select(surveysFiltered, SurveyName), SurveyName))
 ```
 
 ## Cleaning and scoring data
@@ -118,7 +120,7 @@ surveys_long = scorequaltrics::get_survey_data(surveysFiltered,
                                                pid_col = keep_columns) %>%
                filter(!item %in% identifiable_data) %>% #filter out identifiable data
               mutate(SID=coalesce(SID_1,Login)) %>% #combine the SID_1 and Login cols
-              select(-SID_1,-Login) #remove them from the old columns
+              dplyr::select(-SID_1,-Login) #remove them from the old columns
 
 # print first 10 rows
 head(select(surveys_long, -ResponseId), 10)

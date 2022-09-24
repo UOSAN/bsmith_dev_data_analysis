@@ -86,7 +86,7 @@ for (subj in subj_ids){
   cat(paste0(subj))
   subj_fnames <- sort(fname_list[str_detect(fname_list,subj)])
   for(fname in subj_fnames){
-    fname<-fname_list[[1]]
+    #fname<-fname_list[[1]]
     finfo <- str_match(fname,"(DEV\\d{3})_run(\\d)_(\\d*-[a-zA-Z]*-\\d*)\\_(\\d*-\\d*.*)\\.mat")
     subid<-finfo[,2]
     waveid<-finfo[,3]
@@ -96,7 +96,7 @@ for (subj in subj_ids){
     seeker <- data.frame(run_mat_file$Seeker)
     #labels taken from:
     #https://github.com/UOSAN/SST_DEV/blob/8e297ff0f003d65157f8a9d8fa28a655f94d75e5/code/experiment/runSST.m#L233
-    colnames(seeker) <- c("trial_n","numchunks_reciprocal","go_no_go_condition","arrow_presented","ladder_number","LadderX","subject_response","ladder_movement","reaction_time","SSD_technical","SSD_observed","onset","arrow_appearance_t","SSD_error_check","trial_duration","time_course","health_condition")
+    colnames(seeker) <- c("trial_n","numchunks_reciprocal","go_no_go_condition","arrow_presented","ladder_number","LadderX_SSD_ms","subject_response","ladder_movement","reaction_time","SSD_technical","SSD_observed","onset","arrow_appearance_t","SSD_recorded","trial_duration","time_course","health_condition")
     seeker$subid<-subid
     seeker$waveid<-waveid
     seeker$runid<-1 #there's always only one run.

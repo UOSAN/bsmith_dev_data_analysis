@@ -33,11 +33,18 @@ not sst_pes_limited
 ## load file
 
 ```{r}
+library(ggplot2)
+
+```
+
+
+```{r}
 Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 dropbox_file_dir = config::get("dev_analysis_data_dir")
 sst_all_data_filepath <- "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/sst_behavioral_data_all.csv"
 
 sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+
 ```
 ```{r}
 library(dplyr)
@@ -68,9 +75,11 @@ sst_all_data<-sst_all_data_raw
 sst_all_data$reaction_time_clean<-sst_all_data$reaction_time
 sst_all_data$reaction_time_clean[sst_all_data$reaction_time==0]<-NA
 
-hist(sst_all_data$reaction_time_clean[sst_all_data$reaction_time_clean<0.3])
+hist(sst_all_data$reaction_time[sst_all_data$reaction_time>0.0])
+hist(sst_all_data$reaction_time[(sst_all_data$reaction_time<0.3) & (sst_all_data$reaction_time>0.0)])
 
 ```
+
 Based on eyeballing this histogram, reaction times start to increase around 0.2. So let's make the cut-off at 0.15. Less than that, and they aren't really a reaction.
 
 ```{r}
@@ -171,7 +180,8 @@ sst_all_data <- sst_all_data %>% group_by(subid,waveid,runid) %>%
 Then we have subjective uncertainty around when a tone occurs, given that we are in a stop trial and a tone will occur $P(t_o|S)$. Let's say it's a normal distribution with mean $\mu_t$, sd $\sigma_t$, $N(\mu_t,\sigma_t)$. Given $\mu_t$ and $\sigma_t$, we calculate the probability, given we're in a stop trial, of a tone occuring as modeled by that normal distribution, $P(T_t|S)=N(\mu_t,\sigma_t)$. Combined with the prior probability of a tone occuring, $P(S)$, we can calculate the posterior likelihood of $P(S)$ as:
 
 $$
-P(S|~T_t)=\frac{P(~T_t|S) P(S)}{P(~T_t)}
+P(S|T_t)=\frac{P(~T_t|S) P(S)}{P(~T_t)}
+
 $$
 where $P(~T_t)$ is 1 while no tone occurs, then 0.
 
@@ -181,13 +191,223 @@ More generally $\mu_t$ would be some function of all the past tone times, somewh
 
 Then let's define our $\mu_t$ as
 
+
 ```{r}
+lag(1:10,2)
 sst_all_data[,c("trial_duration","condition")]
+sst_all_data$last_tone_delay<-NA
+sst_all_data <-sst_all_data %>% group_by(subid,waveid,runid) %>%
+  mutate(
+    last_tone_delay=case_when(
+      lag(SSD_recorded,1)>0 ~lag(SSD_recorded,1),
+      TRUE ~ as.numeric(NA)
+    )
+  ) %>%
+  tidyr::fill(last_tone_delay,.direction="down")
+
 sst_all_data <- sst_all_data %>% group_by(subid,waveid,runid) %>%
-  mutate(last_tone_delay = 
-  mutate(expected_tone_delay_given_stop_trial = )
+  mutate(SSD_event_prior = lag(SSD_recorded,1)>0) %>%
+  mutate(lagged_tone_delay = lag(SSD_recorded,1)) %>%
+  mutate(average_tone_delay = (
+    cumsum(ifelse(is.na(lagged_tone_delay),0,lagged_tone_delay))/
+      cumsum(ifelse(is.na(SSD_event_prior),0,SSD_event_prior))
+  ))
+  
+
+
+
+
+#sst_all_data$expected_tone_delay<-rowMeans(sst_all_data[,c("last_tone_delay", "average_tone_delay")])
+#probably more rational, given what the task actually is, and also easier
+sst_all_data$expected_tone_delay<-sst_all_data$last_tone_delay
+
 
 ```
+
+
+***so perhaps we can predict putamen activity by the combination of $P(~T_t)$ and $P(T_t|S)=N(\mu_t,\sigma_t)$, or simpler representations of derivatives thereof. maybe just a linear model of....***
+
+So, we:
+
+ - assume the putamen signal is a kind of `readiness potential'
+ - Take eitehr the map in this contrast, or the region, and model its activity as a function of $P(\neg T_t)$ and $\mu_t$ from $P(T_t|S)=N(\mu_t,\sigma_t)$. I am a bit sceptical because we haven't seen anything in reaction time, so I'm not sure why these would do better...
+ The baseline would be just to model the region as a function of following a correctstop vs. a failedstop vs. a correctgo. It would be affirmed if the correlation between our model variables and activity is better than the biserial correlation of correctstop vs. failedstop alone.
+ If this model is correct, we would also expect CG following (correctgo vs. failed stop) to show even more putamen activity than merely correctstop vs. failedstop--because there's more relative readiness potential. If we found _less_, that would suggest the putamen activity comes from some kind of affirmation of task ability derived from the fact that the participant correctly stopped, i.e., RPE is somehow larger in CorrectStop compared to CorrectGo. Go trials make up 83% of all trials; of those 70% points are correct and the remaining 13% are incorrect--(16% of all Go trials). Stop trials make up 15% of of all trials, of which 12% are correct and 3% are incorrect (20% of all Go trials). So actually, Stop trials are not 'harder', they're experienced as about equally challenging. However there are fewer stop trials; participants might be less confident about their performance on those trials, and as a result, performing well on them could be more rewarding. There's also some kind of cognitive explanation I keep trying to put my finger on: getting a Stop trial correct affirms that the participant can successfully withhold a response, and they have had much less confirmation of their own ability to do that successfully than their ability to get a Go trial correct, so it might be more rewarding on that basis. Crucially, also confirms that they don't have to slow down on the subsequent trial, which is why we see fairly minor slowing following a CS trial (I wonder what the expected tone delay change is for CS compared to FS?).
+ 
+Simplest explanation might just be: Go response punishment [internal penalty] follows a FS trial, whereas NoGo inhibition reward follows a CS trial. The punishment is enough to inhibit putamen response.
+
+I really want to do that sample of activity right from the point the subject learns they were right or wrong. So we get the timing of every single trial, synhronize, and graph the succession of responses using a moving average following FS, CS, FG, CG.
+
+```{r}
+
+sst_all_data<- 
+  sst_all_data %>% 
+  #mutate(has_response=!is.na(reaction_time_clean)) %>%
+  # mutate(follows_response_trial=lag(has_response,2),
+  #        precedes_response_trial=lead(has_response,2)
+  #        ) %>%
+  mutate(post_pre_E_t_delay_change=lead(expected_tone_delay,2)-lag(expected_tone_delay,2))
+
+#right. now we can view distributions of post_pre_rt_change by condition
+ggplot(sst_all_data %>% filter(condition!="Cue"),
+       aes(x=post_pre_E_t_delay_change,fill=condition))+
+  geom_histogram()+facet_wrap(~condition,scales = "free")+
+  geom_vline(xintercept=0)
+
+for(cond in unique(sst_all_data$condition)){
+  if(cond=="Cue"){next}
+  print(cond)
+  print("post minus pre trial reaction time change")
+  sst_all_data_condition<-sst_all_data %>% filter(condition==cond)
+  print(t.test(sst_all_data_condition$post_pre_E_t_delay_change))
+}
+
+#what about only if it's a trial preceded and followed by a CG trial?
+
+
+```
+
+
+
+ 
+
+## empirical distribution of P_S_given_T_at_rt
+
+Now we know all this, we could calculate $P(S|~T_t)$, but what $t$ do we want to know about? perhaps we could calculate the expected probability of a tone at the instant the subject presses a button, when they press it. This would be....
+
+```{r}
+#let's add time for the participant to actually move
+sst_all_data$P_T_at_rt_given_S<-1-pnorm(sst_all_data$reaction_time_clean-0.1,sst_all_data$expected_tone_delay,0.15)
+#then the prior probability of S
+sst_all_data$P_S_given_T_at_rt<-sst_all_data$PP_IsStop*sst_all_data$P_T_at_rt_given_S
+
+hist(sst_all_data$P_S_given_T_at_rt,breaks = 100)
+hist(log(sst_all_data$P_S_given_T_at_rt,10),breaks=100)
+hist(log(sst_all_data$P_S_given_T_at_rt,10),breaks=100)
+```
+
+
+
+
+## empirical distribution of P_S_given_T_at_tone
+
+We can also calculate the probability of a tone at the instant the subject hears it....
+
+```{r}
+#let's add time for the participant to actually move
+sst_all_data$P_T_at_tone_given_S<-1-pnorm(sst_all_data$SSD_recorded,sst_all_data$expected_tone_delay,0.15)
+#then the prior probability of S
+sst_all_data$P_S_given_T_at_tone<-sst_all_data$PP_IsStop*sst_all_data$P_T_at_tone_given_S
+
+hist(sst_all_data$P_S_given_T_at_tone,breaks=100)
+hist(log(sst_all_data$P_S_given_T_at_tone,10))
+```
+
+### learning rate
+
+
+Bernice suggests: subjects differ from rationality in a couple of different ways
+
+These might be the learning rate $P(S)$ and $P(\neg T_t|S)$
+
+### can we model this?
+
+So that looks like an exponential distribution...could also be modeled as Gamma or weibull...
+
+```{r}
+alpha<- mean(sst_all_data$P_S_given_T_at_rt,na.rm = TRUE)^2/var(sst_all_data$P_S_given_T_at_rt,na.rm = TRUE)
+beta<- var(sst_all_data$P_S_given_T_at_rt,na.rm = TRUE)/mean(sst_all_data$P_S_given_T_at_rt,na.rm = TRUE)
+
+x<-(1:1000)/1000
+plot(x,dgamma(x,alpha/8,beta))
+```
+
+```{r}
+x_vec<-sst_all_data$P_S_given_T_at_rt[!is.na(sst_all_data$P_S_given_T_at_rt)]
+library(MASS)
+
+res<-fitdistr(x_vec, dgamma, start=list(shape=1, scale=1))
+plot(x,dgamma(x,res[[1]][[1]],scale=res[[1]][[2]]))
+```
+
+```{r}
+res<-fitdistr(x_vec, dexp, start=list(rate=1))
+plot(x,dgamma(x,res[[2]][[1]]))
+```
+
+
+```{r}
+dexp(c(0.1,0.5,0.9),1)
+```
+
+### different tack, transform back to normal????
+
+```{r}
+
+hist(log(sst_all_data$P_S_given_T_at_rt,10),100)
+
+hist(log(-log(sst_all_data$P_S_given_T_at_rt,10)),100)
+
+#yeah this is very messy.
+print(mean(log(-log(sst_all_data$P_S_given_T_at_rt,10)),na.rm = TRUE))
+print(sd(log(-log(sst_all_data$P_S_given_T_at_rt,10)),na.rm = TRUE))
+
+
+
+```
+
+
+
+
+
+So at that point, when the subject hears a tone, they will move quickly from the prior probability to near-certainty that this is a stop trial (because they have heard the tone).
+
+# Within subject
+
+How much variance is within-subject vs. between-subject? And do subjects change their probability thresholds over time?
+
+
+```{r}
+#across-subject variance
+sst_all_data$P_S_given_T_at_rt
+```
+
+
+# Figuring out the SSD definitions...
+
+```{r}
+table(sst_all_data$SSD_technical)
+table(sst_all_data$SSD_observed)
+table(sst_all_data$condition, sst_all_data$SSD_recorded>0)
+table(sst_all_data$condition, sst_all_data$SSD_recorded>0)
+```
+
+```{r}
+sst_all_data[sst_all_data$condition=="FailedStop",]
+```
+
+```{r}
+
+sst_all_data[sst_all_data$condition=="FailedStop",c("ladder_number","LadderX_SSD_ms","SSD_recorded", "reaction_time")]
+```
+
+```{r}
+sst_all_data$ReactionBeforeLadderScheduled<-sst_all_data$reaction_time<sst_all_data$LadderX_SSD_ms/1000
+sst_all_data[sst_all_data$condition=="FailedStop" & sst_all_data$SSD_recorded==0,c("ladder_number","LadderX_SSD_ms","SSD_recorded", "reaction_time","condition","ReactionBeforeLadderScheduled")]
+```
+
+Okay, so LadderX_SSD_ms is actually the planned SSD. For the few Stop trials where there is no stop signal (I don't know why this happens!) we can look at LadderX_SSD_ms to figure out what it should have been.
+
+
+```{r}
+sst_rtgt0<-sst_all_data[sst_all_data$reaction_time>0,]
+table(sst_rtgt0$condition, sst_rtgt0$SSD_recorded>0,sst_rtgt0$ReactionBeforeLadderScheduled)
+```
+
+```{r}
+plot(sst_all_data$LadderX_SSD_ms,sst_all_data$SSD_recorded)
+```
+
 
 
 

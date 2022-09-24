@@ -70,7 +70,7 @@ study_df <- raw_full_duration_file %>% mutate(
     rename(onset=trial_start_time,subid=subject_id,waveid=wave_number)
 
 
-readr::write_csv(study_df,file = paste0(data_path,"sst_behavioral_data_all.csv"))
+readr::write_csv(study_df,file = paste0(data_path,"sst_behavioral_data_all_via_multiconds.csv"))
 ```
 
 

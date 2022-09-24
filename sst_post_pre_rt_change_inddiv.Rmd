@@ -1,0 +1,315 @@
+---
+title: "sst_post_error_slowing"
+output: html_notebook
+---
+
+Steps:
+
+ - load file
+ - number each trial consecutively based on the onset time
+ - number the following trial for each trial
+ - merge the file with itself, merging each trial with its following trial
+ - for each measure the post-trial time for a correct result
+ 
+
+ 
+ 
+ This paper probably has a good method, 'How to measure post-error slowing: A confound and a simple solution',
+ 
+ Look at their "simple solution", and follow the method there. https://www.sciencedirect.com/science/article/abs/pii/S0022249612000454
+ https://www.sciencedirect.com/science/article/pii/S0022249612000454
+ 
+ https://www.frontiersin.org/articles/10.3389/fpsyg.2014.00119/full
+ 
+ 
+ For the variables, see https://www.dropbox.com/scl/fi/acc3pmvb28b9swz0cnr82/Info-about-Stop-Signal-Task-Baseline-Analysis.docx?dl=0&rlkey=18mfzinj70pmuhdv8d00nh84e
+ found in /Berkman Lab/Devaluation/Papers/Frontiers - Health Special Issue
+ we should use: 
+        PostErrorSlowW1_mean
+        PostErrorSlowW1_median
+not sst_pes_limited
+ 
+ 
+## load file
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+
+```
+
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+sst_all_data_filepath <- "~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/sst_behavioral_data_all.csv"
+
+sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+raw_survey_data <- readr::read_csv(paste0(dropbox_file_dir,"raw_survey_data.csv"))
+
+
+```
+```{r}
+library(dplyr)
+```
+
+ ## About the Stop Signal Task
+ 
+Task format 
+The participant must respond to an arrow stimulus, by selecting one of two options, depending on the direction in which the arrow points. If an audio tone is present, the subject must withhold making that response (inhibition). The test consists of two parts: In the first part, the participant is introduced to the test and told to select the left-hand button when they see a left-pointing arrow and the right-hand button when they see a right-pointing arrow. There is one block of 16 trials for the participant to practice this. In the second part, the participant is told to continue selecting the buttons when they see the arrows but, if they hear an auditory signal (a beep), they should withhold their response and not select the button. 
+Go task (e.g. press left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears) 
+Stop signal (e.g. a cross replacing the arrow OR a tone?) appears after a variable stop-signal delay (SSD), instructing participants to suppress the imminent go response.  
+Conceptualizes the ability to inhibit the response as a race between a Go- and a Stop process that are triggered by the presentation of the Go and Stop-signal, respectively. If the Go process finishes first, the response will be executed. If the Stop process finishes first, the response will be inhibited (Teichert, 2015).
+Condition Type
+ 1 CorrectGo (i.e. pressed left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears)
+ 2 FailedGo (i.e. did NOT press left when an arrow pointing to the left appears, and right when an arrow pointing to the right appears)
+ 3 CorrectStop (i.e. Suppressed the go response)
+ 4 FailedStop: (i.e. Failed to suppressed the go response)
+ 
+
+
+### Calculate with respect to the pre-stop trial so that we can measure slowing/speeding in CS
+
+We can be agnostic about it. simply record, for every trial where there is a reaction time before and after the trial, regardless of the trial type, what was the change?
+
+First, we need to clean RTs
+```{r}
+sst_all_data<-sst_all_data_raw
+sst_all_data$reaction_time_clean<-sst_all_data$reaction_time
+sst_all_data$reaction_time_clean[sst_all_data$reaction_time==0]<-NA
+
+hist(sst_all_data$reaction_time[sst_all_data$reaction_time>0.0])
+hist(sst_all_data$reaction_time[(sst_all_data$reaction_time<0.3) & (sst_all_data$reaction_time>0.0)])
+
+```
+
+Based on eyeballing this histogram, reaction times start to increase around 0.2. So let's make the cut-off at 0.15. Less than that, and they aren't really a reaction.
+
+```{r}
+sst_all_data$reaction_time_clean[sst_all_data$reaction_time_clean<0.15]<-NA
+```
+
+```{r}
+sst_all_data<- 
+  sst_all_data %>% 
+  mutate(has_response=!is.na(reaction_time_clean)) %>%
+  mutate(follows_response_trial=lag(has_response,2),
+         precedes_response_trial=lead(has_response,2)
+         ) %>%
+  mutate(post_pre_rt_change=lead(reaction_time_clean,2)-lag(reaction_time_clean,2))
+
+#right. now we can view distributions of post_pre_rt_change by condition
+ggplot(sst_all_data %>% filter(condition!="Cue"),
+       aes(x=post_pre_rt_change,fill=condition))+
+  geom_histogram()+facet_wrap(~condition,scales = "free")+
+  geom_vline(xintercept=0)
+
+for(cond in unique(sst_all_data$condition)){
+  if(cond=="Cue"){next}
+  print(cond)
+  print("post minus pre trial reaction time change")
+  sst_all_data_condition<-sst_all_data %>% filter(condition==cond)
+  print(t.test(sst_all_data_condition$post_pre_rt_change))
+}
+
+#what about only if it's a trial preceded and followed by a CG trial?
+
+
+```
+
+# individual differences....
+
+Let's create individual subject level values and see if these correlate with individaul difference measures
+
+So, individual difference measures will be:
+ - post-pre-rt change for each of the four trial types
+ - differnce in CS-FS change
+ 
+ 
+```{r}
+sst_all_data$go_no_go_condition_label
+sst_subj_means_long<- sst_all_data %>% filter(condition!="Cue") %>%
+  group_by(subid,condition) %>%
+  summarize(
+    pmprtd_mean=mean(post_pre_rt_change,na.rm=TRUE),
+    pmprtd_sd=sd(post_pre_rt_change,na.rm=TRUE),
+    pmprtd_n=sum(!is.na(post_pre_rt_change))
+  )
+
+sst_subj_means_long2<- sst_all_data %>% filter(go_no_go_condition_label!="Cue") %>%
+  group_by(subid,go_no_go_condition_label) %>%
+  summarize(
+    pmprtd_mean=mean(post_pre_rt_change,na.rm=TRUE),
+    pmprtd_sd=sd(post_pre_rt_change,na.rm=TRUE),
+    pmprtd_n=sum(!is.na(post_pre_rt_change))
+  ) %>%
+  rename(condition=go_no_go_condition_label)
+
+
+
+
+sst_subj_means <- rbind(sst_subj_means_long,sst_subj_means_long2) %>% pivot_wider(
+  id_cols = subid,
+  names_from=condition,
+  values_from=c(pmprtd_mean,pmprtd_sd)
+  )
+```
+
+
+```{r}
+raw_survey_cols <-c("SID","BFI_10","BFI_11","BFI_34")
+raw_survey_data_to_merge<-raw_survey_data[raw_survey_data$item %in% raw_survey_cols,] %>%
+  pivot_wider(id_cols="SID",names_from="item",values_from="value")
+```
+
+
+```{r}
+data_by_ppt_raw <- read_csv(paste0(dropbox_file_dir,"data_by_ppt.csv"))
+
+
+data_by_ppt_all <- data_by_ppt_raw %>%
+  merge(sst_subj_means,by.x="SID",by.y="subid") %>%
+  merge(raw_survey_data_to_merge,by="SID")
+```
+
+```{r}
+t.test(data_by_ppt_all$pmprtd_mean_CorrectGo)
+t.test(data_by_ppt_all$pmprtd_mean_CorrectStop)
+t.test(data_by_ppt_all$pmprtd_mean_FailedStop)
+
+t.test(data_by_ppt_all$pmprtd_mean_FailedStop-data_by_ppt_all$pmprtd_mean_CorrectStop)
+```
+
+```{r}
+data_by_ppt_all$pmprtd_meanPostStopSlowing<-data_by_ppt_all$pmprtd_mean_CorrectStop+data_by_ppt_all$pmprtd_mean_FailedStop
+data_by_ppt_all$pmprtd_sdPostStopSlowing<-rowMeans(data_by_ppt_all[,c("pmprtd_sd_CorrectStop","pmprtd_sd_FailedStop")])
+data_by_ppt_all$pmprtd_meanFailureRelatedSlowing<-data_by_ppt_all$pmprtd_mean_FailedStop-data_by_ppt_all$pmprtd_mean_CorrectStop
+data_by_ppt_all$BFI_positivity<-as.numeric(data_by_ppt_all$BFI_10)+as.numeric(data_by_ppt_all$BFI_11)
+```
+
+
+```{r}
+cor.test(
+  data_by_ppt_all$pmprtd_meanFailureRelatedSlowing,
+  data_by_ppt_all$BIS_11)
+  
+```
+
+
+```{r}
+
+
+cor.test(data_by_ppt_all$BFI_extraversion,data_by_ppt_all$pmprtd_mean_CorrectGo)
+cor.test(data_by_ppt_all$BFI_extraversion,data_by_ppt_all$pmprtd_mean_CorrectStop)
+cor.test(data_by_ppt_all$BFI_extraversion,data_by_ppt_all$pmprtd_meanFailureRelatedSlowing)
+cor.test(data_by_ppt_all$BIS_11,data_by_ppt_all$pmprtd_mean_CorrectStop)
+cor.test(data_by_ppt_all$pmprtd_meanFailureRelatedSlowing,data_by_ppt_all$BIS_11)
+
+
+```
+
+
+```{r}
+cor.test(data_by_ppt_all$pmprtd_mean_CorrectGo,
+         as.numeric(data_by_ppt_all$BFI_11)
+         )
+```
+
+```{r}
+cor.test(data_by_ppt_all$pmprtd_mean_CorrectStop,
+         as.numeric(data_by_ppt_all$BFI_34)
+         )
+
+cor.test(data_by_ppt_all$pmprtd_mean_CorrectStop-data_by_ppt_all$pmprtd_mean_CorrectGo,
+         as.numeric(data_by_ppt_all$BFI_34)
+         )
+```
+```{r}
+hist(data_by_ppt_all$pmprtd_mean_CorrectStop+data_by_ppt_all$pmprtd_mean_CorrectGo,breaks=100)
+```
+```{r}
+hist(as.numeric(data_by_ppt_all$BFI_10)+as.numeric(data_by_ppt_all$BFI_11))
+```
+
+
+```{r}
+
+cor.test(data_by_ppt_all$pmprtd_mean_CorrectStop,
+         data_by_ppt_all$BFI_positivity+as.numeric(data_by_ppt_all$BFI_34)
+         )
+
+cor.test(data_by_ppt_all$pmprtd_mean_CorrectStop+data_by_ppt_all$pmprtd_mean_FailedStop,
+         data_by_ppt_all$BFI_positivity+as.numeric(data_by_ppt_all$BFI_34)
+         )
+
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         as.numeric(data_by_ppt_all$BFI_10)+as.numeric(data_by_ppt_all$BFI_11)
+         )
+
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         data_by_ppt_all$BFI_extraversion
+         )
+
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         as.numeric(data_by_ppt_all$BFI_11)
+         )
+
+
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         as.numeric(data_by_ppt_all$RTFS_factor_1)
+         )
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         as.numeric(data_by_ppt_all$RTFS_factor_2)
+         )
+
+cor.test(data_by_ppt_all$pmprtd_meanFailureRelatedSlowing,
+         as.numeric(data_by_ppt_all$RTFS_factor_2)
+         )
+cor.test(data_by_ppt_all$pmprtd_meanFailureRelatedSlowing,
+         as.numeric(data_by_ppt_all$RTFS_factor_1)
+         )
+
+```
+```{r}
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         as.numeric(data_by_ppt_all$BFI_10)+as.numeric(data_by_ppt_all$BFI_11))
+
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         as.numeric(data_by_ppt_all$BFI_10)+as.numeric(data_by_ppt_all$BFI_11),method = "spearman")
+```
+
+```{r}
+cor.test(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         data_by_ppt_all$BFI_positivity)
+
+cor.test(data_by_ppt_all$pmprtd_mean_Stop,
+         data_by_ppt_all$BFI_positivity)
+
+cor.test(data_by_ppt_all$SST_PostErrorSlowW1_median,
+         data_by_ppt_all$BFI_positivity)
+
+```
+
+
+```{r}
+
+plot(data_by_ppt_all$pmprtd_meanPostStopSlowing,
+         data_by_ppt_all$BFI_positivity)
+```
+
+```{r}
+cor.test(data_by_ppt_all$pmprtd_mean_CorrectStop-data_by_ppt_all$pmprtd_mean_CorrectGo,
+         as.numeric(data_by_ppt_all$BFI_11)
+         )
+```
+
+
+
+
+```{r}
+cor.test(data_by_ppt_all$pmprtd_mean_CorrectStop-data_by_ppt_all$pmprtd_mean_FailedStop,
+         as.numeric(data_by_ppt_all$BFI_11)
+         )
+```
