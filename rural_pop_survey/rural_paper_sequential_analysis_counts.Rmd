@@ -15,7 +15,7 @@ library(lavaan)
 source("HINTS_preprocessing.R")
 source("orfcs_utilities.R")
 hints5 <-get_hints5(location=config::get("hints_protected_data_folderpath"))
-boot_times<-100
+boot_times<-200
 
 zscore <- function(x){
     return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
@@ -311,6 +311,17 @@ outcome_measures <- c(
 
 ```
 
+Get a count of exactly what hte missing data is
+```{r}
+orfcs_zip_not_na <- orfcs_dataset_pp[!is.na(orfcs_dataset_pp$RuralZIP)]
+table(data.frame(!is.na(orfcs_zip_not_na[,c(
+  "aSES_02_z",
+  "BMI",
+  "DEMO_Age_c")])))
+```
+
+
+
 ```{r}
 
 
@@ -366,7 +377,6 @@ for (hints_fit_label in names(hints_fits_by_outcome)){
 lavaan_results_df <- do.call(rbind,lavaan_results_list)
 ```
 
-
 ```{r, warning=FALSE}
 source("gen_utilities.R")
 
@@ -374,8 +384,6 @@ source("gen_utilities.R")
 orfcs_boot<-extract_and_label_bootstrap_results(orfcs_fit)
 colnames(orfcs_boot)<-
   paste0("orfcs_",colnames(orfcs_boot))
-
-#raw_data_list<-list()
 
 hybrid_effect_list <-list()
 for (effect_name in names(hints_fits_by_outcome)){
@@ -393,7 +401,7 @@ for (effect_name in names(hints_fits_by_outcome)){
   row_count <- min(nrow(orfcs_boot),nrow(hints_boot))
   combined_boot_results <- data.frame(cbind(orfcs_boot[1:row_count,],hints_boot[1:row_count,]))
   
-  #raw_data_list[[effect_name]]<-combined_boot_results
+
   
   # cat("HINTS lavaan pre-computed indirect effect:\n")
   # cat(paste(names(lavaan_computed_indirect_effect),collapse="\t"))
@@ -405,24 +413,20 @@ for (effect_name in names(hints_fits_by_outcome)){
   HINTS_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, hints_bc, hints_cd),1,prod)
   summarize_calculated_effect(HINTS_indirect_effect)
   
-  cat("HINTS direct effect:\n ")  
-  HINTS_direct_effect <- combined_boot_results$hints_ad
-  hie_result<- summarize_calculated_effect(HINTS_direct_effect)
-  hybrid_effect_set<-list("indirect_effect"=hie_result)
   
   cat("Hybrid indirect effect:\n ")
-  hybrid_main_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, orfcs_bc,orfcs_cd, hints_cd),1,prod)
-  hie_result <- summarize_calculated_effect(hybrid_main_indirect_effect)
+  hybrid_indirect_effect <- apply(combined_boot_results %>% select(hints_ab, orfcs_bc,orfcs_cd, hints_cd),1,prod)
+  hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
   hybrid_effect_set<-list("indirect_effect"=hie_result)
   
   cat("Hybrid effect via food availability and consumption:\n ")
-  hybrid_indirect_effect1 <- apply(combined_boot_results %>% select(orfcs_ac,orfcs_cd, hints_cd),1,prod)
-  hie_result <- summarize_calculated_effect(hybrid_indirect_effect1)
+  hybrid_indirect_effect <- apply(combined_boot_results %>% select(orfcs_ac,orfcs_cd, hints_cd),1,prod)
+  hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
   hybrid_effect_set <- append(hybrid_effect_set,list("availability_consumption"=hie_result))
   
   cat("Hybrid effect via food consumption (independently of availability):\n ")
-  hybrid_indirect_effect2 <- apply(combined_boot_results %>% select(orfcs_ad,hints_cd),1,prod)
-  hie_result <- summarize_calculated_effect(hybrid_indirect_effect2)
+  hybrid_indirect_effect <- apply(combined_boot_results %>% select(orfcs_ad,hints_cd),1,prod)
+  hie_result <- summarize_calculated_effect(hybrid_indirect_effect)
   hybrid_effect_set <- append(hybrid_effect_set,list("consumption_alone"=hie_result))
   
   hybrid_effect_set_df <- do.call(rbind,hybrid_effect_set)
@@ -430,75 +434,6 @@ for (effect_name in names(hints_fits_by_outcome)){
   hybrid_effect_set_df$pathway <- rownames(hybrid_effect_set_df)
   
   hybrid_effect_list<-append(hybrid_effect_list,list(hybrid_effect_set_df))
-  
-  
-  #"The total effect is the sum of the direct and indirect effects"
-  # - https://www.annualreviews.org/doi/pdf/10.1146/annurev-publhealth-032315-021402
-  #there are three total effects we want to calculate: ORFCS, HINTS, and hybrid
-  #For these path models we need to sum up all paths (the different kinds of indirect effects)
-  #so for ORFCS this is going to be:
-  #orfcs_ab*orfcs_bc*orfcs_cd*orfcs_de
-  #orfcs_ab*orfcs_bc*orfcs_ce
-  #orfcs_ab*orfcs_bd*orfcs_de
-  #orfcs_ab*orfcs_be
-  #orfcs_ac*orfcs_cd*orfcs_de
-  #orfcs_ac*orfcs_ce
-  #orfcs_ad*orfcs_de
-  #orfcs_ae
-  calculate_path_effect<-function(path_vector){
-    return(apply(combined_boot_results[,path_vector],1,prod))
-  }
-  cat("total effect of the ORFCS model:\n")
-  total_effect_orfcs<-(
-    calculate_path_effect(paste0("orfcs_",c("ab","bc","cd","de")))+
-      calculate_path_effect(paste0("orfcs_",c("ab","bc","ce")))+
-      calculate_path_effect(paste0("orfcs_",c("ab","bd","de")))+
-      calculate_path_effect(paste0("orfcs_",c("ab","be")))+
-      calculate_path_effect(paste0("orfcs_",c("ac","cd","de")))+
-      calculate_path_effect(paste0("orfcs_",c("ac","ce")))+
-      calculate_path_effect(paste0("orfcs_",c("ad","de")))+
-      combined_boot_results$orfcs_ae
-  )
-  hie_result <- summarize_calculated_effect(total_effect_orfcs)
-  hybrid_effect_set <- append(hybrid_effect_set,list("total_effect_orfcs"=hie_result))
-  
-  cat("total effect of the HINTS model:\n")
-  total_effect_hints<-(
-    calculate_path_effect(paste0("hints_",c("ab","bc","cd")))+
-      calculate_path_effect(paste0("hints_",c("ab","bd")))+
-      calculate_path_effect(paste0("hints_",c("ac","cd")))+
-      combined_boot_results$hints_ad
-  )
-  hie_result <- summarize_calculated_effect(total_effect_hints)
-  hybrid_effect_set <- append(hybrid_effect_set,list("total_effect_hints"=hie_result))
-  
-  cat("HINTS proportion mediated:\n")
-  hints_prop_mediated<-HINTS_indirect_effect/total_effect_hints
-  hie_result <- summarize_calculated_effect(hints_prop_mediated)
-  hybrid_effect_set <- append(hybrid_effect_set,list("hints_prop_mediated"=hie_result))
-  
-  
-  cat("total effect of the hybrid model:\n")
-  total_effect_hybrid<-(
-    calculate_path_effect(c(paste0("orfcs_",c("bc","cd")),paste0("hints_",c("ab","cd"))))+
-      #calculate_path_effect(c(paste0("orfcs_",c("ab","bc","ce")),paste0("hints_",c("ab","bc","ce"))))+
-      calculate_path_effect(paste0("hints_",c("ab","bc","cd")))+
-      calculate_path_effect(c(paste0("hints_",c("ab","bd"))))+
-      calculate_path_effect(c(paste0("orfcs_",c("ac","cd")),paste0("hints_",c("cd"))))+
-      #calculate_path_effect(c(paste0("orfcs_",c("ac","ce")),paste0("hints_",c("ac","ce"))))+
-      calculate_path_effect(c(paste0("hints_",c("ac","cd"))))+
-      combined_boot_results$hints_ad
-  )
-  
-  hie_result <- summarize_calculated_effect(total_effect_hybrid)
-  hybrid_effect_set <- append(hybrid_effect_set,list("total_effect_hybrid"=hie_result))
-
-  cat("hybrid proportion mediated:\n")
-  hints_prop_mediated<-hybrid_main_indirect_effect/total_effect_hybrid
-  hie_result <- summarize_calculated_effect(hints_prop_mediated)
-  hybrid_effect_set <- append(hybrid_effect_set,list("hints_prop_mediated"=hie_result))
-  
-
   cat("---------\n\n\n")
 
 }
@@ -506,12 +441,6 @@ for (effect_name in names(hints_fits_by_outcome)){
 hybrid_effect_df<-do.call(rbind,hybrid_effect_list)
 
 ```
-
-### Calculate total mediated and proportion mediated
-
-```{r}
-```
-
 
 ## Notes
 

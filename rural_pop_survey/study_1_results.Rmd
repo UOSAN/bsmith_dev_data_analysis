@@ -168,9 +168,9 @@ mb <- lm(MESA_healthyfoodavailability_z~RuralZIP_i+Gender3C+DEMO_Age_c+RaceC2+PS
 mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+RaceC2+MESA_healthyfoodavailability_z+PSS_z,data_to_measure)
 
 mediate_result <- mediate(mb,mc,sims=boot_times, boot=TRUE,boot.ci.type = "bca", treat="RuralZIP_i",mediator="MESA_healthyfoodavailability_z")
-summary(mediate_result)
-summary(mb)
-summary(mc)
+print(summary(mediate_result))
+print(summary(mb))
+print(summary(mc))
 ```
 
 ```{r}
@@ -179,7 +179,11 @@ summary(mc)
 
 
 ```{r}
-save.image(file=paste0(config::get("rural_data_dir"),"study_1_2_output.Rdata"))
+#save.image(file=paste0(config::get("rural_data_dir"),"study_1_2_output.Rdata"))
+```
+
+```{r}
+load(file=paste0(config::get("rural_data_dir"),"study_1_2_output.Rdata"))
 ```
 
 

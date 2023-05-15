@@ -1,0 +1,241 @@
+---
+title: "SST_data_first_pass.Rmd"
+author: "Ben Smith"
+date: "2022-12-23"
+output: html_document
+---
+
+
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+data_dir <- config::get("dev_analysis_data_dir")
+
+
+setwd(paste0(data_dir,"hunger/"))
+
+source("DEV-Session1Data_R_2022-12-23_1944.r")
+
+
+
+redcap_data<-data
+rm(data)
+```
+
+
+```{r}
+library(dplyr)
+
+options(dplyr.summarise.inform = FALSE)
+
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+data_dir <- config::get("dev_analysis_data_dir")
+
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+```
+
+
+## load data quality table
+
+```{r}
+data_quality<-readxl::read_xlsx(paste0(dropbox_file_dir, "DEV-Session1DataQualityC_DATA.xlsx"))
+data_quality_SST<-data_quality%>% select(dev_id,SST)
+colnames(data_quality_SST)<-c("subid","sst_data_quality")
+```
+
+##now load SST data
+
+
+```{r}
+source(paste0("../SST_processing.R"))
+
+
+sst_all_data_filepath <- paste0(dropbox_file_dir,"sst_behavioral_data_all.csv")
+
+sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+sst_all_data<-clean_sst_data(sst_all_data_raw)
+sst_all_data <- get_expected_tone_time(sst_all_data)
+
+sst_all_data<-calculate_response_latency(sst_all_data)
+sst_all_data<-calculate_rpe(sst_all_data)
+
+sst_all_data<-label_arrows_and_responses(sst_all_data)
+
+sst_w1_data<-sst_all_data%>% filter(waveid==1)
+sst_w1_data<-merge(sst_w1_data,data_quality_SST)
+
+
+
+sst_non_cue<-sst_w1_data%>%filter(condition!="Cue")
+table(sst_non_cue$subj_response_label)
+table(sst_non_cue$subj_response_label,sst_non_cue$arrow_presented_label)
+table(sst_non_cue$subject_response,sst_non_cue$arrow_presented)
+
+```
+## and participant data
+
+```{r}
+ppt_data_filepath <- paste0(dropbox_file_dir,"data_by_ppt.csv")
+ppt_data <- readr::read_csv(ppt_data_filepath)
+```
+
+## merge
+
+```{r}
+library(dplyr)
+session_1_redcap_data <-redcap_data %>% filter(grepl("session_1", redcap_event_name))
+hunger_data <- session_1_redcap_data %>% select(dev_id,hunger_1)
+
+
+#regress_data<-merge(sst_all_data,hunger_data,by.x="subid",by.y="dev_id",all.x = TRUE,all.y=FALSE)
+```
+
+
+## get subject averages for the things we'll need throughout this analysis
+```{r}
+sst_data_go <- sst_w1_data %>% filter(go_no_go_condition_label=="Go")
+sst_data_go
+#get the subject-level average of go trial response
+
+subj_avg_go<-sst_data_go %>% group_by(subid) %>% summarize(
+  reaction_time_clean=mean(reaction_time_clean,na.rm=TRUE),
+  go_trials_removed = sum(is.na(reaction_time_clean)),
+  data_quality = sst_data_quality[[1]],
+  correct_response_prop = sum(subj_response_label==arrow_presented_label)/n(),
+  incorrect_response_prop = sum((subj_response_label!=arrow_presented_label) &subj_response_label!="non-response" )/n(),
+  nonresponse_prop = sum(subj_response_label=="non-response" )/n(),
+)
+
+subj_avg_all <- sst_w1_data %>% group_by(subid) %>% summarize(
+  post_pre_rt_change_mean = mean(post_pre_rt_change,na.rm=TRUE)
+)
+
+subj_avg <- merge(subj_avg_go,subj_avg_all)
+
+subj_data <- merge(subj_avg,hunger_data,by.x="subid",by.y="dev_id",all.x = TRUE,all.y=FALSE)
+subj_data_complete<-merge(subj_data,ppt_data,by.x="subid",by.y="SID",all.x = TRUE,all.y=FALSE)
+```
+
+
+# First test on Go trials
+
+
+Do participants (1) respond faster on Go trials when hungry (2) Respond faster to attractive foods (3) do the prior to interact?
+
+## hunger by response time
+
+
+```{r}
+clean_subj_data<-subj_data %>% filter(data_quality=="No reported problems" & correct_response_prop>0.8)
+clean_subj_data_complete<-subj_data_complete %>% filter(data_quality=="No reported problems" & correct_response_prop>0.8)
+#now we can test: do subjedcts respond faster on go trials when hungry?
+
+cor.test(clean_subj_data$reaction_time_clean,clean_subj_data$hunger_1)
+
+#they do not. that is pretty damn conclusive
+plot(clean_subj_data$reaction_time_clean,clean_subj_data$hunger_1)
+
+#although--is that a bivariate split of reaction time?
+#what could be causing it?
+#remembering that this is _subject level_ data
+
+
+```
+
+
+try gender
+```{r}
+cor.test(clean_subj_data_complete$SST_PostErrorSlowW1_mean,clean_subj_data_complete$hunger_1)
+cor.test(subj_data$post_pre_rt_change,subj_data$hunger_1)
+```
+
+```{r}
+
+ggplot(clean_subj_data_complete,aes(x=reaction_time_clean,y=hunger_1,color=correct_response_prop>0.6))+geom_point(alpha=0.5)
+```
+
+What about task performance?
+
+```{r}
+last_ladder_for_subj <- sst_w1_data %>% group_by(subid) %>% filter(LadderX_SSD_ms>0) %>% summarize(LadderX_SSD_ms[n()])
+colnames(last_ladder_for_subj)<-c("subid","last_ladder")
+subj_data_complete2<-merge(clean_subj_data_complete,last_ladder_for_subj)
+ggplot(subj_data_complete2,aes(x=reaction_time_clean,y=hunger_1,color=last_ladder))+geom_point(alpha=0.5)
+
+#so hypothesis is that subjects who are not paying attention have no relation btween hunger and a high reaction time
+#whereas subjects who are paying attention have a somewhat lower reaction time that is related to hunger.
+#wonder if there's any kind of attention check we can do.
+#we never scored their arrow performance; that might be worth doing.
+#so we'd expect...rt inversely predicts hunger, if people are paying attention; if they are not, it doesn't, so
+#RT should negatively predict hunger; ladder should be independent of hunger, but there should be a positive interaction between ladder and RT on hunger, such that ladder is high, RT no longer matters.
+#a *moderation* effect
+subj_data_complete2$reaction_time_clean_n<-scale(subj_data_complete2$reaction_time_clean)
+subj_data_complete2$hunger_1_n<-scale(subj_data_complete2$hunger_1)
+subj_data_complete2$last_ladder_n<-scale(subj_data_complete2$last_ladder)
+summary(lm(hunger_1_n~reaction_time_clean_n*last_ladder_n,subj_data_complete2))
+summary(lm(hunger_1_n~reaction_time_clean_n,subj_data_complete2%>% filter(reaction_time_clean_n<0.7)))
+
+cor.test(subj_data_complete2$last_ladder,subj_data_complete2$reaction_time_clean_n)
+```
+So, yeah, I'm not dreaming, there is something going on here; it's just a matter of whether we can nail it with a better attention check than ladder.
+
+OK, we should exclude subjects reported as possibly bad data in the docs.
+
+
+
+```{r}
+hist(subj_data$hunger_1)
+```
+Maybe subjects are tired in go trials and tend to respond slower and that counteracts their responses. Let's come back to that later but first
+
+
+## Do subjects respond faster to attractive foods?
+
+```{r}
+clean_table <- subj_data %>% select(subid, data_quality, correct_response_prop)
+sst_data_go2<-merge(sst_data_go, clean_table)
+mean_diffs<-sst_data_go2 %>% group_by(subid,health_condition_label) %>% summarize(
+  reaction_time_clean=mean(reaction_time_clean,na.rm=TRUE),
+  go_trials_removed = sum(is.na(reaction_time_clean)),
+) %>% pivot_wider(subid,names_from="health_condition_label",values_from="reaction_time_clean") %>% 
+  mutate(d_mean_rt_healthy_m_unhealthy=Healthy-Unhealthy)
+
+subj_data <- merge(subj_data,mean_diffs,by.x="subid",by.y="subid",all.x = TRUE,all.y=FALSE)
+
+subj_data$isclean<- subj_data$data_quality=="No reported problems" & subj_data$correct_response_prop>0.8
+subj_data_clean <- subj_data %>% filter(isclean)
+t.test(subj_data_clean %>% select(d_mean_rt_healthy_m_unhealthy))
+
+```
+
+That is a resounding "no it's the opposite!" 
+```{r}
+print(mean(mean_diffs$Healthy))
+print(mean(mean_diffs$Unhealthy))
+```
+
+They do not.
+
+```{r}
+
+hist(subj_data$d_mean_rt_healthy_m_unhealthy,breaks = 100)
+```
+
+
+## Is there an interaction: is subject hunger linked to difference in response times?
+
+```{r}
+cor.test(subj_data_clean$d_mean_rt_healthy_m_unhealthy,subj_data_clean$hunger_1)
+cor.test(subj_data_clean$d_mean_rt_healthy_m_unhealthy,subj_data_clean$hunger_1,method = "spearman")
+```
+
+Nope.
+
+```{r}
+subj_data_clean$d_mean_rt_healthy_m_unhealthy_ms<-subj_data_clean$d_mean_rt_healthy_m_unhealthy*1000
+ggplot(subj_data_clean,aes(hunger_1,d_mean_rt_healthy_m_unhealthy_ms))+geom_jitter(height=0, width=0.4)+geom_smooth(method="lm")+
+  geom_hline(yintercept = 0,linetype="dashed")+scale_y_continuous(name="Difference in mean healthy\n minus mean unhealthy response time (ms)")+
+  scale_x_continuous("hunger score")
+```
+
+Nope.

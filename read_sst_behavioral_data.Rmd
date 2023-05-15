@@ -73,21 +73,10 @@ get_run_def_from_mat_filepath <- function(filepath){
 }
 ```
 
-The code below reads in raw data from the SST task
+
 ```{r}
-raw_behavioral_data_filepath <- paste0(sst_on_dropbox,"/output/")
-fname_list <- list.files(raw_behavioral_data_filepath,pattern = "DEV\\d*\\_run\\d\\_.*\\.mat")
-subj_ids <- unique(str_match(fname_list,"(DEV\\d{3})_.*")[,2])
-study_df_list <- list()
-#loop through each subject because the waves are not pre-labelled. this way we can control the number of runs per subject.
-for (subj in subj_ids){
-#subj<-subj_ids[[1]]
-  if(subj!=subj_ids[[1]]){cat(", ")}
-  cat(paste0(subj))
-  subj_fnames <- sort(fname_list[str_detect(fname_list,subj)])
-  for(fname in subj_fnames){
-    #fname<-fname_list[[1]]
-    finfo <- str_match(fname,"(DEV\\d{3})_run(\\d)_(\\d*-[a-zA-Z]*-\\d*)\\_(\\d*-\\d*.*)\\.mat")
+get_formatted_seeker_from_mat_file <-function(fname,raw_behavioral_data_filepath){
+  finfo <- str_match(fname,"(DEV\\d{3})_run(\\d)_(\\d*-[a-zA-Z]*-\\d*)\\_(\\d*-\\d*.*)\\.mat")
     subid<-finfo[,2]
     waveid<-finfo[,3]
     run_date<-finfo[,4]
@@ -96,7 +85,8 @@ for (subj in subj_ids){
     seeker <- data.frame(run_mat_file$Seeker)
     #labels taken from:
     #https://github.com/UOSAN/SST_DEV/blob/8e297ff0f003d65157f8a9d8fa28a655f94d75e5/code/experiment/runSST.m#L233
-    colnames(seeker) <- c("trial_n","numchunks_reciprocal","go_no_go_condition","arrow_presented","ladder_number","LadderX_SSD_ms","subject_response","ladder_movement","reaction_time","SSD_technical","SSD_observed","onset","arrow_appearance_t","SSD_recorded","trial_duration","time_course","health_condition")
+    colnames(seeker) <- c("trial_n","numchunks_reciprocal","go_no_go_condition","arrow_presented","ladder_number","LadderX_SSD_ms","subject_response","ladder_movement","reaction_time","SSD_technical","SSD_observed","onset","arrow_appearance_t","SSD_recorded",
+                          "trial_duration","time_course","health_condition")
     seeker$subid<-subid
     seeker$waveid<-waveid
     seeker$runid<-1 #there's always only one run.
@@ -118,6 +108,35 @@ for (subj in subj_ids){
             TRUE ~ as.character(NA)
           )
       )
+    #% The 17th column is the UvH code (0=unhealthy, 1=healthy, 2=null)
+    seeker <- seeker %>% mutate(
+      health_condition_label = case_when(
+            health_condition == 0 ~ "Unhealthy",
+            health_condition == 1 ~ "Healthy",
+            health_condition == 2 ~ as.character(NA),
+            TRUE ~ as.character(NA)
+          )
+      )
+    
+    return(seeker)
+}
+```
+
+The code below reads in raw data from the SST task
+```{r}
+raw_behavioral_data_filepath <- paste0(sst_on_dropbox,"/output/")
+fname_list <- list.files(raw_behavioral_data_filepath,pattern = "^DEV\\d*\\_run\\d\\_.*\\.mat")
+subj_ids <- unique(str_match(fname_list,"(DEV\\d{3})_.*")[,2])
+study_df_list <- list()
+#loop through each subject because the waves are not pre-labelled. this way we can control the number of runs per subject.
+for (subj in subj_ids){
+#subj<-subj_ids[[1]]
+  if(subj!=subj_ids[[1]]){cat(", ")}
+  cat(paste0(subj))
+  subj_fnames <- sort(fname_list[str_detect(fname_list,subj)])
+  for(fname in subj_fnames){
+    #fname<-fname_list[[1]]
+    seeker <- get_formatted_seeker_from_mat_file(fname,raw_behavioral_data_filepath)
     study_df_list<-append(study_df_list,list(seeker))
   }
 }
@@ -125,59 +144,110 @@ for (subj in subj_ids){
 study_df <- data.frame(data.table::rbindlist(study_df_list))
 
 ```
+Let's add some additional important information.
 
+This will be the jitter and the "ODI" which is the delay between trial onset and arrow onset
 
 ```{r}
-readr::write_csv(study_df,file = paste0(data_path,"sst_behavioral_data_all.csv"))
 
+
+jitter_values = readr::read_table(paste0(sst_on_dropbox,'/output/jitter.txt'),skip=1,col_names="jitter")
+
+jitter_values_df = data.frame(
+  'trial_n'= (1:nrow(jitter_values))*2-1,
+  'jitter_value'=jitter_values$jitter)
+study_df_aug = merge(study_df,jitter_values_df,by = 'trial_n', how='left',all.x = TRUE,sort = FALSE) %>%
+  arrange(subid, waveid, runid, trial_n)
+study_df_aug$OCI = 0.5 + study_df_aug$jitter_value
+study_df_aug$onset_arrow <- study_df_aug$OCI + study_df_aug$onset 
 ```
 
 
 ```{r}
+readr::write_csv(study_df_aug,file = paste0(data_path,"sst_behavioral_data_all.csv"))
 
+```
+
+#separate source of SSRT
+
+```{r}
+source("SST_processing.R")
+
+sst_all_data_raw <- study_df_aug
+sst_all_data<-clean_sst_data(sst_all_data_raw)
+sst_all_data <- get_expected_tone_time(sst_all_data)
+
+sst_all_data<-calculate_response_latency(sst_all_data)
+sst_all_data<-calculate_rpe(sst_all_data)
+
+#calculate proportion of stop trials that were correct. ideally should be 50/50 but let's check it.
+sst_all_data<-get_more_sst_trial_stats(sst_all_data)
+
+#remove subjects with two many incorrect trials--theyre' probably not paying attention
+#hist(sst_all_data$stop_prop_correct)
+
+#sst_all_data <- sst_all_data %>% filter(stop_prop_correct>0.3)
+
+readr::write_csv(sst_all_data,file = paste0(data_path,"sst_behavioral_data_all_comprehensive.csv"))
+
+```
+
+
+# Check vs. REDCAP
+
+I'm going to check the data above vs. Redcap-derived data to identify any data that might be missing which we should have.
+
+# Summary stats
+
+
+```{r}
+
+# #now we get summary statistics for each subject:
+# #direction errors, proportion of successful stops, reaction time on Go trials, and stop signal reaction time (SSRT).
+# #add runid to the group_by clause to group by run; but for our purposes we are happy to count across run!
+# 
+# condition_count <- study_df %>% group_by(subid,condition) %>% count() %>% ungroup()
+# go_trial_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectGo" | condition=="FailedGo") %>% summarise(go_trial_reaction_time = mean(reaction_time)) %>% ungroup()
+# 
+# stop_signal_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectStop") %>% summarise(raw_stop_signal_duration = mean(reaction_time)) %>% ungroup()
+# 
+# prop_successful_stops <- condition_count %>% group_by(subid) %>% 
+#   tidyr::spread(key = "condition",value="n") %>%
+#   mutate(prop_successful_stops=CorrectStop/(CorrectStop+FailedStop)) %>% ungroup()
+# 
+# for(cname in c("CorrectGo","CorrectStop","FailedGo","FailedStop")){
+#   prop_successful_stops[is.na(prop_successful_stops[[cname]]),cname]<-0
+# }
+# 
+# 
+# summary_stats <- prop_successful_stops %>% merge(stop_signal_mean_reaction_time) %>% merge(go_trial_mean_reaction_time)
+# 
+
+
+```
+
+```{r}
+# summary_stats
+```
+
+```{r}
+
+# readr::write_csv(summary_stats,file=paste0(data_path,"sst_summary_stats.csv"))
+
+```
+
+```{r}
 #now we get summary statistics for each subject:
 #direction errors, proportion of successful stops, reaction time on Go trials, and stop signal reaction time (SSRT).
 #add runid to the group_by clause to group by run; but for our purposes we are happy to count across run!
 
-condition_count <- study_df %>% group_by(subid,condition) %>% count() %>% ungroup()
-go_trial_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectGo" | condition=="FailedGo") %>% summarise(go_trial_reaction_time = mean(reaction_time)) %>% ungroup()
+condition_count <- sst_all_data %>% group_by(runid,subid,condition) %>% count() %>% ungroup()
+trial_summary_data <- sst_all_data %>% group_by(runid,waveid, subid) %>% 
+  summarise(go_trial_reaction_time = mean(reaction_time[condition %in% c("CorrectGo","FailedGo")]),
+            reaction_time = mean(reaction_time[condition %in% c("CorrectStop")]),
+            mean_ssrt_0 = mean(ssrt_0[condition=="CorrectStop"],na.rm=TRUE)
+            ) %>% ungroup()
 
-stop_signal_mean_reaction_time <- study_df %>% group_by(subid) %>% filter(condition=="CorrectStop") %>% summarise(raw_stop_signal_duration = mean(reaction_time)) %>% ungroup()
-
-prop_successful_stops <- condition_count %>% group_by(subid) %>% 
-  tidyr::spread(key = "condition",value="n") %>%
-  mutate(prop_successful_stops=CorrectStop/(CorrectStop+FailedStop)) %>% ungroup()
-
-for(cname in c("CorrectGo","CorrectStop","FailedGo","FailedStop")){
-  prop_successful_stops[is.na(prop_successful_stops[[cname]]),cname]<-0
-}
-
-
-summary_stats <- prop_successful_stops %>% merge(stop_signal_mean_reaction_time) %>% merge(go_trial_mean_reaction_time)
-
-
-
-```
-
-```{r}
-summary_stats
-```
-
-```{r}
-
-readr::write_csv(summary_stats,file=paste0(data_path,"sst_summary_stats.csv"))
-
-```
-
-```{r}
-#now we get summary statistics for each subject:
-#direction errors, proportion of successful stops, reaction time on Go trials, and stop signal reaction time (SSRT).
-#add runid to the group_by clause to group by run; but for our purposes we are happy to count across run!
-
-condition_count <- study_df %>% group_by(runid,subid,condition) %>% count() %>% ungroup()
-go_trial_mean_reaction_time <- study_df %>% group_by(runid,subid) %>% filter(condition=="CorrectGo" | condition=="FailedGo") %>% summarise(go_trial_reaction_time = mean(reaction_time)) %>% ungroup()
-
-stop_signal_mean_reaction_time <- study_df %>% group_by(runid,subid) %>% filter(condition=="CorrectStop") %>% summarise(reaction_time = mean(reaction_time)) %>% ungroup()
 
 prop_successful_stops <- condition_count %>% group_by(runid,subid) %>% 
   tidyr::spread(key = "condition",value="n") %>%
@@ -187,7 +257,7 @@ for(cname in c("CorrectGo","CorrectStop","FailedGo","FailedStop")){
   prop_successful_stops[is.na(prop_successful_stops[[cname]]),cname]<-0
 }
 
-summary_stats_by_run <- prop_successful_stops %>% merge(stop_signal_mean_reaction_time) %>% merge(go_trial_mean_reaction_time)
+summary_stats_by_run <- prop_successful_stops %>% merge(trial_summary_data)
 
 
 ```
@@ -197,6 +267,7 @@ summary_stats_by_run <- prop_successful_stops %>% merge(stop_signal_mean_reactio
 
 readr::write_csv(summary_stats_by_run,file=paste0(data_path,"sst_summary_stats_by_run.csv"))
 
+#old_format <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
 ```
 
 
@@ -245,6 +316,7 @@ presummarized_data_all <- presummarized_data_all_raw[row_without_values==FALSE,]
 
 presummarized_data_all$wave <-as.integer(sub("wave","",presummarized_data_all$wave))
 ```
+
 
 
 

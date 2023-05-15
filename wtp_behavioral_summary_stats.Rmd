@@ -62,6 +62,9 @@ wtp_by_run <- wtp_raw %>% select(subject,run,wave,health_cond,value_level) %>%
     )
 ```
 
+
+
+
 ```{r}
 
 wtp_across_runs <- wtp_raw %>% select(subject,wave,health_cond,value_level) %>% 

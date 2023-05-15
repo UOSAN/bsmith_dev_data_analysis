@@ -123,9 +123,9 @@ Now get behavioral measures.
 # sst_pes <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing.csv"))
 sst_pes_simple <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing_simple_approach.csv"))
 #should be wave 1 by default.
-sst_data_1 <- readr::read_csv(file=paste0(data_path,"sst_summary_stats_by_run.csv"))
-sst_data_2 <- readr::read_csv(file=paste0(data_path,"sst_pre_analyzed_stats.csv"))
-sst_data_1_w1 <- sst_data_1%>%filter(runid==1)%>% select(-runid)
+sst_data_1 <- readr::read_csv(file=paste0(dropbox_file_dir,"sst_summary_stats_by_run.csv"))
+sst_data_2 <- readr::read_csv(file=paste0(dropbox_file_dir,"sst_pre_analyzed_stats.csv"))
+sst_data_1_w1 <- sst_data_1%>%filter(runid==1 & waveid==1)%>% select(-runid, -waveid)
 sst_data_2_w1 <- sst_data_2 %>% filter(wave==1) %>% select(-wave)
 sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE) %>%
   #merge(sst_pes[,2:ncol(sst_pes)],by="subid",all=TRUE) %>%
@@ -133,8 +133,8 @@ sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",al
 
 
 
-roc_data <- readr::read_csv(file=paste0(data_path,"roc_summary_stats.csv"))
-load(file=paste0(data_path,"wtp_summary_stats_across_runs.Rdata"))
+roc_data <- readr::read_csv(file=paste0(dropbox_file_dir,"roc_summary_stats.csv"))
+load(file=paste0(dropbox_file_dir,"wtp_summary_stats_across_runs.Rdata"))
 
 
 
@@ -598,7 +598,26 @@ Obese	32% +	25% +
 
 
 
-With ~200 subjects, how often would we expect subjects 2 or 3 or 4 SD outside the mean?
+With ~275 subjects, how often would we expect subjects 2 or 3 or 4 SD outside the mean?
+
+First: what's the expected number of subjects we'd expect outside the mean:
+```{r}
+(1-pnorm(4,0,1))*275
+(1-pnorm(5,0,1))*275
+
+```
+
+now what's the probability of finding subjects 4 or 5 SD outside the mean, on either side?
+
+
+```{r}
+(1-pnorm(3,0,1)^275)*2
+(1-pnorm(4,0,1)^275)*2
+(1-pnorm(5,0,1)^275)*2
+
+```
+
+Therefore I think it would be fair to exclude any data point more than 4 SD outside the mean. The odds of even one subject hitting above that mark are less than 1%, given a normal distribution.
 
 ```{r}
 
@@ -607,16 +626,25 @@ for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
   if(sum(is.na(data_by_ppt[[coln]]))<length(data_by_ppt[[coln]])){
     
     na_row <- is.na(unlist(data_by_ppt[coln]))
-    col_vals <- unlist(data_by_ppt[!na_row,coln])
+    col_vals <- data_by_ppt[!na_row,coln]
+    col_sids <- data_by_ppt[!na_row,"SID"]
     if(class(col_vals)!="factor"){
-      col_sids <- data_by_ppt[!na_row,"SID"]
+      
       col_mean<-mean(col_vals)
       col_sd<-sd(col_vals)
       outliers_4sigma <- (col_vals < col_mean - col_sd * 4) | (col_vals > col_mean + col_sd * 4)
       outliers_5sigma <- (col_vals < col_mean - col_sd * 5) | (col_vals > col_mean + col_sd * 5)
       if(sum(outliers_4sigma)+sum(outliers_5sigma)>0){
-        print(paste(coln, ": 4 sigma outliers are:",paste(data_by_ppt[outliers_4sigma,"SID"],collapse = ","), "; 5 sigma outliers are:",paste(data_by_ppt[outliers_5sigma,"SID"],collapse = ",")))
-      }      
+        print(paste(coln, ": 4 sigma outliers are:",paste(col_sids[outliers_4sigma],collapse = ","), "; 5 sigma outliers are:",paste(data_by_ppt[outliers_5sigma,"SID"],collapse = ",")))
+      }
+      if(sum(outliers_4sigma)>0){
+        print(paste0("removing ",as.character(sum(outliers_4sigma))," 4-sigma outliers from the ",coln, " column in the dataset."))
+        for (outlier_sid in col_sids[outliers_4sigma]){
+          print(outlier_sid)
+          data_by_ppt[data_by_ppt$SID==outlier_sid,coln]<-NA
+        }
+      }
+      
     }
   }
 }

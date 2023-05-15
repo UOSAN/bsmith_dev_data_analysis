@@ -10,7 +10,7 @@ library(dplyr)
 knitr::opts_chunk$set(echo = TRUE)
 #data_path <- "../../../files/data/"
 Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
-data_dir <- config::get("dev_analysis_data_dir")
+data_dir <-  config::get("dev_analysis_data_dir")
 roc_task_dir <- paste0(config::get("dropbox_path"),"/Berkman Lab/Devaluation/Tasks/ROC/output")
 ```
 

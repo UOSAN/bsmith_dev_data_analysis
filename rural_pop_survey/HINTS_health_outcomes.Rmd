@@ -46,7 +46,7 @@ Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 
 source("HINTS_preprocessing.R")
 hints5 <-get_hints5(paste0(config::get("hints_protected_data_folderpath"),"/"))
-boot_times<-10000
+boot_times<-100
 include_hispanic_status <- TRUE
 if(include_hispanic_status){
   race_vars <- "RacePP+Hisp_Cat2"
@@ -247,7 +247,7 @@ library(mediation)
 
 set.seed(7042643)
 
-mediation_result = run_HINTS_mediation("GeneralHealth_i", "Fruit_vegetables_z", is_logistic=FALSE)
+mediation_result1 = run_HINTS_mediation("GeneralHealth_i", "Fruit_vegetables_z", is_logistic=FALSE)
 ```
 
 
@@ -261,7 +261,7 @@ mediation_result = run_HINTS_mediation("GeneralHealth_i", "Fruit_vegetables_z", 
 
 set.seed(7422649)
 
-mediation_result = run_HINTS_mediation("MedConditions_HighBP_i", "Fruit_vegetables_z", is_logistic=TRUE)
+mediation_result2 = run_HINTS_mediation("MedConditions_HighBP_i", "Fruit_vegetables_z", is_logistic=TRUE)
 
 
 ```
@@ -293,7 +293,7 @@ mediation_result = run_HINTS_mediation("MedConditionsAggregate", "Fruit_vegetabl
 
 
 set.seed(9966743)
-mediation_result = run_HINTS_mediation("EverHadCancer_i", "Fruit_vegetables_z", is_logistic=FALSE)
+mediation_result3 = run_HINTS_mediation("EverHadCancer_i", "Fruit_vegetables_z", is_logistic=FALSE)
 
 ```
 ## Rural health outcomes are mediated by income.
@@ -310,7 +310,7 @@ library(mediation)
 
 set.seed(06803234)
 
-mediation_result = run_HINTS_mediation("GeneralHealth_i", "IncomeRanges_r", is_logistic=FALSE)
+mediation_result4 = run_HINTS_mediation("GeneralHealth_i", "IncomeRanges_r", is_logistic=FALSE)
 ```
 
 
@@ -324,7 +324,7 @@ mediation_result = run_HINTS_mediation("GeneralHealth_i", "IncomeRanges_r", is_l
 
 set.seed(96079559)
 
-mediation_result = run_HINTS_mediation("MedConditions_HighBP_i", "IncomeRanges_r", is_logistic=TRUE)
+mediation_result5 = run_HINTS_mediation("MedConditions_HighBP_i", "IncomeRanges_r", is_logistic=TRUE)
 
 
 ```
@@ -340,7 +340,7 @@ mediation_result = run_HINTS_mediation("MedConditions_HighBP_i", "IncomeRanges_r
 
 
 set.seed(30738241)
-mediation_result = run_HINTS_mediation("MedConditionsAggregate", "IncomeRanges_r", is_logistic=FALSE)
+mediation_result6 = run_HINTS_mediation("MedConditionsAggregate", "IncomeRanges_r", is_logistic=FALSE)
 
 ```
 
@@ -354,12 +354,16 @@ mediation_result = run_HINTS_mediation("MedConditionsAggregate", "IncomeRanges_r
 
 
 set.seed(76567222)
-mediation_result = run_HINTS_mediation("EverHadCancer_i", "IncomeRanges_r", is_logistic=FALSE)
+mediation_result7 = run_HINTS_mediation("EverHadCancer_i", "IncomeRanges_r", is_logistic=FALSE)
 
 ```
 
 ```{r}
 save.image(file=paste0(config::get("rural_data_dir"),"HINTS_health_outcomes_bt_",as.character(boot_times),"_hs_",as.character(include_hispanic_status),".Rdata"))
+# load(file=paste0(config::get("rural_data_dir"),"HINTS_health_outcomes_bt_",as.character(boot_times),"_hs_",as.character(include_hispanic_status),".Rdata"))
 ```
 
+```{r}
+
+```
 

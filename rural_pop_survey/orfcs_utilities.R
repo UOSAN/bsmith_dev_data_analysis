@@ -195,11 +195,10 @@ zscore <- function(x){
 }
 
 
-
 extract_and_label_bootstrap_results<-function(fit_obj){
   fit_to_read <- fit_obj
   #sink("temp_diversion.txt")
-  fit_pe<-summary(fit_to_read,ci=TRUE)$PE
+  fit_pe<-summary(fit_to_read,ci=TRUE)$pe
   #sink(NULL)
   
   #the main purpose of this function is that we have to select only the "base" labelled coefficients and not the derived ones.
