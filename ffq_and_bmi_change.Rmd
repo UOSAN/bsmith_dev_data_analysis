@@ -1,0 +1,284 @@
+---
+title: "SST_test_intervention_effects"
+author: "Ben Smith"
+date: "2023-08-30"
+output: html_document
+
+---
+
+
+```{r setup, include=FALSE}
+library(dplyr)
+
+knitr::opts_chunk$set(echo = TRUE)
+#data_path <- "../../../files/data/"
+data_path <- config::get("dev_analysis_data_dir")
+
+full_dataset_with_groups <- readr::read_csv(paste0(data_path,"full_dataset_aim3.csv"))
+full_dataset_with_groups$intervention_group<-factor(full_dataset_with_groups$intervention_group,levels=c("willamette","umpqua","mckenzie"))
+
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+sst_all_data_filepath <- paste0(dropbox_file_dir,"sst_behavioral_data_all.csv")
+
+sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+
+all_ppt_data <- readr::read_csv(paste0(dropbox_file_dir,"data_by_ppt_all_sessions.csv"))
+```
+
+
+
+# Behavioral predictions
+
+## BRT theory:
+    - BR Training (vs. Control) decreases RT to healthy foods and increases RT to unhealthy foods; because the SST task calibrates difficulty level, these two will be difficult to pull apart but we should see an increase Unhealthy RT - Healthy RT
+    
+    
+### Simple look at CG trials, reaction times, comparing task means
+    
+```{r}
+library(tidyverse)
+
+#all_ppt_data %>% select(SID, session_id, SST_mean_ssrt_0) %>%  
+
+healthy_vs_unhealthy <- sst_all_data_raw %>% filter(condition %in% c("CorrectGo","FailedStop")) %>% dplyr::select(subid,waveid,trial_n,condition,reaction_time,health_condition_label) %>%
+  group_by(subid,waveid,condition,health_condition_label) %>%
+  summarize(mean_rt=mean(reaction_time), mean_trial_n=mean(trial_n)) %>%
+  pivot_wider(names_from="health_condition_label",values_from = c("mean_rt","mean_trial_n"))
+
+healthy_vs_unhealthy$healthy_minus_unhealthy_rt <- healthy_vs_unhealthy$mean_rt_Healthy-healthy_vs_unhealthy$mean_rt_Unhealthy
+healthy_vs_unhealthy$healthy_minus_unhealthy_trial_n <- healthy_vs_unhealthy$mean_trial_n_Healthy-healthy_vs_unhealthy$mean_trial_n_Unhealthy
+  
+```
+
+```{r}
+for(cond in c("CorrectGo","FailedStop")){
+  print(cond)
+  healthy_vs_unhealthy_select_cond<-healthy_vs_unhealthy %>%filter(condition==cond)
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==1) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==1) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==2) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==2) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==3) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==3) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==4) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==4) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==5) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==5) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+
+}
+
+
+# t.test(healthy_vs_unhealthy %>% filter(waveid==4) %>% .$mean_rt_Healthy,healthy_vs_unhealthy %>% filter(waveid==4) %>% .$mean_rt_Unhealthy,paired = TRUE)
+# t.test(healthy_vs_unhealthy %>% filter(waveid==5) %>% .$mean_rt_Healthy,healthy_vs_unhealthy %>% filter(waveid==5) %>% .$mean_rt_Unhealthy,paired = TRUE)
+#t.test(healthy_vs_unhealthy %>% filter(waveid==1) %>% .$mean_trial_n_Healthy,healthy_vs_unhealthy %>% filter(waveid==1) %>% .$mean_trial_n_Unhealthy,paired = TRUE)
+```
+
+Reaction time for Unhealthy trials is actually _longer_ at an absolute. This seems to be an effect of the study: there's no difference at wave 1, but there is a difference at wave 2. But is it due to the interventions?
+
+Also it is noteable that the changes _lasted_ over time. What's really odd is that for FailedStop trials the effect wasn't immediately observable, but it was observable over time.
+
+It's still going to be important to look at stop signal reaction time. We should be able to calculate that separately for healthy and unhealthy trials.
+
+### adding in wave contrast
+
+```{r}
+value_cols <- colnames(healthy_vs_unhealthy)[!(colnames(healthy_vs_unhealthy) %in% c("subid", "waveid","condition"))]
+results_by_subj<-healthy_vs_unhealthy %>% pivot_wider(id_cols = c("subid","condition"),names_from="waveid",names_prefix="waveid_",values_from = value_cols)
+results_by_subj$mean_rt_Unhealthy_w2_m_w1<-results_by_subj$mean_rt_Unhealthy_waveid_2-results_by_subj$mean_rt_Unhealthy_waveid_1
+results_by_subj$mean_rt_Unhealthy_w3_m_w1<-results_by_subj$mean_rt_Unhealthy_waveid_3-results_by_subj$mean_rt_Unhealthy_waveid_1
+results_by_subj$healthy_minus_unhealthy_rt_w2_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_2-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
+results_by_subj$healthy_minus_unhealthy_rt_w3_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_3-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
+results_by_subj$healthy_minus_unhealthy_rt_w4_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_4-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
+for(cond in c("CorrectGo","FailedStop")){
+  print(cond)
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$healthy_minus_unhealthy_rt_w2_m_w1) %>% print
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$healthy_minus_unhealthy_rt_w3_m_w1) %>% print
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$mean_rt_Unhealthy_w2_m_w1) %>% print
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$mean_rt_Unhealthy_w3_m_w1) %>% print
+  
+}
+```
+
+OK, these results are starting to look at bit odd. But I think--because of the titration design--these are most interpretable when comparing between healthy and unhealthy ratehr htan looking at unhealthy conditions by themselves.
+
+
+### Condition interactions
+So--let's now look at change by condition!
+
+```{r}
+results_by_subj_int <- results_by_subj %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group),by.x = "subid",by.y="SID",all = FALSE)
+results_by_subj_int$intervention_group<-factor(results_by_subj_int$intervention_group,levels=c("willamette","umpqua","mckenzie"))
+summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+
+summary(lm(healthy_minus_unhealthy_rt_w3_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(healthy_minus_unhealthy_rt_w3_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+
+summary(lm(healthy_minus_unhealthy_rt_w4_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(healthy_minus_unhealthy_rt_w4_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+```
+OK--the behavioral intervention worked--in the first month. It seems to fade away after that. What's odd is that a main effect takes over. Perhaps that reflects that the SST itself is practice?
+
+The pre-registered hypothesis is **confirmed**. Behavioral response training (McKenzie) created a difference in unhealthy and healthy food training.
+
+There are further questions:
+
+ - Although we didn't pre-register it, we could look at how this might have affected Stop Signal Reaction Time (but what would be the implications?)
+ - How does participants' RT change relate to neural activities? do participants with greater change have greater neural activity changes?
+ - Does the magnitude of the change relate to FFQ changes?
+ 
+
+
+
+
+## Cognitive reappraisal theory:
+
+cognitive appraisal may lead to similar changes or it might not. CR gives people the ability to habitually or momentarily regulate their response to unhealthy food, but it isn’t clear whether this is going to be applied in very short time periods in an implicit manner as in the SST. Therefore, this is a test of the pathway CR uses. Does the CR modify the initial response to food, or does it take an effortful or at least specific contextual frame for it to be active?
+    - If CR elicits a broad and momentary change then we can expect an increase in RT to unhealthy food
+        - To confirm this hypothesis we’d have to see a greater increase in RT for CR vs. control
+    - If CR requires a level of effort or is context restricted we expect no change in RT to unhealthy food
+        - To really confirm this hypothesis, we’d have to see BRT being significantly *more* effective than CR, i.e., A greater increase in RT to unhealthy foods for BRT vs. CR
+
+
+
+```{r}
+#switch around the control group. the prediction for the second arm is NO change in RT to unhealthy food for cognitive reappraisal (umpqua) vs. Willammette (control) but that there IS more change in BRT
+summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo"))) # no significant change for umpqua confiremd
+
+results_by_subj_cog_appraisal<-results_by_subj_int
+results_by_subj_cog_appraisal$intervention_group<-factor(results_by_subj_cog_appraisal$intervention_group,levels=c("mckenzie", "willamette","umpqua"))
+
+summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group,results_by_subj_cog_appraisal %>% filter(condition=="CorrectGo" & intervention_group %in% c("mckenzie","umpqua")))) # but there wasn't a dedectable differnce in BRT vs. cognitive appraisal
+
+#what about looking at unhealthy on its own?
+summary(lm(mean_rt_Unhealthy_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo"))) # again, no significant change for umpqua confiremd
+
+results_by_subj_cog_appraisal<-results_by_subj_int
+results_by_subj_cog_appraisal$intervention_group<-factor(results_by_subj_cog_appraisal$intervention_group,levels=c("mckenzie", "willamette","umpqua"))
+
+summary(lm(mean_rt_Unhealthy_w2_m_w1~intervention_group,results_by_subj_cog_appraisal %>% filter(condition=="CorrectGo" & intervention_group %in% c("mckenzie","umpqua")))) # but there wasn't a dedectable differnce in BRT vs. cognitive appraisal
+
+```
+
+So we CANNOT SAY anything about this hypothesis, at least using this design.
+
+
+# Relationship with FFQ
+
+Can we detect a relationship between change in the unhealthy food responses, and the FFQ scores?
+
+```{r}
+
+
+
+summary(lm(NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_1wkpost~NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_baseline+intervention_group,full_dataset_with_groups))
+summary(lm(total_calorie_FFQ_NutrientDensity_1wkpost~full_dataset_with_groups$total_calorie_FFQ_NutrientDensity_baseline+intervention_group,full_dataset_with_groups))
+summary(lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost~CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_baseline+intervention_group,full_dataset_with_groups))
+#t.test(full_dataset_with_groups$total_calorie_FFQ_NutrientDensity_1wkpost-full_dataset_with_groups$total_calorie_FFQ_NutrientDensity_baseline)
+```
+
+Let's use the third of these--there's the strongest group effect to explain.
+
+NB that there's no change at all for McKenzie (BRT)! So any effect would be hidden in the noise and only applicable for a subset of the subjects.
+
+What I am curious about is: does the magnitude of change in RT predict the 1-week post score?
+
+This is getting pretty messy and is at the point where I should be integrating the mixed effects model but let's run with it so far...
+
+```{r}
+
+full_dataset_with_groups$CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline<-(
+  full_dataset_with_groups$CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost - 
+    full_dataset_with_groups$CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_baseline)
+
+full_dataset_with_groups$NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline<-(
+  full_dataset_with_groups$NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_1wkpost - 
+    full_dataset_with_groups$NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_baseline)
+
+
+summary(lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~intervention_group,full_dataset_with_groups)) #yep, the detected difference persists
+
+
+results_by_subj_int_ffq <- results_by_subj %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline,NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_baseline,NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline),by.x = "subid",by.y="SID",all = FALSE)
+
+summary(lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~healthy_minus_unhealthy_rt_w2_m_w1,results_by_subj_int_ffq %>% filter(condition=="CorrectGo")))
+summary(lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~healthy_minus_unhealthy_rt_w2_m_w1*intervention_group,results_by_subj_int_ffq %>% filter(condition=="CorrectGo")))
+
+
+summary(lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~healthy_minus_unhealthy_rt_w2_m_w1*intervention_group,results_by_subj_int_ffq %>% filter(condition=="CorrectGo" & intervention_group!="umpqua")))
+
+# summary(lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~healthy_minus_unhealthy_rt_w2_m_w1,results_by_subj_int_ffq %>% filter(intervention_group=="mckenzie" & condition=="CorrectGo")))
+# summary(lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~healthy_minus_unhealthy_rt_w2_m_w1,results_by_subj_int_ffq %>% filter(intervention_group=="umpqua" & condition=="CorrectGo")))
+# 
+# summary(lm(NUTRIENT_RICH_FOODS_INDEX_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~healthy_minus_unhealthy_rt_w2_m_w1*intervention_group,results_by_subj_int_ffq %>% filter(condition=="CorrectGo")))
+
+
+
+```
+
+
+Does the change in RT _mediate_ the FFQ score change driven by group?
+
+```{r}
+library(mediation)
+na_rows<-(results_by_subj_int_ffq %>% dplyr::select(healthy_minus_unhealthy_rt_w2_m_w1,intervention_group,CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline) %>% is.na %>% rowSums()) > 0
+selected_rows <- results_by_subj_int_ffq[!na_rows,] %>% filter(condition=="CorrectGo"   & intervention_group!="umpqua" )
+model_m<-lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group,selected_rows)
+model_y <- lm(CncrPrevLessCncrProm_2wkAverage_FFQ_NutrientDensity_1wkpost_m_baseline~healthy_minus_unhealthy_rt_w2_m_w1+intervention_group,selected_rows)
+summary(mediate(model.m = model_m,model.y=model_y,mediator = "healthy_minus_unhealthy_rt_w2_m_w1",treat="intervention_group",robustSE=TRUE))
+```
+```{r}
+#what about change in BF%--does this relate to change in FFQ? (surely we tested this in those )
+full_dataset_with_groups$age365_z<-scale(full_dataset_with_groups$age365)
+
+value_cols <- colnames(all_ppt_data)[!(colnames(all_ppt_data) %in% c("SID","session_id")) & sapply(all_ppt_data,class) %in% c("numeric","logical")]
+all_ppt_data_subjs <- all_ppt_data %>% dplyr::select(SID)
+all_ppt_data_s1 <- all_ppt_data %>% dplyr::filter(session_id==1) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
+all_ppt_data_s2 <- all_ppt_data %>% dplyr::filter(session_id==2) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
+all_ppt_data_s3 <- all_ppt_data %>% dplyr::filter(session_id==3) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
+all_ppt_data_s2_m_s1 <- cbind(all_ppt_data_subjs,(all_ppt_data_s2[,value_cols] - all_ppt_data_s1[,value_cols]))
+all_ppt_data_s2_m_s1_int<-all_ppt_data_s2_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
+
+all_ppt_data_s3_m_s1 <- cbind(all_ppt_data_subjs,(all_ppt_data_s3[,value_cols] - all_ppt_data_s1[,value_cols]))
+all_ppt_data_s3_m_s1_int<-all_ppt_data_s3_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
+
+
+```
+
+
+For theoretically consistent results, for the following model, we should see...
+
+ - NEGATIVE relationship between bf and IPAQ_MET (i.e., change in kCal burned correlates NEGATIVELY with body fat percentage)
+ - POSITIVE relationship between cancer_promoting and bf (i.e., higher cancer promoting consumption and higher body fat percetnage)
+ - NEGATIVE relationship between cancer_preventing and bf (i.e., higher cancer preventing consumption correlates NEGATIVELY with body fat percentage)
+ - NEGATIVE relationship between intervention and bf (i.e., interventions should lead to lower BF, BUT...possibly not if controlling for FFQ)
+ 
+
+```{r}
+summary(lm(bf~IPAQ_MET_kCal+cancer_promoting_FFQ+cancer_preventing_FFQ,all_ppt_data_s2_m_s1_int))
+summary(lm(bf~IPAQ_MET_kCal+cancer_promoting_FFQ+cancer_preventing_FFQ+age365_z+birthsex_factor,all_ppt_data_s2_m_s1_int))
+
+summary(lm(bf~IPAQ_MET_kCal+intervention_group,all_ppt_data_s2_m_s1_int))
+summary(lm(bf~IPAQ_MET_kCal+intervention_group+age365_z+birthsex_factor,all_ppt_data_s2_m_s1_int))
+summary(lm(bmi~IPAQ_MET_kCal+intervention_group+age365_z+birthsex_factor,all_ppt_data_s2_m_s1_int))
+
+
+```
+
+
+It does look like umpqua could be doing something...
+
+```{r}
+
+summary(lm(bf~IPAQ_MET_kCal+intervention_group*age365_z+birthsex_factor,all_ppt_data_s2_m_s1_int))
+summary(lm(bmi~IPAQ_MET_kCal+intervention_group*age365_z+intervention_group*birthsex_factor,all_ppt_data_s2_m_s1_int))
+
+```
+
+Both interventions appear to work better on younger people. I wonder if that holds out for FFQ as well?
+
+
+```{r}
+
+summary(lm(cancer_promoting_minus_preventing_FFQ~intervention_group+birthsex_factor,all_ppt_data_s2_m_s1_int))
+summary(lm(cancer_promoting_minus_preventing_FFQ~intervention_group*age365_z+birthsex_factor,all_ppt_data_s2_m_s1_int))
+
+```
+
+A little bit, but not so much. So for younger people, that relationship between FFQ and change in BF% might be stronger. Plausible.
+

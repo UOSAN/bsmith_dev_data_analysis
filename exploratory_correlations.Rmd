@@ -1,0 +1,221 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+```{r}
+library(dplyr)
+library(readxl)
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+knitr::opts_chunk$set(echo = TRUE)
+#data_path <- "../../../files/data/"
+data_path <- config::get("dev_analysis_data_dir")
+```
+
+
+# Broad correlations
+```{r}
+data_by_ppt <- readr::read_csv(paste0(data_path,"data_by_ppt.csv"))
+
+nutrient_density_data <- readr::read_csv(paste0(config::get("dropbox_dev_folder"),"/Data/Main Outcomes Data/FFQ Nutrient Density Analysis/DEV_NUTRIENT_DENSITY_PARTICIPANT.csv"))
+```
+
+```{r}
+
+```
+
+
+Now get the new Nutrient Density scale.
+
+
+
+```{r fig.width=8}
+baseline_nutrient_density_data <- nutrient_density_data %>% filter(survey_name=="DEV_baseline_FFQ")
+
+data_by_ppt <- merge(data_by_ppt, baseline_nutrient_density_data, by="SID")
+corr_vals <- data_by_ppt%>% select(contains("ing_FFQ"), bmi_0, bf_1,NUTRIENT_DENSITY_2wkAverage, ANTINUTRIENT_DENSITY_2wkAverage, FIBER_DENSITY_2wkAverage, CALORIE_DENSITY_2wkAverage, total_calorie)
+rownames(corr_vals)<-data_by_ppt$SID
+dim(corr_vals)
+```
+
+
+
+```{r fig.width=11}
+ggcorrplot::ggcorrplot(cor(corr_vals,use = "pairwise.complete.obs"),sig.level = 0.05,lab=TRUE)
+
+
+
+```
+
+
+
+```{r fig.width=8}
+
+GGally::ggpairs(corr_vals)
+
+```
+
+
+# Granular FFQ items
+
+Now relabel the FFQ items
+
+First get the data...
+
+```{r}
+data_by_wave_ppt <- readr::read_csv(paste0(data_path,"data_by_wave_ppt.csv"))
+
+table(data_by_wave_ppt[!is.na(data_by_wave_ppt$cancer_promoting_minus_preventing_FFQ),"session_id"])
+
+#let's select 
+FFQ_master_key <- readr::read_csv(paste0(config::get("dropbox_dev_folder"),"/DEV_scoring_rubrics/FFQ_master_key.csv"))
+colnames(FFQ_master_key)[1:2]<-c("FFQCode","FFQLabel")
+rename_key <- FFQ_master_key$FFQCode
+names(rename_key) <- FFQ_master_key$FFQLabel
+
+```
+
+
+
+
+Get a matrix describing correlations
+```{r }
+survey_raw <- readr::read_csv(paste0(data_path,"raw_survey_data.csv"))
+
+ffq_individual<-survey_raw %>% filter(grepl("FFQ\\_",item)) %>% tidyr::pivot_wider(names_from=item,values_from=value)
+
+table(ffq_individual$survey_name)
+ffq_individual_s1<-ffq_individual %>% filter(survey_name=="DEV Session 1 Surveys") %>% select(-survey_name,-Finished)
+
+ffq_individual_s1<-ffq_individual %>% filter(survey_name=="DEV Session 1 Surveys") %>% select(-survey_name,-Finished)
+ffq_cols<-grepl("FFQ\\_",colnames(ffq_individual_s1))
+ffq_individual_s1[,ffq_cols]<-apply(ffq_individual_s1[,ffq_cols],2,function(ffqcol){return(as.integer(ffqcol))})
+
+
+```
+
+Now relabel...
+```{r}
+
+ffq_individual_s1<- ffq_individual_s1 %>% rename(!!!rename_key)
+
+
+
+```
+
+
+```{r}
+library(ggplot2)
+ggcorr_show_large_vertical_graph <- function(mat_to_show){
+  return(ggcorrplot::ggcorrplot(t(mat_to_show[nrow(abridged_mat):1,]),sig.level = 0.05,lab=TRUE,tl.cex=12,lab_size=3)+scale_x_discrete(position="top")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 0))
+)
+}
+
+ggcorr_show_large_horizontal_graph <- function(mat_to_show){
+  return(ggcorrplot::ggcorrplot(mat_to_show,sig.level = 0.05,lab=TRUE,tl.cex=12,lab_size=3)
+)
+}
+```
+
+
+
+Get a matrix describing correlations
+```{r}
+#fig.width=12,fig.height=30
+
+
+
+health_measures_with_granular_ffq<-merge(corr_vals,ffq_individual_s1,by.x=0,by.y="SID") %>% rename("SID"="Row.names")
+
+
+full_corrmat<-cor(health_measures_with_granular_ffq %>% select(-SID),use = "pairwise.complete.obs")
+
+abridged_mat<-full_corrmat[,1:6]
+
+col_sort<-c(1:6,order(abridged_mat[7:length(rownames(abridged_mat)),colnames(abridged_mat)=="NUTRIENT_DENSITY_2wkAverage"])+6)
+
+
+#ggcorrplot::ggcorrplot(abridged_mat[col_sort,],sig.level = 0.05,lab=TRUE,tl.cex=12,lab_size=3)
+#ggcorr_show_large_vertical_graph(abridged_mat[col_sort,])
+
+```
+
+```{r fig.width=30,fig.height=12}
+ggcorr_show_large_horizontal_graph(abridged_mat[col_sort,])+labs(title="Ordered by nutrient density")
+```
+
+
+
+```{r}
+col_sort<-c(1:6,order(abridged_mat[7:length(rownames(abridged_mat)),colnames(abridged_mat)=="bf_1"])+6)
+
+
+```
+
+
+```{r fig.width=30,fig.height=12}
+ggcorr_show_large_horizontal_graph(abridged_mat[col_sort,])+labs(title="Ordered by bf_1")
+```
+
+# FFQ scored categories
+
+
+
+
+Get a matrix describing correlations
+```{r }
+load(paste0(data_path,"/scored_data_w_demographics.RData"))
+scored_ffq_subscales_long<-scored_with_demographics %>% filter(scale_name=="FFQ" & survey_name=="DEV Session 1 Surveys") %>% select(SID,scored_scale,score)
+
+
+scored_ffq_subscales <- scored_ffq_subscales_long %>% tidyr::pivot_wider(names_from=scored_scale,values_from=score)
+
+ffq_items<-colnames(scored_ffq_subscales)!="SID"
+
+scored_ffq_subscales[,ffq_items]<-apply(scored_ffq_subscales[,ffq_items],2,function(ffqcol){return(as.numeric(ffqcol))})
+
+
+```
+
+
+
+Get a matrix describing correlations
+```{r }
+
+
+
+
+health_measures_with_granular_ffq<-merge(corr_vals,scored_ffq_subscales,by.x=0,by.y="SID") %>% rename("SID"="Row.names")
+
+
+full_corrmat<-cor(health_measures_with_granular_ffq %>% select(-SID),use = "pairwise.complete.obs")
+
+abridged_mat<-full_corrmat[,1:6]
+
+col_sort<-c(1:6,order(abridged_mat[7:length(rownames(abridged_mat)),colnames(abridged_mat)=="NUTRIENT_DENSITY_2wkAverage"])+6)
+
+
+
+```
+
+
+
+```{r fig.width=15,fig.height=9}
+ggcorr_show_large_horizontal_graph(abridged_mat[col_sort,])+labs(title="Ordered by Nutrient Density")
+```
+
+
+```{r }
+col_sort<-c(1:6,order(abridged_mat[7:length(rownames(abridged_mat)),colnames(abridged_mat)=="bf_1"])+6)
+
+
+```
+
+
+
+
+```{r fig.width=15,fig.height=9}
+ggcorr_show_large_horizontal_graph(abridged_mat[col_sort,])+labs(title="Ordered by bf_1")
+```

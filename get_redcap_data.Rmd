@@ -8,7 +8,7 @@ cwd<-getwd()
 
 setwd("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/")
 
-source("DEV-OutcomesPreintervent_R_2022-08-17_2348.r")
+source("DEV-OutcomesPreAndPost_R_2023-06-21_2348.r")
 
 #setwd(cwd)
 ```
@@ -41,8 +41,8 @@ participant_list_raw <- dev2_pp_dt_all_sessions[,ppt_id,with=FALSE]
 #now remove missing data columns
 blank_by_row <- rowSums(is.na(participant_list_raw))+rowSums(participant_list_raw=="",na.rm = TRUE)
 #remove rows with the least amount of information
-ppt_list_clean.1 <- participant_list_raw[blank_by_row<max(blank_by_row)]
-ppt_list_clean <- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_id,"DEV\\d\\d\\d") & ppt_list_clean.1$dob!="",]
+# ppt_list_clean.1 <- participant_list_raw[blank_by_row<max(blank_by_row)]
+# ppt_list_clean <- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_id,"DEV\\d\\d\\d") & ppt_list_clean.1$dob!="",]
 
 ```
 
@@ -99,6 +99,32 @@ ppt_list_clean.1 <- ppt_anon_list_raw[blank_by_row<max(blank_by_row)]
 ppt_list_clean <- ppt_list_clean.1[stringr::str_detect(ppt_list_clean.1$dev_id,"DEV\\d\\d\\d") & ppt_list_clean.1$dob!="",]
 ```
 
+Process some demographic data
+```{r}
+
+race_cols <- colnames(ppt_list_clean)[grepl("race__",colnames(ppt_list_clean))]
+race_data <- ppt_list_clean[,..race_cols]
+#get labels
+race_data_labels <- unlist(lapply(stringr::str_match_all(label(race_data),pattern = "choice\\=(.*)\\)"),function(x)(x[,2])))
+
+race_friendly_colnames<-paste0("Race ",race_data_labels)
+setnames(race_data,race_cols,race_friendly_colnames)
+
+ppt_list_clean<-cbind(ppt_list_clean,race_data)
+
+
+```
+
+
+Amend some Sex data that was missing in Redcap and only available via a slack message: https://uosanlab.slack.com/archives/C6733G9QB/p1690932451744859?thread_ts=1690931783.736439&cid=C6733G9QB
+
+```{r}
+table(ppt_list_clean$birthsex)
+ppt_list_clean$birthsex[ppt_list_clean$dev_id=="DEV124"]<-1
+ppt_list_clean$birthsex[ppt_list_clean$dev_id=="DEV154"]<-1
+ppt_list_clean$birthsex[ppt_list_clean$dev_id=="DEV234"]<-2
+```
+
 
 ```{r}
 ppt_list_w_data <- ppt_list_clean
@@ -110,6 +136,7 @@ for (cname in cols_to_coalesce){
 }
 
 
+library(lubridate)
 save(ppt_list_w_data,file = paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/ppt_list_w_data_",today(),".Rdata"))
 ```
 

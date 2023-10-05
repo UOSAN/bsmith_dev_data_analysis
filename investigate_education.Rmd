@@ -1,0 +1,37 @@
+---
+title: "Power analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+
+#install.packages("tidystats")
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rstatix)
+library(data.table)
+source("utils.R")
+data_path <- "../../grant-writing-workshop/files/data/"
+
+load(paste0(config::get("dev_analysis_data_dir"),"scored_data_w_demographics.RData"))
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+scored<-scored_with_demographics
+rm(scored_with_demographics)
+scored$score <- as.numeric(scored$score)
+scored$scale_name <- sub("-","_",scored$scale_name)
+```
+
+```{r}
+education_scores <- scored %>% filter(scale_name=="DEMO" & scored_scale=="education_own") %>% .$score
+
+hist(as.numeric(education_scores))
+
+table(education_scores)
+```
+

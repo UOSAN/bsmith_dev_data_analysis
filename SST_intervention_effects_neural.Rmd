@@ -1,0 +1,229 @@
+---
+title: "SST_test_intervention_effects"
+author: "Ben Smith"
+date: "2023-08-30"
+output: html_document
+
+---
+
+
+```{r setup, include=FALSE}
+library(dplyr)
+source("SST_processing.R")
+
+knitr::opts_chunk$set(echo = TRUE)
+#data_path <- "../../../files/data/"
+data_path <- config::get("dev_analysis_data_dir")
+
+full_dataset_with_groups <- readr::read_csv(paste0(data_path,"full_dataset_aim3.csv"))
+full_dataset_with_groups$intervention_group<-factor(full_dataset_with_groups$intervention_group,levels=c("willamette","umpqua","mckenzie"))
+full_dataset_with_groups$age365_z<-scale(full_dataset_with_groups$age365)
+
+
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+sst_all_data_filepath <- paste0(dropbox_file_dir,"sst_behavioral_data_all.csv")
+
+sst_all_data_raw <- readr::read_csv(sst_all_data_filepath)
+sst_all_data_clean <-sst_all_data_raw %>% clean_sst_data
+
+all_ppt_data <- readr::read_csv(paste0(dropbox_file_dir,"data_by_ppt_all_sessions.csv"))
+```
+
+
+
+# Behavioral predictions
+
+## BRT theory:
+    - BR Training (vs. Control) decreases RT to healthy foods and increases RT to unhealthy foods; because the SST task calibrates difficulty level, these two will be difficult to pull apart but we should see an increase Unhealthy RT - Healthy RT
+    
+    
+### Simple look at CG trials, reaction times, comparing task means
+    
+```{r}
+library(tidyverse)
+
+
+#all_ppt_data %>% select(SID, session_id, SST_mean_ssrt_0) %>%  
+
+healthy_vs_unhealthy <- sst_all_data_clean %>% filter(condition %in% c("CorrectGo","FailedStop")) %>% dplyr::select(subid,waveid,trial_n,condition,reaction_time_clean,health_condition_label) %>%
+  group_by(subid,waveid,condition,health_condition_label) %>%
+  summarize(mean_rt=mean(reaction_time_clean,na.rm=TRUE), mean_trial_n=mean(trial_n)) %>%
+  pivot_wider(names_from="health_condition_label",values_from = c("mean_rt","mean_trial_n"))
+
+healthy_vs_unhealthy$healthy_minus_unhealthy_rt <- healthy_vs_unhealthy$mean_rt_Healthy-healthy_vs_unhealthy$mean_rt_Unhealthy
+healthy_vs_unhealthy$healthy_minus_unhealthy_trial_n <- healthy_vs_unhealthy$mean_trial_n_Healthy-healthy_vs_unhealthy$mean_trial_n_Unhealthy
+  
+```
+
+```{r}
+for(cond in c("CorrectGo","FailedStop")){
+  print(cond)
+  healthy_vs_unhealthy_select_cond<-healthy_vs_unhealthy %>%filter(condition==cond)
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==1) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==1) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==2) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==2) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==3) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==3) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==4) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==4) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==5) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==5) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
+
+}
+
+
+# t.test(healthy_vs_unhealthy %>% filter(waveid==4) %>% .$mean_rt_Healthy,healthy_vs_unhealthy %>% filter(waveid==4) %>% .$mean_rt_Unhealthy,paired = TRUE)
+# t.test(healthy_vs_unhealthy %>% filter(waveid==5) %>% .$mean_rt_Healthy,healthy_vs_unhealthy %>% filter(waveid==5) %>% .$mean_rt_Unhealthy,paired = TRUE)
+#t.test(healthy_vs_unhealthy %>% filter(waveid==1) %>% .$mean_trial_n_Healthy,healthy_vs_unhealthy %>% filter(waveid==1) %>% .$mean_trial_n_Unhealthy,paired = TRUE)
+```
+
+Reaction time for Unhealthy trials is actually _longer_ at an absolute. This seems to be an effect of the study: there's no difference at wave 1, but there is a difference at wave 2. But is it due to the interventions?
+
+Also it is noteable that the changes _lasted_ over time. What's really odd is that for FailedStop trials the effect wasn't immediately observable, but it was observable over time.
+
+It's still going to be important to look at stop signal reaction time. We should be able to calculate that separately for healthy and unhealthy trials.
+
+### adding in wave contrast
+
+```{r}
+value_cols <- colnames(healthy_vs_unhealthy)[!(colnames(healthy_vs_unhealthy) %in% c("subid", "waveid","condition"))]
+results_by_subj<-healthy_vs_unhealthy %>% pivot_wider(id_cols = c("subid","condition"),names_from="waveid",names_prefix="waveid_",values_from = value_cols)
+results_by_subj$mean_rt_Unhealthy_w2_m_w1<-results_by_subj$mean_rt_Unhealthy_waveid_2-results_by_subj$mean_rt_Unhealthy_waveid_1
+results_by_subj$mean_rt_Healthy_w2_m_w1<-results_by_subj$mean_rt_Healthy_waveid_2-results_by_subj$mean_rt_Healthy_waveid_1
+results_by_subj$mean_rt_Unhealthy_w3_m_w1<-results_by_subj$mean_rt_Unhealthy_waveid_3-results_by_subj$mean_rt_Unhealthy_waveid_1
+results_by_subj$healthy_minus_unhealthy_rt_w2_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_2-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
+results_by_subj$healthy_minus_unhealthy_rt_w3_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_3-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
+results_by_subj$healthy_minus_unhealthy_rt_w4_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_4-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
+for(cond in c("CorrectGo","FailedStop")){
+  print(cond)
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$healthy_minus_unhealthy_rt_w2_m_w1) %>% print
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$healthy_minus_unhealthy_rt_w3_m_w1) %>% print
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$mean_rt_Unhealthy_w2_m_w1) %>% print
+  t.test(results_by_subj %>% filter(condition==cond) %>% .$mean_rt_Unhealthy_w3_m_w1) %>% print
+  
+}
+```
+
+OK, these results are starting to look at bit odd. But I think--because of the titration design--these are most interpretable when comparing between healthy and unhealthy ratehr htan looking at unhealthy conditions by themselves.
+
+
+### Condition interactions
+So--let's now look at change by condition!
+
+```{r}
+results_by_subj_int <- results_by_subj %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group),by.x = "subid",by.y="SID",all = FALSE)
+results_by_subj_int$intervention_group<-factor(results_by_subj_int$intervention_group,levels=c("willamette","umpqua","mckenzie"))
+summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+
+summary(lm(healthy_minus_unhealthy_rt_w3_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(healthy_minus_unhealthy_rt_w3_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+
+summary(lm(healthy_minus_unhealthy_rt_w4_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(healthy_minus_unhealthy_rt_w4_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+```
+
+```{r}
+summary(lm(mean_rt_Healthy_w2_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+
+summary(lm(mean_rt_Healthy_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+
+summary(lm(mean_rt_Unhealthy_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+```
+
+
+OK--the behavioral intervention worked--in the first month. It seems to fade away after that. What's odd is that a main effect takes over. Perhaps that reflects that the SST itself is practice?
+
+The pre-registered hypothesis is **confirmed**. Behavioral response training (McKenzie) created a difference in unhealthy and healthy food training.
+
+There are further questions:
+
+ - Although we didn't pre-register it, we could look at how this might have affected Stop Signal Reaction Time (but what would be the implications?)
+ - How does participants' RT change relate to neural activities? do participants with greater change have greater neural activity changes?
+ - Does the magnitude of the change relate to FFQ changes?
+ 
+
+
+### Controls
+
+```{r}
+
+results_by_subj_fulldataset <- results_by_subj %>% merge(full_dataset_with_groups,by.x = "subid",by.y="SID",all = FALSE)
+summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group+age365_z+birthsex_factor,results_by_subj_fulldataset %>% filter(condition=="CorrectGo")))
+```
+
+
+
+# Neural data
+
+```{r}
+sst_level_2_path <- config::get("sst_level_2_data_path")
+dir_for_analysis = paste0(sst_level_2_path, 'health_conditions_groups_20230908/raw_filelist.csv')
+
+roi_table_path = paste0(sst_level_2_path, 'health_conditions_groups_20230908/Unhealthy_NoGo(W2-W1)/rois_raw.csv')
+
+roi_table_1 = readr::read_csv(roi_table_path)
+roi_table_insula_path = paste0(sst_level_2_path, 'health_conditions_groups_20230908/Unhealthy_NoGo(W2-W1)/rois_raw_insula.csv')
+roi_table_insula = readr::read_csv(roi_table_insula_path)
+
+
+
+spm_roi_table = cbind(roi_table_1,roi_table_insula)
+spm_roi_table_vars = colnames(spm_roi_table)
+
+roi_table_functional_path = paste0(config::get("dev_analysis_data_dir"),'subject_sst_health_avg_roi_data_raw.csv')
+roi_table_functional = readr::read_csv(roi_table_functional_path,)
+
+roi_table_functional_mask_names = unique(roi_table_functional$mask_label)
+#transform wider using mask_label as the column names and roi_activity as the values
+roi_table_functional_wide =roi_table_functional %>% pivot_wider(id_cols = 'subject_id',names_from='mask_label',values_from='roi_activity') %>% select(-subject_id)
+
+```
+
+```{r}
+analysis_subject_list <- readr::read_csv(dir_for_analysis)
+subjects_with_rois <- cbind(analysis_subject_list,spm_roi_table,roi_table_functional_wide)
+```
+
+
+OK, now let's merge with teh behavioral data...
+
+```{r}
+results_by_subj_rois<-merge(results_by_subj_int %>% filter(condition=="CorrectGo"),subjects_with_rois,
+                            by.x="subid",by.y="subject_id")
+```
+
+Now, what are we interested in? I am curious whether the change in behavioral data can be linked to the change in activity. All of the ROIs we are looking at right now are based on change in the unhealthy_nogo items. We can't actually do behavioral measures of those...unless we were to use th stop signal reaction time, at the subject level. Which we could do, but we have not, so far.
+
+```{r}
+
+
+cor.test(results_by_subj_rois$healthy_minus_unhealthy_rt_w2_m_w1,
+         results_by_subj_rois$striatum_joint_reward_mask)
+
+cor.test(results_by_subj_rois$healthy_minus_unhealthy_rt_w2_m_w1,
+         results_by_subj_rois$y_neurosynth_response_inhibition_right_frontal_pole_mean)
+
+cor.test(results_by_subj_rois$healthy_minus_unhealthy_rt_w2_m_w1,
+         results_by_subj_rois$`response inhibition_association-test_z_FDR_0.01`)
+```
+## group comparisons
+
+```{r}
+
+t.test(
+  results_by_subj_rois %>% filter(intervention_group=="umpqua") %>% .$`response inhibition_association-test_z_FDR_0.01`,
+  results_by_subj_rois %>% filter(intervention_group=="willamette") %>% .$`response inhibition_association-test_z_FDR_0.01`
+)
+
+t.test(
+  results_by_subj_rois %>% filter(intervention_group=="mckenzie") %>% .$`response inhibition_association-test_z_FDR_0.01`,
+  results_by_subj_rois %>% filter(intervention_group=="willamette") %>% .$`response inhibition_association-test_z_FDR_0.01`
+)
+```
+
+
+### reward
+
+```{r}
+summary(lm(striatum_joint_reward_mask~intervention_group,results_by_subj_rois))
+summary(lm(striatum_joint_reward_mask~intervention_group,
+           results_by_subj_rois %>% filter(intervention_group %in% c("willamette","mckenzie"))))
+```
+

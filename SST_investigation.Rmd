@@ -1,0 +1,94 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+library(tidyverse)
+library(readr)
+SST_behavioral<-read_csv("/Users/benjaminsmith/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/sst_behavioral_data_all.csv")
+```
+
+```{r}
+subids<-unique(SST_behavioral$subid)
+
+#view the first subjeect
+SST_behavioral %>% filter(subid==subids[1] & waveid==1 & runid==1) %>%
+  select(trial_n,time_course, trial_duration, reaction_time,onset,SSD_recorded,go_no_go_condition_label,arrow_presented, subject_response,jitter_value, OCI, onset_arrow)
+```
+
+What are the frequency of responses by Go and NoGo trial?
+```{r}
+freq_table <- table(SST_behavioral$go_no_go_condition_label,SST_behavioral$subject_response)
+rowSums(freq_table)
+round(freq_table/rowSums(freq_table),3)
+```
+
+What are the frequency of responses by CS, CG, FS, FG?
+
+
+```{r}
+
+freq_table <- table(SST_behavioral$condition,SST_behavioral$subject_response)
+rowSums(freq_table)
+round(freq_table/rowSums(freq_table),3)
+```
+
+
+OK so the GNG script relies on subjects using 91 or 94, but we can see about half of subjects are using 15 or 21 keypress instead.
+
+```{r}
+SST_behavioral %>% filter(condition %in% c("CorrectGo","FailedStop")) %>%
+  group_by(subid, waveid, runid,condition,subject_response) %>%
+  summarise(num_trials = n()) %>%
+  pivot_wider(id_cols=c(subid, waveid,runid, condition),names_from = subject_response,values_from = num_trials,values_fill = 0) %>% 
+  arrange(waveid, subid,runid)
+  
+
+
+
+  
+  
+```
+
+OK, so one interesting thing about the matlab script is that to be included in the GRT calculation and the SSRT calculation, the button presses must be congruent with the arrow directions. How often does that happen?
+
+
+```{r}
+left_button_presses <- c(91, 15, 90, 92, 197)
+right_button_presses <- c(94, 21, 93, 95, 97, 198)
+SST_behavioral$subject_response_labelled <- "Unknown"
+SST_behavioral$subject_response_labelled[SST_behavioral$subject_response %in% left_button_presses] <- "Left"
+SST_behavioral$subject_response_labelled[SST_behavioral$subject_response %in% right_button_presses] <- "Right"
+SST_behavioral$subject_response_labelled<-factor(SST_behavioral$subject_response_labelled,levels = c("Left","Right","Unknown"))
+
+#now, let's see how often responses are congruent or incongruent with teh arrow presented
+SST_behavioral <- SST_behavioral %>%  mutate(
+  arrow_presented_label = factor(case_when(
+    arrow_presented==FALSE ~ "Left",
+    arrow_presented==TRUE ~ "Right",
+    NA ~ "Null")
+  ,levels=c("Left","Right","Null")),
+  response_congruent = case_when(
+    (as.integer(arrow_presented_label)<3) & (as.integer(subject_response_labelled) <3) ~ (as.integer(arrow_presented_label) == as.integer(subject_response_labelled)),
+    TRUE ~ NA
+  )
+)
+table((as.integer(SST_behavioral$arrow_presented_label)<2) & (as.integer(SST_behavioral$subject_response_labelled) <2))
+
+table(SST_behavioral$response_congruent)
+#in about 4% of trials, there was an incongruent response. That might explain the difference between my SSRT score and the MATLAB SSRT score.
+```
+
+
+I want to find out whether non-canonical pressed buttons should be categorized as "left" or "right". Since 96% of responses are congruent, we can test this; let's see...
+
+```{r}
+table(SST_behavioral$arrow_presented,SST_behavioral$subject_response)
+```
+
+Clearly, 90, 92, 197 are all a left button press; 93, 95,97,198 is a right button press; 7, 9, and 9999 are unknown.

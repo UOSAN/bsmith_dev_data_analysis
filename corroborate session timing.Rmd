@@ -1,0 +1,250 @@
+---
+title: "corroborate session timing"
+author: "Ben Smith"
+date: "2023-06-21"
+output: html_document
+---
+
+---
+
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+
+#install.packages("tidystats")
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(rstatix)
+library(data.table)
+library(lubridate)
+
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+# scored<-scored_with_demographics
+# rm(scored_with_demographics)
+# scored$score <- as.numeric(scored$score)
+# scored$scale_name <- sub("-","_",scored$scale_name)
+```
+
+
+```{r}
+load(paste0(config::get("dev_analysis_data_dir"),"raw_survey_data.Rdata"))
+#load(paste0(config::get("dev_analysis_data_dir"),"ppt_list_w_data.Rdata"))
+dev_session_dates <- readr::read_csv(paste0(config::get("dev_analysis_data_dir"),"DEV-Sessions_DATA_2023-06-21_1857.csv"))
+
+#we'll want this in long format...
+
+dev_session_dates_long <- dev_session_dates %>% 
+  pivot_longer(cols=matches("date\\_\\d"),names_to="redcap_session_label") %>%
+  mutate(redcap_session_id=stringr::str_match(redcap_session_label,"date\\_(\\d)")[,2]) %>%
+  rename(redcap_date=value)
+
+
+
+  
+
+
+```
+
+
+```{r}
+participant_mastersheet <- readxl::read_xlsx(paste0(data_path,"DEV Participant Mastersheet_copy.xlsx")) %>% select(-`First Name`,-`Last Name`,-`Email`,-`Initals`,-Group)
+
+#clean the sheet
+participant_mastersheet<-participant_mastersheet[!is.na(participant_mastersheet$`Dev ID#`),]
+#convert the mastersheet dates
+
+excel_1900_dates_convert<-function(d){
+  return(d %>% as.integer %>% as.Date(origin="1899-12-31"))
+}
+training_cols <- paste0("T ",1:8)
+
+date_cols <- c(training_cols, "S0","Session 1")
+for (training_date in date_cols){
+  participant_mastersheet[,training_date]<-excel_1900_dates_convert(participant_mastersheet[[training_date]])
+}
+
+#dev046 says 2016 but should clearly be 2018
+participant_mastersheet[participant_mastersheet$`Dev ID#`=="DEV046","T 1"]<-as.Date("2018-10-16")
+
+
+
+#now get the earliest and latest training date for each participants
+
+participant_mastersheet$days_last_minus_first_training<-as.integer(participant_mastersheet$`T 8`-participant_mastersheet$`T 1`)
+print(paste(min(participant_mastersheet$days_last_minus_first_training,na.rm = TRUE),max(participant_mastersheet$days_last_minus_first_training,na.rm = T)))
+#lovely!
+
+
+View(participant_mastersheet %>% select(`Dev ID#`,training_cols,days_last_minus_first_training))
+
+
+
+```
+
+
+
+Now, let's identify the normative match schema...
+
+DEV sessions are numbered from 0 to 5.
+
+Surveys are have hte following names:
+
+`r paste0(names(table(survey_date_time_record$survey_name)),collapse=", ")`
+
+
+So we expect that the first three surveys--the two marked "session 0" and the ADOPT survey--occur at Session 0, and the others occur at the respective times.
+
+So, we can match on these survey numbers, then merge with the redcap sessions, and work out the discrepancies in dates recorded.
+
+```{r}
+
+#if there are multiple surveys and only one is finished, choose _that_ one
+surveys_long_clean_nodups <- surveys_long_clean %>% filter(item=="StartDate") %>% group_by(survey_name,SID) %>% slice_min(-Finished,n=1)
+survey_date_time_record <- surveys_long_clean_nodups %>% filter(item=="StartDate") %>%  mutate(SurveyDateTime=unlist(lubridate::as_datetime(unlist(as.integer(value)))))
+
+
+#first do a regex match
+survey_date_time_record$session_id <- as.integer(stringr::str_match(survey_date_time_record$survey_name,"DEV Session (\\d) Surveys")[,2])
+#now some custom code for the oddd ones out.
+survey_date_time_record$session_id[survey_date_time_record$survey_name=="DEV ADOPT Survey Flow"]<-0
+survey_date_time_record$session_id[survey_date_time_record$survey_name=="DEV Session 0 Food Categories & Demographics"]<-0
+
+
+
+```
+
+```{r}
+surveys_long_clean %>% filter(stringr::str_detect(item,pattern = "FFQ")) %>% group_by(survey_name) %>% dplyr::summarize(n())
+```
+
+# Match survey dates to redcap dates
+
+```{r}
+
+#great; so now, we can match on survey ID, remembering that there will be more than one survey at session 0, so this is a list of surveys, not sessions.
+survey_matched_list <- merge(survey_date_time_record %>% select(-item,-value),
+                             dev_session_dates_long %>% filter(!is.na(redcap_date)),by.x=c("SID","session_id"),by.y=c("dev_id","redcap_session_id"),all.x=TRUE)
+
+min_in_day<-60*24
+survey_matched_list$date_discrepancy = lubridate::interval(lubridate::as_datetime(survey_matched_list$redcap_date),lubridate::as_datetime(survey_matched_list$SurveyDateTime))/days(1)
+
+
+View(survey_matched_list %>% select(SID,session_id,survey_name, SurveyDateTime,redcap_date,date_discrepancy))
+```
+
+
+We aren't so concerned if the first set of surveys were taken before the redcap date.
+
+we might have concerns if 
+- the second or subsequent survey happens a long time before the redcap date
+- any survey occurs a long time after the redcap date
+
+##early surveys
+
+```{r}
+survey_matched_list %>% filter(session_id==0 & date_discrepancy< -7) %>% View
+```
+
+
+```{r}
+survey_matched_list %>% filter(session_id==1 & date_discrepancy< -7) %>% View
+```
+
+```{r}
+survey_matched_list %>% filter(session_id>1 & date_discrepancy< -7) %>% View
+```
+
+##late surveys
+
+Session 1 is the pre-intervention measure
+Session 2 is the 1-week-post measure.
+
+```{r}
+survey_matched_list %>% filter(date_discrepancy> 7) %>% View
+```
+
+OK, specifically...
+
+For session 2
+
+```{r}
+survey_matched_list %>% filter(date_discrepancy> 7 & session_id==2) %>% View
+```
+
+For session 3 (should be 1 month post)
+
+
+```{r}
+survey_matched_list %>% filter(date_discrepancy> 7 & session_id==3) %>% View
+```
+
+
+
+```{r}
+survey_matched_list %>% filter(date_discrepancy> 30 & session_id>3) %>% View
+```
+
+
+# Mastersheet check
+
+For this check we want to see whether
+ - any Session 1 surveys occurred after training started
+ - Any Session 2 surveys occurred before training finished.
+ 
+```{r}
+
+#unique_subject_survey_vals <- survey_date_time_record %>% group_by(SID,survey_name) %>% dplyr::summarize(row_count=n())%>% arrange(-row_count)
+
+
+
+#survey_date_time_record[survey_date_time_record$SID=="DEV026" & survey_date_time_record$survey_name=="DEV Session 4 Surveys",]
+
+survey_by_ppt <- survey_date_time_record %>% mutate(SurveyDateTime=lubridate::as_datetime(SurveyDateTime)) %>% select(SID,survey_name,SurveyDateTime) %>% pivot_wider(names_from="survey_name",values_from = "SurveyDateTime")
+survey_mastersheet_matched_list <- merge(survey_by_ppt,
+                             participant_mastersheet %>% filter(!is.na(`T 1`)),by.x=c("SID"),by.y=c("Dev ID#"),all.x=TRUE)
+
+
+survey_mastersheet_matched_list <- survey_mastersheet_matched_list %>% filter(!is.na(`DEV Session 2 Surveys`) | !is.na(`DEV Session 1 Surveys`))
+```
+
+## First check that DEV session 1 was always before the first training set
+
+```{r}
+survey_mastersheet_matched_list$session_1_to_training <-lubridate::interval(survey_mastersheet_matched_list$`DEV Session 1 Surveys`,survey_mastersheet_matched_list$`T 1`) / days(1)
+survey_mastersheet_matched_list[survey_mastersheet_matched_list$session_1_to_training<2,c("SID","DEV Session 1 Surveys","T 1","session_1_to_training")] %>% arrange(session_1_to_training)
+```
+
+## Now check that DEV session 2 survey was always 2 weeks after the last training set
+
+
+
+```{r}
+survey_mastersheet_matched_list$training_8_to_session2 <-lubridate::interval(survey_mastersheet_matched_list$`T 8`,survey_mastersheet_matched_list$`DEV Session 2 Surveys`) / days(1)
+survey_mastersheet_matched_list[survey_mastersheet_matched_list$training_8_to_session2<14,c("SID","DEV Session 2 Surveys","T 8","training_8_to_session2")] %>% arrange(training_8_to_session2)
+
+summary(survey_mastersheet_matched_list$training_8_to_session2)
+```
+Pretty much everyone! was session 2 at least 7 days after T 6?
+
+
+
+```{r}
+survey_mastersheet_matched_list$training_6_to_session2 <-lubridate::interval(survey_mastersheet_matched_list$`T 6`,survey_mastersheet_matched_list$`DEV Session 2 Surveys`) / days(1)
+survey_mastersheet_matched_list[
+  survey_mastersheet_matched_list$training_6_to_session2<7,
+  c("SID","DEV Session 2 Surveys","T 6","training_6_to_session2")] %>% 
+  filter(!is.na(SID)) %>%
+  arrange(training_6_to_session2)
+
+summary(survey_mastersheet_matched_list$training_6_to_session2)
+```
+
+How about Session 4?
+
+
+
+```{r}
+survey_mastersheet_matched_list$training_4_to_session2 <-lubridate::interval(survey_mastersheet_matched_list$`T 4`,survey_mastersheet_matched_list$`DEV Session 2 Surveys`) / days(1)
+survey_mastersheet_matched_list[,c("SID","DEV Session 2 Surveys","T 4","training_4_to_session2")] %>% filter(!is.na(`DEV Session 2 Surveys`)) %>% arrange(training_4_to_session2)
+```

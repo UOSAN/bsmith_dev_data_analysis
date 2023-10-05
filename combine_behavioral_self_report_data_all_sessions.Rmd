@@ -1,0 +1,589 @@
+---
+title: "Power analysis"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
+
+#install.packages("tidystats")
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(rstatix)
+library(data.table)
+library(tidyverse)
+source("utils.R")
+data_path <- "../../grant-writing-workshop/files/data/"
+
+load(paste0(config::get("dev_analysis_data_dir"),"scored_data_w_demographics.RData"))
+dropbox_file_dir = config::get("dev_analysis_data_dir")
+scored<-scored_with_demographics
+rm(scored_with_demographics)
+scored$score <- as.numeric(scored$score)
+scored$scale_name <- sub("-","_",scored$scale_name)
+```
+
+```{r}
+
+#
+scored %>% filter(scale_name %in% c("FCI")) %>% select(scored_scale) %>% unique
+
+```
+```{r}
+scored$scale_name %>% unique
+```
+
+
+Now get BMI
+
+```{r}
+load(paste0(config::get("dev_analysis_data_dir"),"ppt_list_w_data.Rdata"))
+#load("../../grant-writing-workshop/files/data/ppt_list_w_data_2022-08-17.Rdata")
+
+ppt_list_w_data$date_0<-as.Date(ppt_list_w_data$date_0)
+ppt_list_w_data$dob<-as.Date(ppt_list_w_data$dob)
+ppt_list_w_data$age365<- round(as.numeric((ppt_list_w_data$date_0-ppt_list_w_data$dob)/365)*4,0)/4#rounding to nearest 0.25 to avoid identification
+
+#our primary health outcome measure
+ppt_health_outcomes <- ppt_list_w_data %>% select(dev_id,matches("bf\\_\\d"),matches("weight\\_\\d"),matches("height\\_\\d"),matches("bmi\\_\\d"),birthsex,age365) %>% filter(!is.na(bf_1))
+
+ppt_health_outcomes$bmi <- ifelse(!is.na(ppt_health_outcomes$bmi_0),ppt_health_outcomes$bmi_0,ppt_health_outcomes$bmi_1)
+rm(ppt_list_w_data)
+
+#remove data of implausible bf_1 and bf_2 values
+ppt_health_outcomes$bf_1[ppt_health_outcomes$bf_1<13]<-NA
+ppt_health_outcomes$bf_2[ppt_health_outcomes$bf_2<13]<-NA
+
+
+bf_model <- lm(bf_1~birthsex+age365, ppt_health_outcomes)
+summary(bf_model)
+#ppt_health_outcomes$bf_1_controlled <-NULL <- bf_model$residuals
+ppt_health_outcomes$bf_1_controlled[as.numeric(rownames(bf_model$model))] <- bf_model$residuals
+
+#simple model just zscoring within sex
+#that allows for a more inuitive interpretation than errors from a linear model.
+ppt_health_outcomes %<>% group_by(birthsex) %>% mutate(
+  bf_1_bsexnormedzs = (bf_1-mean(bf_1,na.rm = TRUE))/sd(bf_1,na.rm = TRUE),
+  
+)
+
+
+
+```
+
+
+```{r}
+min(ppt_health_outcomes$age365)
+
+max(ppt_health_outcomes$age365)
+
+table(ppt_health_outcomes$birthsex)
+```
+
+
+
+Now get behavioral measures.
+
+```{r}
+
+#sst_pes <- readr::read_csv("https://www.dropbox.com/s/vaubgp23y5j0m5g/post_error_slowing.csv?dl=0")
+# sst_pes <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing.csv"))
+sst_pes_simple <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing_simple_approach.csv"))
+sst_pes_simple$waveid<-1
+#should be wave 1 by default.
+sst_data_1 <- readr::read_csv(file=paste0(dropbox_file_dir,"sst_summary_stats_by_run.csv"))
+#sst_data_2 <- readr::read_csv(file=paste0(dropbox_file_dir,"sst_pre_analyzed_stats.csv"))
+sst_data_1_w1 <- sst_data_1%>%filter(runid==1)%>% select(-runid)
+#sst_data_2_w1 <- sst_data_2
+sst <- sst_data_1 %>%
+  #merge(sst_data_1,sst_data_2,by.x =c("subid","waveid"),by.y=c("SubjectLabel","wave"),all = TRUE) %>%
+  #merge(sst_pes[,2:ncol(sst_pes)],by="subid",all=TRUE) %>%
+  merge(sst_pes_simple[,2:ncol(sst_pes_simple)],by=c("subid","waveid"),all=TRUE)
+
+
+
+roc_data <- readr::read_csv(file=paste0(dropbox_file_dir,"roc_summary_stats.csv"))
+load(file=paste0(dropbox_file_dir,"wtp_summary_stats_across_runs.Rdata"))
+
+
+
+
+#need to group across run
+roc_data_across_runs<- roc_data %>% select(-run) %>% group_by(subjectID,wave) %>% summarise(across(everything(), mean))
+#roc_data_across_runs_w1 <- roc_data_across_runs %>%filter(wave==1)%>% select(-wave)
+
+wtp_across_runs_wide <- wtp_across_runs %>% select(subject, value_level_mean, health_cond,wave) %>% group_by(subject,wave) %>% spread("health_cond","value_level_mean") %>% ungroup
+wtp_across_runs_wide$unhealthy_minus_healthy <- wtp_across_runs_wide$unhealthy - wtp_across_runs_wide$healthy
+#wtp_across_runs_wide_w1 <- wtp_across_runs_wide%>%filter(wave==1) %>% select(-wave)
+colnames(wtp_across_runs_wide) <- paste0("WTP_",colnames(wtp_across_runs_wide))
+
+
+
+#sst_data$wave <- 1
+colnames(sst) <- paste0("SST_",colnames(sst))
+roc_data_across_runs <- rename(roc_data_across_runs,c(subid=subjectID))
+colnames(roc_data_across_runs) <- paste0("ROC_",colnames(roc_data_across_runs))
+#roc_data_across_runs$runid <- as.double(stringr::str_match(roc_data_across_runs$run,"run(\\d)")[,2])
+
+behavioral_data <- merge(sst,roc_data_across_runs,by.x=c("SST_subid","SST_waveid"),by.y=c("ROC_subid","ROC_wave"),all = TRUE)
+behavioral_data <- rename(behavioral_data,c(subid=SST_subid,waveid=SST_waveid))
+behavioral_data <- merge(behavioral_data,wtp_across_runs_wide,by.x = c("subid","waveid"),by.y=c("WTP_subject","WTP_wave"),all=TRUE)
+
+
+
+```
+
+
+
+
+
+## Health measures include:
+
+
+ - Percent Body Fat (`bf_1`)
+ - BMI (`bmi_0`)
+ 
+## Behavioral outcome measures
+
+We also have behavioral outcome measures:
+
+ - Food Frequency Questionnaire. Very closely related to the Food Craving Inventory so that needs to be considered carefully.
+ 
+
+
+## Self-report predictor variables to investigate 
+
+Which predictor scales should we include?
+ 
+Need the behavioral and self-report imho
+ 
+Before we decide which to include, perhaps we put them into categories: obvious theoretical link to outcome (3), possible theoretical link to outcome (2), no clear theoretical link to outcome (1).
+ 
+Listing them by these categories we get:
+
+### Obvious theoretical link to outcome
+
+These are explicitly designed to measure constructs we are concerned about, like self control or habits.
+
+ - Brief Self Control Scale
+ - Self-reported Habit Index
+ - Tempest Self-Regulation Questionnaire for Eating
+ - Treatment Self-Regulation Questionnaire
+ - Barratt Impulsiveness Scale
+ - Eating Dysregulation Measure
+ - Food Craving Inventory
+ - Restraint Scale
+
+
+### Possible theoretical link to outcome
+
+These aren't explicitly designed to measure constructs we are concerned about, but there are theoretical reasons or at least 'stories you could tell' to expect a link to outcome.
+
+ - Big Five
+ - Planfulness
+ - Regulatory Mode Questionnaire
+ - Responses to Failure Scale
+ - Perceived Competence Scale
+ 
+ 
+
+### No clear theoretical link to outcome
+
+For this category it is unclear why we would expect any link to the outcome (eating). Some are included in DEV more because of their theoretical link to the treatment rather than to baseline level of obesity.
+
+ - Need for Cognition Scale
+ - Vividness of Visual Imagery Questionnaire
+ - Intrinsic Motivation Inventory
+ - Adverse Childhood Experiences
+
+### In DEV but not a construct of interest
+
+These are in DEV but aren't psychological constructs and so I'm not considering them.
+
+  - International Physical Activity Questionnaire
+  - Demographic measures
+  
+## Behavioral predictor variables
+
+ - WTP
+    - price given for healthy foods
+    - price given for unhealthy foods
+    - difference between the above two
+ - ROC
+    - [regulate - look] craving reduction for healthy foods
+    - [regulate - look] craving reduction for unhealthy foods
+    - balance of the above two
+ - SST
+    - Participant behavioral net response bias toward healthy foods
+    - Participant behavioral net response bias toward unhealthy foods
+    - difference between the above
+  
+
+# Checking for presence of each of these  
+
+Do we have these scales? let's take a look.
+
+```{r}
+table(scored$scale_name)
+```
+
+
+Group 1:
+
+ - Brief Self Control Scale - Y
+ - Self-reported Habit Index - N- no rubric
+ - Tempest Self-Regulation Questionnaire for Eating - N- no rubric
+ - Treatment Self-Regulation Questionnaire - N- no rubric
+ - Barratt Impulsiveness Scale - N- no rubric
+ - Eating Dysregulation Measure - Y
+ - Food Craving Inventory - Y
+ - Restraint Scale - N- no rubric
+
+
+## the following were NOT pre-registered.
+Group 2:
+
+These aren't explicitly designed to measure constructs we are concerned about, but there are theoretical reasons or at least 'stories you could tell' to expect a link to outcome.
+
+ - Big Five - Y
+ - Planfulness -Y
+ - Regulatory Mode Questionnaire - N- no rubric
+ - Responses to Failure Scale - N- no rubric
+ - Perceived Competence Scale - N- no rubric
+
+
+<!-- ## scramble -->
+
+<!-- ```{r} -->
+<!-- #get a scrambled dataset we can use to test the pipeline without revealing any results -->
+<!-- scored_dummy <- scored -->
+<!-- scored_dummy$score <-sample(scored_dummy$score,length(scored_dummy$score)) -->
+<!-- scored <- scored_dummy -->
+
+<!-- ppt_health_outcomes$bmi_0<-sample(ppt_health_outcomes$bmi_0,nrow(ppt_health_outcomes)) -->
+<!-- ppt_health_outcomes$bf_1<-sample(ppt_health_outcomes$bf_1,nrow(ppt_health_outcomes)) -->
+<!-- ``` -->
+
+
+
+
+
+## analysis (left over from previous analysis)
+
+## stats about how often each survey appears in scored
+
+```{r}
+
+#how exactly, should we do like a matrix of number of unique subjects who did the scale at each stage...
+tally_scale_by_session_long.raw1 <- scored %>% group_by(scale_name,survey_name) %>% dplyr::summarise(
+  num_subjects=length(unique(SID)),
+  num_datapoints = sum(!is.na(score))
+  ) %>% arrange(scale_name, survey_name)
+
+tally_scales_across_sessions_long <- tally_scale_by_session_long.raw1 %>% group_by(scale_name) %>% dplyr::summarise(total_num_presentations = sum(num_subjects))
+
+tally_scale_by_session_long<-merge(tally_scale_by_session_long.raw1,tally_scales_across_sessions_long) %>%
+  mutate(presentations_per_subject=total_num_presentations/num_subjects,
+         subjects_in_this_run_prop=num_subjects/max(num_subjects)
+         )
+
+tally_scale_by_session_long
+
+# I thought it was the case that scales were swapped around between surveys but this does NOT appear to be the case.
+# No scale was spread alternatively over the surveys
+# this means there's no good reason to go detecting the first survey in particular and then gather data for that
+# one exception might be if 
+```
+
+
+
+```{r}
+sapply(unique(scored$scale_name),function(sn){list(sn=unique(scored[scored$scale_name==sn,"scored_scale"]))})
+```
+
+
+
+### long-stage data cleaning
+
+
+For some reason there's a lot of participants with missing RTFS data. Participants don't really miss any other scales but they o miss RTFS. Is that because it's the only scale not marked out with compulsory entry?
+
+
+
+### test correlations, transform
+
+
+```{r}
+
+
+promote_minus_prevent <- get_promote_minus_prevent(scored)
+
+
+single_scale_values<-get_single_scale_predictors(scored)
+#now merge these
+
+scales_wide<-merge(promote_minus_prevent,single_scale_values,by=c("SID","survey_name"),all=TRUE)
+
+#convert the "survey name" item into a "session" marker
+
+scales_wide$session_id<-stringr::str_match(scales_wide$survey_name,"DEV Session (\\d) Surveys")[,2] %>% as.integer
+
+
+
+
+```
+
+
+```{r}
+ppt_health_outcomes.1<-ppt_health_outcomes
+ppt_health_outcomes.1$bf_1_bsexnormedzs<-NULL
+ppt_health_outcomes.1$bf_1_controlled<-NULL
+ppt_health_outcomes.1<-ungroup(ppt_health_outcomes.1)
+colnames(ppt_health_outcomes.1)
+
+session_cols <- stringr::str_extract(colnames(ppt_health_outcomes.1),"([A-Za-z]*_\\d)") %>% .[!is.na(.)]
+
+ppt_health_outcomes.1[,session_cols]<-apply(ppt_health_outcomes.1[,session_cols],2,as.numeric) #convert to numeric in order to remove labels so that we can put valeus in teh same columns.
+
+ppt_health_outcomes_longer <- ppt_health_outcomes.1 %>% 
+  select(dev_id, matches("[A-Za-z]*_\\d")) %>% 
+  tidyr::pivot_longer(cols=matches("[A-Za-z]*_\\d"),names_to="measure",values_to="value")
+
+#get the session ID out of the measure name
+ppt_health_outcomes_longer[,c("base_measure","session_id")] <- stringr::str_match(ppt_health_outcomes_longer$measure,"([A-Za-z]*)_(\\d)")[,2:3]
+
+
+ppt_health_outcomes_long <- ppt_health_outcomes_longer %>% select(-measure) %>%
+  pivot_wider(names_from="base_measure", values_from="value")
+
+ppt_data_wide_raw_1 <- merge(scales_wide %>% select(-survey_name),ppt_health_outcomes_long,
+                             by.x=c("SID","session_id"),
+                             by.y=c("dev_id","session_id"),all=TRUE)
+
+#clean out rows that are all NAs
+all_NA_rows <- ppt_data_wide_raw_1 %>% select(-SID,-session_id) %>% apply(1,function(datarow){all(is.na(datarow))})
+ppt_data_wide_raw_2<-ppt_data_wide_raw_1[!all_NA_rows,]
+```
+
+
+
+
+```{r}
+multi_scale_values<-get_multiscale_values(scored)
+
+multi_scale_values$session_id<-get_session_from_survey_name(multi_scale_values$survey_name)
+
+ppt_data_wide_raw_3 <- merge(ppt_data_wide_raw_2,multi_scale_values,by=c("SID","session_id"),all=TRUE)
+
+
+ppt_data_wide <- ppt_data_wide_raw_3
+```
+
+
+```{r}
+# #grabs the FIRST score for each item per participant.
+# col_list <- lapply(colnames(ppt_data_wide %>% select(-survey_name,-SID)), function(col){
+#   return(ppt_data_wide %>% select(-survey_name) %>% .[,c("SID",col)] %>% filter(!is.na(.[col])) %>% group_by(SID) %>% summarise("{col}":=first(.data[[col]])))
+# })
+# data_by_ppt_wave <- purrr::reduce(col_list, left_join,by="SID")
+
+
+
+```
+
+
+##Now get the behavioral data
+
+
+```{r}
+data_by_wave_ppt <- merge(ppt_data_wide,behavioral_data,by.x=c("SID","session_id"),by.y=c("subid","waveid"),all.x = TRUE,all.y=FALSE)
+
+```
+
+Now we do some contrasts we haven't done yet...
+
+```{r}
+
+data_by_wave_ppt<-do_misc_self_report_summary_measures(data_by_wave_ppt)
+
+#create some aggregate measures
+data_by_wave_ppt <- do_aggregate_measures(data_by_wave_ppt)
+
+
+```
+
+
+
+### get the modified FFQ
+
+This is done here, rather than earlier, because it needs gender.
+
+
+```{r}
+
+#we need two things here:
+
+
+
+```
+
+```{r}
+
+nutrient_density_scores <- readr::read_csv(paste0(
+  config::get("nutrient_density_datapath"), "/Data files/DEV_NUTRIENT_DENSITY_PARTICIPANT.csv"))
+
+nutrient_density_scores$time_period <- stringr::str_match(nutrient_density_scores$survey_name,pattern = "DEV\\_(.*)\\_FFQ")[,2]
+
+# select(contains("ing_FFQ"), bmi_0, bf_1,NUTRIENT_DENSITY_2wkAverage, ANTINUTRIENT_DENSITY_2wkAverage, FIBER_DENSITY_2wkAverage, CALORIE_DENSITY_2wkAverage, total_calorie)
+
+FFQ_key <- list("1wkpost"=2,
+     "baseline"=1,
+     "12mopost"=5, 
+     "3mopost"=3,  
+     "6mopost"=4 )
+
+nutrient_density_scores$session_id <- sapply(nutrient_density_scores$time_period,function(tp){FFQ_key[[tp]]}) %>% as.numeric
+
+nutrient_density_scores$survey_name<-NULL
+#NDS_long <- nds_wide 
+
+data_by_wave_ppt<-merge(data_by_wave_ppt,nutrient_density_scores,by=c("SID","session_id"),all.x = TRUE,all.y=FALSE)
+
+# data_by_ppt <- merge(data_by_ppt,ffq_v2_values,by.x="SID",by.y="FFQ_v2_SID",all.x = TRUE,all.y=FALSE)
+
+```
+
+
+Now we need to get the non-scale social values in here.
+
+<!-- ```{r} -->
+<!-- ppt_data_wide_dummy <- ppt_data_wide -->
+
+<!-- for (cn in colnames(ppt_data_wide_dummy)[3:length(colnames(ppt_data_wide_dummy))]){ -->
+<!--   print(cn) -->
+<!--   ppt_data_wide_dummy[,cn]<-sample(ppt_data_wide_dummy[,cn],length(ppt_data_wide_dummy[,cn])) -->
+<!-- } -->
+<!-- rm(ppt_data_wide) -->
+<!-- ``` -->
+
+
+### wide-stage data cleaning
+
+#### outlier removal
+
+https://www.active.com/fitness/calculators/bodyfat
+
+Classification	Women (% Fat)	Men (% Fat)
+Essential Fat	10-12%	2-4%
+Athletes	14-20%	6-13%
+Fitness	21-24%	14-17%
+Acceptable	25-31%	18-25%
+Obese	32% +	25% +
+
+
+
+With ~275 subjects, how often would we expect subjects 2 or 3 or 4 SD outside the mean?
+
+First: what's the expected number of subjects we'd expect outside the mean:
+```{r}
+(1-pnorm(4,0,1))*275
+(1-pnorm(5,0,1))*275
+
+```
+
+now what's the probability of finding subjects 4 or 5 SD outside the mean, on either side?
+
+
+```{r}
+(1-pnorm(3,0,1)^275)*2
+(1-pnorm(4,0,1)^275)*2
+(1-pnorm(5,0,1)^275)*2
+
+```
+
+Therefore I think it would be fair to exclude any data point more than 4 SD outside the mean. The odds of even one subject hitting above that mark are less than 1%, given a normal distribution.
+
+```{r}
+
+#data_by_ppt<-data_by_wave_ppt
+remove_outliers <- function(data_by_ppt) {
+  for (coln in colnames(data_by_ppt)[3:ncol(data_by_ppt)]) {
+    print(coln)
+    print(class(data_by_ppt[[coln]]))
+    if (class(data_by_ppt[[coln]]) == "character") {
+      next
+    }
+    if (sum(is.na(data_by_ppt[[coln]])) < length(data_by_ppt[[coln]])) {
+      na_row <- is.na(unlist(data_by_ppt[coln]))
+      col_vals <- data_by_ppt[!na_row, coln]
+      col_sids <- data_by_ppt[!na_row, "SID"]
+      col_session_ids <- data_by_ppt[!na_row, "session_id"]
+      if (("factor" %in% class(col_vals)) == FALSE) {
+        col_mean <- mean(col_vals)
+        col_sd <- sd(col_vals)
+        outliers_4sigma <-
+          (col_vals < col_mean - col_sd * 4) |
+          (col_vals > col_mean + col_sd * 4)
+        outliers_5sigma <-
+          (col_vals < col_mean - col_sd * 5) |
+          (col_vals > col_mean + col_sd * 5)
+        if (sum(outliers_4sigma) + sum(outliers_5sigma) > 0) {
+          print(
+            paste(
+              coln,
+              ": 4 sigma outliers are:",
+              paste(col_sids[outliers_4sigma], collapse = ","),
+              "; 5 sigma outliers are:",
+              paste(data_by_ppt[outliers_5sigma, "SID"], collapse = ",")
+            )
+          )
+        }
+        if (sum(outliers_4sigma) > 0) {
+          print(
+            paste0(
+              "removing ",
+              as.character(sum(outliers_4sigma)),
+              " 4-sigma outliers from the ",
+              coln,
+              " column in the dataset."
+            )
+          )
+          for (outlier_i in 1:length(col_sids[outliers_4sigma])) {
+            outlier_sid <- col_sids[outlier_i]
+            outlier_session_id <- col_session_ids[outlier_i]
+            print(outlier_sid)
+            print(outlier_session_id)
+            data_by_ppt[data_by_ppt$SID == outlier_sid &
+                          data_by_ppt$session_id == outlier_session_id, coln] <- NA
+          }
+        }
+        
+      }
+    }
+  }
+  
+  return(data_by_ppt)
+}
+
+data_by_wave_ppt <- remove_outliers(data_by_wave_ppt)
+
+```
+
+
+```{r}
+#remove implausible TRSQ score
+data_by_wave_ppt$TRSQ[data_by_wave_ppt$TRSQ<5]<-NA
+```
+
+
+
+```{r}
+readr::write_csv(data_by_wave_ppt, file = paste0(dropbox_file_dir,"data_by_wave_ppt.csv"))
+
+
+```
+

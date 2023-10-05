@@ -8,10 +8,55 @@ clean_sst_data <-function(sst_all_data_raw){
   return(sst_all_data)
 }
 
+label_button_presses <- function(sst_all_data_raw){
+  #to see why all these are categorzied as left or right button presses,
+  # run:
+  #table(sst_all_data_raw$arrow_presented,sst_all_data_raw$subject_response) 
+  # to see how the button presses are used.
+  
+  left_button_presses <- c(91, 15, 90, 92, 197)
+  right_button_presses <- c(94, 21, 93, 95, 97, 198)
+  sst_all_data_raw$subject_response_labelled <- "Unknown"
+  sst_all_data_raw$subject_response_labelled[sst_all_data_raw$subject_response %in% left_button_presses] <- "Left"
+  sst_all_data_raw$subject_response_labelled[sst_all_data_raw$subject_response %in% right_button_presses] <- "Right"
+  sst_all_data_raw$subject_response_labelled<-factor(sst_all_data_raw$subject_response_labelled,levels = c("Left","Right","Unknown"))
+  
+  #now, let's see how often responses are congruent or incongruent with teh arrow presented
+  sst_all_data_raw <- sst_all_data_raw %>%  mutate(
+    arrow_presented_label = factor(case_when(
+      arrow_presented==FALSE ~ "Left",
+      arrow_presented==TRUE ~ "Right",
+      NA ~ "Null")
+      ,levels=c("Left","Right","Null")),
+    response_congruent = case_when(
+      (as.integer(arrow_presented_label)<3) & (as.integer(subject_response_labelled) <3) ~ (as.integer(arrow_presented_label) == as.integer(subject_response_labelled)),
+      TRUE ~ NA
+    )
+  )
+  return(sst_all_data_raw)
+}
+
+get_more_sst_trial_stats_multiple_versions <- function(sst_all_data){
+  sst_all_data_all<-get_more_sst_trial_stats(sst_all_data)
+  #calculate congruent only SSRTs--excluding trials where subjects pressed a button not congruent with an arrow press
+  
+  sst_all_data_congruent_only<-get_more_sst_trial_stats(sst_all_data %>% filter(response_congruent | is.na(response_congruent)))
+  new_cols <- setdiff(colnames(sst_all_data_congruent_only),colnames(sst_all_data))
+  merge_cols <- c("subid","waveid","runid","trial_n")
+  sst_all_data <- sst_all_data %>% 
+    merge(sst_all_data_all %>% select(merge_cols,new_cols),by=merge_cols) %>%
+    merge(sst_all_data_congruent_only %>% select(merge_cols,new_cols),by=merge_cols,suffixes = c("","_congruent_only"))
+  
+  return(sst_all_data)
+}
+
 get_more_sst_trial_stats <- function(sst_all_data){
   
   # OOSTERLAAN et al. 1998:
-  # as follows : FIRSTrst, reactiontimes on go trials are rank ordered on a time axis. Second, we pick the nth reaction time, where n is defined by the product ofthe  number  of  reaction  times  in  the  distribution  and  theprobability of responding given a stop signal (or 1 minus theprobability  of  inhibition).  For  example,  if  there  were  100reaction  times  in  the  distribution  and  the  probability  ofresponding given a stop signal was .3, thenth reaction timewould be the 30th in the rank-ordered distribution. Thenthreaction time  is  an estimate  of  the time  at  which  the  stopprocess runs to completion, relative to the onset of the primarytask stimulus.
+  # as follows : FIRSTrst, reactiontimes on go trials are rank ordered on a time axis. Second, we pick the nth reaction time, where n is defined by the product ofthe  number  of  reaction  times  in  the  distribution  
+  # and  theprobability of responding given a stop signal (or 1 minus theprobability  of  inhibition).  
+  # For  example,  if  there  were  100reaction  times  in  the  distribution  and  the  probability  ofresponding given a stop signal was .3, thenth reaction timewould be the 30th in the rank-ordered distribution. 
+  # Thenthreaction time  is  an estimate  of  the time  at  which  the  stopprocess runs to completion, relative to the onset of the primarytask stimulus.
   #Third, we subtract stop signal delay from then nth reaction  time  and  estimate  SSRT.  For  example,  if  the nth reaction  time  was  545 msec  and  the  stop  signal  delay  was 200 msec, SSRT would be 345 msec.
   #For  example,  if  the nth reaction  time  was  545 msec  and  the  stop  signal  delay  was200 msec, SSRT would be 345 msec. SSRT is calculated foreach stop signal delay and then averaged.
   
@@ -20,7 +65,8 @@ get_more_sst_trial_stats <- function(sst_all_data){
   sst_all_data <- sst_all_data %>% group_by(subid,waveid, runid) %>%   
     mutate(
       stop_prop_correct=sum(condition=="CorrectStop")/sum(condition %in% c("CorrectStop","FailedStop")),
-      nth_reaction_time = quantile(reaction_time_clean[condition=="CorrectGo" & !is.na(reaction_time_clean)],1-stop_prop_correct,na.rm=TRUE)[[1]],
+      p_response_given_stop = 1 - stop_prop_correct,
+      nth_reaction_time = quantile(reaction_time_clean[condition=="CorrectGo" & !is.na(reaction_time_clean)],p_response_given_stop,na.rm=TRUE)[[1]],
       #ladder_mean = mean(LadderX_SSD_ms[LadderX_SSD_ms>0],na.rm=TRUE),
       ssrt_0=case_when(
         condition %in% c("CorrectStop","FailedStop") ~ nth_reaction_time-SSD_recorded,
@@ -78,7 +124,7 @@ calculate_rpe<-function(sst_all_data){
 }
 
 calculate_response_latency<-function(sst_all_data){
-  response_latency_means <- sst_all_data %>% group_by(subid, waveid,runid) %>% filter(condition!="Cue" & reaction_time!=0) %>%
+  response_latency_means <- sst_all_data %>% group_by(subid, waveid,runid) %>% filter(condition!="NullTrial" & reaction_time!=0) %>%
     summarise(rt_quant_5 = quantile(reaction_time,0.05,na.rm=TRUE),
               rt_quant_10 = quantile(reaction_time,0.1,na.rm=TRUE),
               rt_quant_20 = quantile(reaction_time,0.2,na.rm=TRUE),
@@ -106,7 +152,7 @@ get_expected_tone_time <- function(sst_all_data){
     mutate(post_current_rt_change=leading_rt-reaction_time_clean)
   
   sst_all_data<- sst_all_data %>%
-    mutate(has_SSD=SSD_recorded>0,IsTask=condition!="Cue") %>%
+    mutate(has_SSD=SSD_recorded>0,IsTask=condition!="NullTrial") %>%
     mutate(has_SSD_lagged=lag(has_SSD,1,default=0)) %>%
     mutate(grp=cumsum(has_SSD_lagged)) %>%
     group_by(subid, waveid, runid, grp) %>%

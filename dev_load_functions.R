@@ -37,6 +37,7 @@ get_scored_fs <- function(dropbox_file_dir){
 get_preprocessed_redcap_data <- function(){
   
   #Now get BMI from redcap
+  stop("the file below is out of date; need to use a more recent file")
   
   load("../../../../files/data/ppt_list_w_data_2022_02.Rdata")
   

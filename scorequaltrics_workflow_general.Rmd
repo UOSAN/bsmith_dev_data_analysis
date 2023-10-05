@@ -177,6 +177,8 @@ scoring_data_long = scorequaltrics::get_rubrics(scoring_rubrics,
 head(scoring_data_long[, -1], 10)
 ```
 
+
+
 ### Cleaning
 * modify IPAQ data (it's not in standard form)
 * remove responses after the cut-off date
@@ -399,6 +401,7 @@ surveys_long_clean = surveys_long_na %>%
   filter(!ResponseId %in% exclude_response_ids$ResponseId) %>%
   select(-ResponseId)
 ```
+
 
 
 ### Score the questionnaires

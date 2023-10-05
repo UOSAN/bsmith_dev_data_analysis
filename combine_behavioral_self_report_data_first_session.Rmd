@@ -13,8 +13,10 @@ Sys.setenv(R_CONFIG_ACTIVE = Sys.info()["nodename"])
 library(stringr)
 library(dplyr)
 library(ggplot2)
+library(tidyverse)
 library(rstatix)
 library(data.table)
+source("utils.R")
 data_path <- "../../grant-writing-workshop/files/data/"
 
 load(paste0(config::get("dev_analysis_data_dir"),"scored_data_w_demographics.RData"))
@@ -124,10 +126,12 @@ Now get behavioral measures.
 sst_pes_simple <- readr::read_csv(paste0("~/Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/analysis_files/data/", "post_error_slowing_simple_approach.csv"))
 #should be wave 1 by default.
 sst_data_1 <- readr::read_csv(file=paste0(dropbox_file_dir,"sst_summary_stats_by_run.csv"))
-sst_data_2 <- readr::read_csv(file=paste0(dropbox_file_dir,"sst_pre_analyzed_stats.csv"))
+#the following file excluded becuase the subject IDs are probably labelled wrong.
+#sst_data_2 <- readr::read_csv(file=paste0(dropbox_file_dir,"sst_pre_analyzed_stats.csv"))
 sst_data_1_w1 <- sst_data_1%>%filter(runid==1 & waveid==1)%>% select(-runid, -waveid)
-sst_data_2_w1 <- sst_data_2 %>% filter(wave==1) %>% select(-wave)
-sst_w1 <- merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE) %>%
+#sst_data_2_w1 <- sst_data_2 %>% filter(wave==1) %>% select(-wave)
+sst_w1 <- sst_data_1_w1 %>%
+  #merge(sst_data_1_w1,sst_data_2_w1,by.x ="subid",by.y="SubjectLabel",all = TRUE) %>%
   #merge(sst_pes[,2:ncol(sst_pes)],by="subid",all=TRUE) %>%
   merge(sst_pes_simple[,2:ncol(sst_pes_simple)],by="subid",all=TRUE)
 
@@ -302,6 +306,8 @@ These aren't explicitly designed to measure constructs we are concerned about, b
 ## analysis (left over from previous analysis)
 
 Get the first survey for each scale:
+
+We have to change this method; and get EVERY survey for each scale....
 ```{r}
 scored$survey_num <- as.numeric(str_trim(str_match(scored$survey_name,"[DEV Session \\s][\\d+][\\sSurveys]")))
 first_survey_for_scale<-scored %>% group_by(scale_name) %>% dplyr::summarise("first_survey"=min(survey_num))
@@ -316,6 +322,7 @@ print(first_survey_for_scale)
 
 
 ```
+
 
 
 
@@ -338,73 +345,11 @@ For some reason there's a lot of participants with missing RTFS data. Participan
 
 ```{r}
 
-#iterate through each of our scales, and test their correlation with FCI and FFQ
 
-#scales where there's a promote-prevent
-promote_minus_prevent <- scored_fs %>% 
-  #filter for FFQ
-  filter(scale_name %in% c("FFQ","FCI")) %>%
-  #filter for the two cols we're interested in
-  filter(scored_scale %in% c(
-    "cancer_promoting","cancer_preventing","craved_cancer_promoting","liked_cancer_promoting","craved_cancer_preventing","liked_cancer_preventing")) %>%
-  #throw it out wide
-  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
-  #create a composite measure
-  mutate("cancer_promoting_minus_preventing"=cancer_promoting-cancer_preventing,
-         "cancer_promoting_minus_preventing_craved"=craved_cancer_promoting-craved_cancer_preventing,
-         "cancer_promoting_minus_preventing_liked"=liked_cancer_promoting-liked_cancer_preventing
-         ) %>%
-  #wide across the surveys so that we can compare the surveys
-  select(scale_name,survey_name,SID,cancer_promoting_minus_preventing,
-         cancer_promoting_minus_preventing_craved,cancer_promoting_minus_preventing_liked,
-         cancer_promoting,cancer_preventing
-         ) %>% 
-  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
-                     names_from=scale_name,
-                     values_from=c(
-    "cancer_promoting_minus_preventing",
-    "cancer_promoting_minus_preventing_craved",
-    "cancer_promoting_minus_preventing_liked",
-    "cancer_promoting","cancer_preventing"
-    )
-    )
-
-single_scale_predictors_mean <- c("BSCS","EDM","cSES")
-
-single_scale_values_mean <- scored_fs %>% 
-    #filter for FFQ
-  filter(scale_name %in% single_scale_predictors_mean) %>%
-  #filter for the two cols we're interested in
-  #filter(scored_scale %in% c("mean")) %>%#unnecessary
-  #throw it out wide
-  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
-  #wide across the surveys so that we can compare the surveys
-  select(scale_name,survey_name,SID,mean) %>% 
-  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
-                     names_from=scale_name,
-                     values_from=c("mean")
-    )
+promote_minus_prevent <- get_promote_minus_prevent(scored_fs)
 
 
-
-
-
-single_scale_predictors_sum <- c("TRSQ","BIS_11","RS","PCS")
-
-single_scale_values_sum <- scored_fs %>% 
-  #filter for FFQ
-  filter(scale_name %in% single_scale_predictors_sum) %>%
-  #throw it out wide
-  select(SID,scored_scale,score,survey_name,scale_name) %>% tidyr::pivot_wider(names_from = scored_scale,values_from = score) %>%
-  #wide across the surveys so that we can compare the surveys
-  select(scale_name,survey_name,SID,sum) %>% 
-  tidyr::pivot_wider(id_cols=c("SID","survey_name"),
-                     names_from=scale_name,
-                     values_from=c("sum")
-    )
-single_scale_values<- merge(single_scale_values_mean,single_scale_values_sum,by=c("SID","survey_name"),all=TRUE)
-
-#now merge these
+single_scale_values<-get_single_scale_predictors(scored_fs)
 
 scales_wide<-merge(promote_minus_prevent,single_scale_values,by=c("SID","survey_name"),all=TRUE)
 
@@ -439,42 +384,7 @@ scored_fs_demo_zscored_wide <- scored_fs_demo_zscored %>%
 
 
 ```{r}
-#Now do multi-scale predictors
-#Big5, Planfulness
-multi_scale_predictor_list <- list(BFI =c("agreeableness","conscientiousness","extraversion","neuroticism","openness"),
-                           PLAN = c("cognitive_strategies","mental_forecasting","temporal_orientation"),
-                           ACES = c("sum","abuse","divorced_separated","household_dysfunction","neglectful_parenting"),
-                           RTFS = c("factor_1", "factor_2"),
-                           SRHI = c("healthy","unhealthy","sum"),
-                           DEMO = c("mcarthur_social_standing"),
-                           IPAQ = c("sittinghours", "moderateminutes", "vigorousminutes", "walkingminutes"),
-                           RMQ = c("assessment", "lie",        "locomotion"),
-                           IMI = c("value_usefulness", "perceived_choice", "perceived_competence", "effort_importance", "interest_enjoyment"),
-                           NCS = c("get_job_done","intellectual_task", "abstract_thinking", "like_responsibility", "thinking_not_exciting",
-                                   "think_minimally", "thinking_not_fun", "avoid_depth", "deliberating_issues", "prefer_little_thought",
-                                   "relief_not_satisfaction", "satisfaction_in_deliberating", "thought_appealing", "total", "tasks_little_thought",
-                                   "solve_puzzles", "small_daily_projects", "new_solutions_to_problems", "prefer_complex"
-                                   ),
-                           TESQ_E = unique(scored_fs[scored_fs$scale_name=="TESQ_E","scored_scale"])
-                           )
-
-#go through the table and label every subscale that we want to keep
-scored_fs$INCLUDE_SUBSCALE <- FALSE
-for (scale_x in names(multi_scale_predictor_list)){
-  print(scale_x)
-  for(subscale_x in multi_scale_predictor_list[[scale_x]]){
-    cat(subscale_x)
-    scored_fs[scored_fs$scale_name==scale_x & scored_fs$scored_scale==subscale_x,"INCLUDE_SUBSCALE"] <- TRUE
-  }
-}
-
-scored_multi <- scored_fs[scored_fs$INCLUDE_SUBSCALE,]
-
-scored_multi$scale_subscale_name <- paste0(scored_multi$scale_name,"_",scored_multi$scored_scale)
-
-multi_scale_values <- scored_multi %>% 
-  #throw it out wide
-  select(SID,survey_name,score,scale_subscale_name) %>% tidyr::pivot_wider(names_from = scale_subscale_name,values_from = score)
+multi_scale_values<-get_multiscale_values(scored_fs)
 
 ppt_data_wide_raw_2 <- merge(ppt_data_wide_raw_1,multi_scale_values,by=c("SID","survey_name"),all=TRUE)
 
@@ -506,31 +416,8 @@ data_by_ppt <- merge(data_by_ppt,behavioral_data,by.x="SID",by.y="subid",all.x =
 Now we do some contrasts we haven't done yet...
 
 ```{r}
-data_by_ppt$SRHI_healthy_minus_unhealthy <- data_by_ppt$SRHI_healthy-data_by_ppt$SRHI_unhealthy
-data_by_ppt$RTFS_f1_minus_f2 <- data_by_ppt$RTFS_factor_1-data_by_ppt$RTFS_factor_2
-#Craig CL,Marshall A , Sjostrom M et al. International Physical Activity Questionnaire: 12 country reliability and validity Med Sci Sports Exerc 2003;August
-#also available on the IPAQ scoring protocol in the DEV Dropbox, page 5
-#Dropbox (University of Oregon)/UO-SAN Lab/Berkman Lab/Devaluation/Measures/Measures_Questionnaires/IPAQ Scoring Protocol.pdf
-data_by_ppt$IPAQ_walkingMETminutes <- data_by_ppt$IPAQ_walkingminutes* 3.3
-data_by_ppt$IPAQ_moderateMETminutes <- data_by_ppt$IPAQ_moderateminutes* 4.0
-data_by_ppt$IPAQ_vigorousMETminutes <- data_by_ppt$IPAQ_vigorousminutes* 8.0
-data_by_ppt$IPAQ_total_METminutes <-data_by_ppt$IPAQ_walkingMETminutes + data_by_ppt$IPAQ_moderateMETminutes+ data_by_ppt$IPAQ_vigorousMETminutes
-weight_in_kg <- data_by_ppt$weight_0* 0.453592 #convert from pounds to kg
-data_by_ppt$IPAQ_MET_kCal <- data_by_ppt$IPAQ_total_METminutes * weight_in_kg/60
-
-
-# data_by_ppt$birthsex_factor<-""
-# data_by_ppt$birthsex_factor[data_by_ppt$birthsex==1]<-"Female"
-# data_by_ppt$birthsex_factor[data_by_ppt$birthsex==2]<-"Male"
-# data_by_ppt$birthsex_factor<-factor(data_by_ppt$birthsex_factor,levels=c("Female","Male"))
-
-data_by_ppt <- data_by_ppt %>% mutate(
-  birthsex_factor =
-    factor(case_when(
-      birthsex==1 ~ "Female",
-      birthsex==2 ~ "Male"
-    ),levels=c("Female","Male"))
-)
+data_by_ppt<-do_misc_self_report_summary_measures(data_by_ppt)
+data_by_ppt <- do_aggregate_measures(data_by_ppt)
                                             
 ```
 
@@ -556,16 +443,30 @@ birthsex_key <- data_by_ppt[c("SID","birthsex_factor")]
 
 
 
-source("ffq_revision/get_ffq_v2.R")
+# source("ffq_revision/get_ffq_v2.R")
+# 
+# ffq_v2_values <- score_ffqv2(surveys_long_clean,birthsex_key)
+# colnames(ffq_v2_values) <- paste0("FFQ_v2_",colnames(ffq_v2_values))
 
-ffq_v2_values <- score_ffqv2(surveys_long_clean,birthsex_key)
-colnames(ffq_v2_values) <- paste0("FFQ_v2_",colnames(ffq_v2_values))
 
 
 ```
 
 ```{r}
-data_by_ppt <- merge(data_by_ppt,ffq_v2_values,by.x="SID",by.y="FFQ_v2_SID",all.x = TRUE,all.y=FALSE)
+
+nutrient_density_scores <- readr::read_csv(paste0(
+  config::get("nutrient_density_datapath"), "/Data files/DEV_NUTRIENT_DENSITY_PARTICIPANT.csv"))
+
+score_cols <- setdiff(colnames(nutrient_density_scores),c("SID","survey_name"))
+
+nutrient_density_scores$time_period <- stringr::str_match(nutrient_density_scores$survey_name,pattern = "DEV\\_(.*)\\_FFQ")[,2]
+nds_wide <- nutrient_density_scores %>% 
+  select(-survey_name)%>% 
+  pivot_wider(names_from=time_period,values_from=score_cols,names_prefix = "FFQ_NutrientDensity_")
+
+data_by_ppt<-merge(data_by_ppt,nds_wide,by="SID",all.x = TRUE,all.y=FALSE)
+
+# data_by_ppt <- merge(data_by_ppt,ffq_v2_values,by.x="SID",by.y="FFQ_v2_SID",all.x = TRUE,all.y=FALSE)
 
 ```
 
@@ -628,7 +529,7 @@ for (coln in colnames(data_by_ppt)[2:ncol(data_by_ppt)]){
     na_row <- is.na(unlist(data_by_ppt[coln]))
     col_vals <- data_by_ppt[!na_row,coln]
     col_sids <- data_by_ppt[!na_row,"SID"]
-    if(class(col_vals)!="factor"){
+    if(("factor" %in%class(col_vals))==FALSE){
       
       col_mean<-mean(col_vals)
       col_sd<-sd(col_vals)

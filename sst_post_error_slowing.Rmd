@@ -287,13 +287,13 @@ sst_all_data<-
   mutate(post_pre_rt_change=lead(reaction_time_clean,2)-lag(reaction_time_clean,2))
 
 #right. now we can view distributions of post_pre_rt_change by condition
-ggplot(sst_all_data %>% filter(condition!="Cue"),
+ggplot(sst_all_data %>% filter(condition!="NullTrial"),
        aes(x=post_pre_rt_change,fill=condition))+
   geom_histogram()+facet_wrap(~condition,scales = "free")+
   geom_vline(xintercept=0)
 
 for(cond in unique(sst_all_data$condition)){
-  if(cond=="Cue"){next}
+  if(cond=="NullTrial"){next}
   print(cond)
   print("post minus pre trial reaction time change")
   sst_all_data_condition<-sst_all_data %>% filter(condition==cond)

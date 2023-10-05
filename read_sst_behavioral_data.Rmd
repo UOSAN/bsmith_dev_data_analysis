@@ -95,7 +95,7 @@ get_formatted_seeker_from_mat_file <-function(fname,raw_behavioral_data_filepath
       go_no_go_condition_label = case_when(
             go_no_go_condition == 0 ~ "Go",
             go_no_go_condition == 1 ~ "Stop",
-            go_no_go_condition == 2 ~ "Cue",
+            go_no_go_condition == 2 ~ "NullTrial",
             TRUE ~ as.character(NA)
           )
       ) %>% mutate(
@@ -104,7 +104,7 @@ get_formatted_seeker_from_mat_file <-function(fname,raw_behavioral_data_filepath
             go_no_go_condition == 0 & reaction_time==0 ~ "FailedGo",
             go_no_go_condition == 1 & reaction_time!=0 ~ "FailedStop",
             go_no_go_condition == 1 & reaction_time==0 ~ "CorrectStop",
-            go_no_go_condition == 2 ~ "Cue",
+            go_no_go_condition == 2 ~ "NullTrial",
             TRUE ~ as.character(NA)
           )
       )
@@ -176,12 +176,13 @@ source("SST_processing.R")
 sst_all_data_raw <- study_df_aug
 sst_all_data<-clean_sst_data(sst_all_data_raw)
 sst_all_data <- get_expected_tone_time(sst_all_data)
+sst_all_data <- label_button_presses(sst_all_data)
 
 sst_all_data<-calculate_response_latency(sst_all_data)
 sst_all_data<-calculate_rpe(sst_all_data)
 
 #calculate proportion of stop trials that were correct. ideally should be 50/50 but let's check it.
-sst_all_data<-get_more_sst_trial_stats(sst_all_data)
+sst_all_data <- get_more_sst_trial_stats_multiple_versions(sst_all_data)
 
 #remove subjects with two many incorrect trials--theyre' probably not paying attention
 #hist(sst_all_data$stop_prop_correct)
@@ -243,9 +244,11 @@ I'm going to check the data above vs. Redcap-derived data to identify any data t
 
 condition_count <- sst_all_data %>% group_by(runid,subid,condition) %>% count() %>% ungroup()
 trial_summary_data <- sst_all_data %>% group_by(runid,waveid, subid) %>% 
-  summarise(go_trial_reaction_time = mean(reaction_time[condition %in% c("CorrectGo","FailedGo")]),
-            reaction_time = mean(reaction_time[condition %in% c("CorrectStop")]),
-            mean_ssrt_0 = mean(ssrt_0[condition=="CorrectStop"],na.rm=TRUE)
+  summarise(go_trial_reaction_time = mean(reaction_time[condition %in% c("CorrectGo")]),
+            #reaction_time = mean(reaction_time[condition %in% c("CorrectStop")],na.rm=TRUE),
+            mean_ssrt_0 = mean(ssrt_0[condition=="CorrectStop"],na.rm=TRUE),
+            mean_ssrt_0_congruent_only = mean(ssrt_0_congruent_only[condition=="CorrectStop"],na.rm=TRUE),
+            mean_SSD = mean(SSD_recorded[condition %in% c("CorrectStop","FailedStop")],na.rm=TRUE)
             ) %>% ungroup()
 
 
@@ -276,7 +279,7 @@ readr::write_csv(summary_stats_by_run,file=paste0(data_path,"sst_summary_stats_b
 Data presummarized by Krista, Bryan, and Dani.
 
 ```{r}
-
+stop("based on the matlab code that generated this file, it appears to be mislabelling the subject IDS and thus this file must be excluded from the current pipeline.")
 
 presummarized_sst_filepath <- paste0(sst_on_dropbox,"/compiledResults/upToDEV228/varMats/resultVars16.mat")
 
@@ -329,4 +332,18 @@ readr::write_csv(presummarized_data_all,file=paste0(data_path,"sst_pre_analyzed_
 
 
 
+# Test combining
+```{r}
+combined_subject_stats <- merge(summary_stats_by_run,presummarized_data_all,by.x=c("subid","waveid"),by.y=c("SubjectLabel","wave"))
+colnames(combined_subject_stats)
+cor(combined_subject_stats %>% select("SSRT","SSRTint","SSRTquant","mean_ssrt_0","mean_ssrt_0_congruent_only"),use = "pairwise.complete.obs")
+```
+OK, these are very close; what's the remaining difference between SSRTquant and mean_ssrt_0 attributable to?
+
+Considering the subject pattern, perhaps it is labels of left and right? Shouldn't be, because those aren't even l
+
+```{r}
+plot(combined_subject_stats$mean_ssrt_0,combined_subject_stats$SSRTquant)
+plot(combined_subject_stats$mean_ssrt_0_congruent_only,combined_subject_stats$SSRTquant)
+```
 
