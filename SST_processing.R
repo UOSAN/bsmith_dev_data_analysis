@@ -50,6 +50,7 @@ get_more_sst_trial_stats_multiple_versions <- function(sst_all_data){
   return(sst_all_data)
 }
 
+
 get_more_sst_trial_stats <- function(sst_all_data){
   
   # OOSTERLAAN et al. 1998:
@@ -63,6 +64,13 @@ get_more_sst_trial_stats <- function(sst_all_data){
   #should probably also exclude subjects who have proportions correct outside a central range
   #because the experiment 'titrates' them to have a constant response of 50%; outside of that range means they aren't engaged in the task.
   sst_all_data <- sst_all_data %>% group_by(subid,waveid, runid) %>%   
+    get_sst_for_run() %>%
+    ungroup()
+  return(sst_all_data)
+}
+
+get_sst_for_run <- function(run_data){
+  ssrt_data <- run_data %>%   
     mutate(
       stop_prop_correct=sum(condition=="CorrectStop")/sum(condition %in% c("CorrectStop","FailedStop")),
       p_response_given_stop = 1 - stop_prop_correct,
@@ -72,8 +80,9 @@ get_more_sst_trial_stats <- function(sst_all_data){
         condition %in% c("CorrectStop","FailedStop") ~ nth_reaction_time-SSD_recorded,
         TRUE ~ as.numeric(NA)
       )
-    ) %>% ungroup()
-  return(sst_all_data)
+    )
+  return(ssrt_data)
+  
 }
 
 get_more_sst_stats <- function(sst_all_data){

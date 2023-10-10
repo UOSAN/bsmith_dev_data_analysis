@@ -30,6 +30,29 @@ all_ppt_data <- readr::read_csv(paste0(dropbox_file_dir,"data_by_ppt_all_session
 #all_ppt_data <- readr::read_csv(paste0(dropbox_file_dir,"data_by_wave_ppt.csv"))
 ```
 
+```{r}
+
+
+healthy_vs_unhealthy <- sst_all_data_clean %>% filter(condition %in% c("CorrectGo","FailedStop")) %>% dplyr::select(subid,waveid,trial_n,condition,reaction_time_clean,health_condition_label) %>%
+  group_by(subid,waveid,condition,health_condition_label) %>%
+  summarize(mean_rt=mean(reaction_time_clean,na.rm=TRUE), mean_trial_n=mean(trial_n)) %>%
+  pivot_wider(names_from="health_condition_label",values_from = c("mean_rt","mean_trial_n"))
+
+healthy_vs_unhealthy$healthy_minus_unhealthy_rt <- healthy_vs_unhealthy$mean_rt_Healthy-healthy_vs_unhealthy$mean_rt_Unhealthy
+healthy_vs_unhealthy$healthy_minus_unhealthy_trial_n <- healthy_vs_unhealthy$mean_trial_n_Healthy-healthy_vs_unhealthy$mean_trial_n_Unhealthy
+
+value_cols <- colnames(healthy_vs_unhealthy)[!(colnames(healthy_vs_unhealthy) %in% c("subid", "waveid","condition"))]
+results_by_subj<-healthy_vs_unhealthy %>% pivot_wider(id_cols = c("subid","condition"),names_from="waveid",names_prefix="waveid_",values_from = value_cols)
+
+results_by_subj$mean_rt_Healthy_w2_m_w1<-results_by_subj$mean_rt_Healthy_waveid_2-results_by_subj$mean_rt_Healthy_waveid_1
+
+results_by_subj$mean_rt_Unhealthy_w2_m_w1<-results_by_subj$mean_rt_Unhealthy_waveid_2-results_by_subj$mean_rt_Unhealthy_waveid_1
+
+results_by_subj$mean_rt_Healthy_m_Unhealthy_w2_m_w1<-(
+  results_by_subj$mean_rt_Healthy_w2_m_w1-results_by_subj$mean_rt_Unhealthy_w2_m_w1
+)
+
+```
 
 
 # Behavioral predictions
@@ -38,8 +61,27 @@ all_ppt_data <- readr::read_csv(paste0(dropbox_file_dir,"data_by_ppt_all_session
     - BR Training (vs. Control) decreases RT to healthy foods and increases RT to unhealthy foods; because the SST task calibrates difficulty level, these two will be difficult to pull apart but we should see an increase Unhealthy RT - Healthy RT
     
     
-### Simple look at CG trials, reaction times, comparing task means
+
     
+```{r}
+library(tidyverse)
+
+
+#all_ppt_data %>% select(SID, session_id, SST_mean_ssrt_0) %>%  
+
+
+results_by_subj_int <- results_by_subj %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group),by.x = "subid",by.y="SID",all = FALSE)
+results_by_subj_int$intervention_group<-factor(results_by_subj_int$intervention_group,levels=c("willamette","umpqua","mckenzie"))
+
+
+results_by_subj_brt_test <- results_by_subj_int %>% filter(intervention_group %in% c("willamette", "mckenzie"))
+results_by_subj_brt<-results_by_subj_int %>% filter(intervention_group %in% c("mckenzie"))
+```
+    
+### Directional test
+First of all, is the prediction _directionally_ right, i.e., does RT to healthy food decrease, unhealthy increase, and Unhealth-Healthy increase even more? We're mainly looking at directions; the hypothesis is best tested with intergroup comparison via a MLM. But we'll look twice: once across the whole dataset; once at BRT specifically
+
+
 ```{r}
 library(tidyverse)
 
@@ -54,84 +96,98 @@ healthy_vs_unhealthy <- sst_all_data_clean %>% filter(condition %in% c("CorrectG
 healthy_vs_unhealthy$healthy_minus_unhealthy_rt <- healthy_vs_unhealthy$mean_rt_Healthy-healthy_vs_unhealthy$mean_rt_Unhealthy
 healthy_vs_unhealthy$healthy_minus_unhealthy_trial_n <- healthy_vs_unhealthy$mean_trial_n_Healthy-healthy_vs_unhealthy$mean_trial_n_Unhealthy
   
+
+
 ```
+
+
+Does RT to healthy food decrease?
 
 ```{r}
-for(cond in c("CorrectGo","FailedStop")){
-  print(cond)
-  healthy_vs_unhealthy_select_cond<-healthy_vs_unhealthy %>%filter(condition==cond)
-  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==1) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==1) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
-  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==2) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==2) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
-  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==3) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==3) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
-  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==4) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==4) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
-  t.test(healthy_vs_unhealthy_select_cond %>% filter(waveid==5) %>% .$mean_rt_Healthy,healthy_vs_unhealthy_select_cond %>% filter(waveid==5) %>% .$mean_rt_Unhealthy,paired = TRUE) %>% print
 
-}
+t.test(results_by_subj$mean_rt_Healthy_w2_m_w1)
+t.test(results_by_subj_brt$mean_rt_Healthy_w2_m_w1)
+```
+Yes! For the groups in genral, and for BRT in particular.
+
+And does Unhealthy _increase_?
+
+```{r}
 
 
-# t.test(healthy_vs_unhealthy %>% filter(waveid==4) %>% .$mean_rt_Healthy,healthy_vs_unhealthy %>% filter(waveid==4) %>% .$mean_rt_Unhealthy,paired = TRUE)
-# t.test(healthy_vs_unhealthy %>% filter(waveid==5) %>% .$mean_rt_Healthy,healthy_vs_unhealthy %>% filter(waveid==5) %>% .$mean_rt_Unhealthy,paired = TRUE)
-#t.test(healthy_vs_unhealthy %>% filter(waveid==1) %>% .$mean_trial_n_Healthy,healthy_vs_unhealthy %>% filter(waveid==1) %>% .$mean_trial_n_Unhealthy,paired = TRUE)
+t.test(results_by_subj$mean_rt_Unhealthy_w2_m_w1)
+
+t.test(results_by_subj_brt$mean_rt_Unhealthy_w2_m_w1)
 ```
 
-Reaction time for Unhealthy trials is actually _longer_ at an absolute. This seems to be an effect of the study: there's no difference at wave 1, but there is a difference at wave 2. But is it due to the interventions?
+No--there's no change for this; in fact, for Unhealthy food, the directionality is in the REVERSE, but non-significantly so.
 
-Also it is noteable that the changes _lasted_ over time. What's really odd is that for FailedStop trials the effect wasn't immediately observable, but it was observable over time.
 
 It's still going to be important to look at stop signal reaction time. We should be able to calculate that separately for healthy and unhealthy trials.
 
-### adding in wave contrast
-
-```{r}
-value_cols <- colnames(healthy_vs_unhealthy)[!(colnames(healthy_vs_unhealthy) %in% c("subid", "waveid","condition"))]
-results_by_subj<-healthy_vs_unhealthy %>% pivot_wider(id_cols = c("subid","condition"),names_from="waveid",names_prefix="waveid_",values_from = value_cols)
-results_by_subj$mean_rt_Unhealthy_w2_m_w1<-results_by_subj$mean_rt_Unhealthy_waveid_2-results_by_subj$mean_rt_Unhealthy_waveid_1
-results_by_subj$mean_rt_Healthy_w2_m_w1<-results_by_subj$mean_rt_Healthy_waveid_2-results_by_subj$mean_rt_Healthy_waveid_1
-results_by_subj$mean_rt_Unhealthy_w3_m_w1<-results_by_subj$mean_rt_Unhealthy_waveid_3-results_by_subj$mean_rt_Unhealthy_waveid_1
-results_by_subj$healthy_minus_unhealthy_rt_w2_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_2-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
-results_by_subj$healthy_minus_unhealthy_rt_w3_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_3-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
-results_by_subj$healthy_minus_unhealthy_rt_w4_m_w1<-results_by_subj$healthy_minus_unhealthy_rt_waveid_4-results_by_subj$healthy_minus_unhealthy_rt_waveid_1
-for(cond in c("CorrectGo","FailedStop")){
-  print(cond)
-  t.test(results_by_subj %>% filter(condition==cond) %>% .$healthy_minus_unhealthy_rt_w2_m_w1) %>% print
-  t.test(results_by_subj %>% filter(condition==cond) %>% .$healthy_minus_unhealthy_rt_w3_m_w1) %>% print
-  t.test(results_by_subj %>% filter(condition==cond) %>% .$mean_rt_Unhealthy_w2_m_w1) %>% print
-  t.test(results_by_subj %>% filter(condition==cond) %>% .$mean_rt_Unhealthy_w3_m_w1) %>% print
-  
-}
-```
-
 OK, these results are starting to look at bit odd. But I think--because of the titration design--these are most interpretable when comparing between healthy and unhealthy ratehr htan looking at unhealthy conditions by themselves.
 
+Finally, before we look at conditions, let's summarize all the relevant effects so that we're very clear about the directionality.
+
+```{r}
+summary(results_by_subj_int$mean_rt_Healthy_waveid_1)
+summary(results_by_subj_int$mean_rt_Healthy_waveid_2)
+summary(results_by_subj_int$mean_rt_Unhealthy_waveid_1)
+summary(results_by_subj_int$mean_rt_Unhealthy_waveid_2)
+```
+
+Specifically for the BRT group:
+
+```{r}
+rt_comparison<-results_by_subj_int %>% filter(condition=="CorrectGo") %>%
+  select(subid,intervention_group,
+        mean_rt_Healthy_waveid_1,
+         mean_rt_Healthy_waveid_2,
+         mean_rt_Unhealthy_waveid_1,
+         mean_rt_Unhealthy_waveid_2) %>% 
+  pivot_longer(cols = c(-subid,-intervention_group), names_to = "measure",values_to = "value") %>%
+  mutate(measure = sub("waveid_","",sub("mean_rt_","",measure))) %>%
+  separate(measure,into=c("Health","Wave"))
+  
+  
+  
+ggplot(rt_comparison,aes(x=intervention_group,group=interaction(Health, Wave,intervention_group),color=Wave,y=value))+geom_boxplot()+facet_wrap(~Health)
+
+summary(results_by_subj_brt$mean_rt_Healthy_waveid_1)
+summary(results_by_subj_brt$mean_rt_Healthy_waveid_2)
+summary(results_by_subj_brt$mean_rt_Unhealthy_waveid_1)
+summary(results_by_subj_brt$mean_rt_Unhealthy_waveid_2)
+```
 
 ### Condition interactions
-So--let's now look at change by condition!
+So--let's now look at change by condition! Because we're laser focused on BRT, just look at that.
 
 ```{r}
-results_by_subj_int <- results_by_subj %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group),by.x = "subid",by.y="SID",all = FALSE)
-results_by_subj_int$intervention_group<-factor(results_by_subj_int$intervention_group,levels=c("willamette","umpqua","mckenzie"))
-summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
-summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
 
-summary(lm(healthy_minus_unhealthy_rt_w3_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
-summary(lm(healthy_minus_unhealthy_rt_w3_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
 
-summary(lm(healthy_minus_unhealthy_rt_w4_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
-summary(lm(healthy_minus_unhealthy_rt_w4_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(mean_rt_Healthy_m_Unhealthy_w2_m_w1~1,results_by_subj_brt_test %>% filter(condition=="CorrectGo")))
+summary(lm(mean_rt_Healthy_m_Unhealthy_w2_m_w1~intervention_group,results_by_subj_brt_test %>% filter(condition=="CorrectGo")))
+
+
 ```
 
 ```{r}
-summary(lm(mean_rt_Healthy_w2_m_w1~1,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(mean_rt_Healthy_w2_m_w1~1,results_by_subj_brt_test %>% filter(condition=="CorrectGo")))
 
-summary(lm(mean_rt_Healthy_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(mean_rt_Healthy_w2_m_w1~intervention_group,results_by_subj_brt_test %>% filter(condition=="CorrectGo")))
 
-summary(lm(mean_rt_Unhealthy_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo")))
+summary(lm(mean_rt_Unhealthy_w2_m_w1~intervention_group,results_by_subj_brt_test %>% filter(condition=="CorrectGo")))
+
+summary(lm(mean_rt_Healthy_m_Unhealthy_w2_m_w1~intervention_group,results_by_subj_brt_test %>% filter(condition=="CorrectGo")))
 ```
-
+Let's look closer 
 
 OK--the behavioral intervention worked--in the first month. It seems to fade away after that. What's odd is that a main effect takes over. Perhaps that reflects that the SST itself is practice?
 
 The pre-registered hypothesis is **confirmed**. Behavioral response training (McKenzie) created a difference in unhealthy and healthy food training.
+
+
+
 
 There are further questions:
 
@@ -149,134 +205,107 @@ results_by_subj_fulldataset <- results_by_subj %>% merge(full_dataset_with_group
 summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group+age365_z+birthsex_factor,results_by_subj_fulldataset %>% filter(condition=="CorrectGo")))
 ```
 
-## MLM
+### MLM
 
-### Not separated by health condition label
+#### Contrasting health groups
 
 ```{r}
-
+library(lme4)
 grt_scores <- sst_all_data_clean %>% dplyr::select(subid,waveid,runid, trial_n,condition,reaction_time_clean,health_condition_label,SSD_recorded) %>%
   #get_more_sst_trial_stats() %>% 
   group_by(subid,waveid,runid) %>% 
-  summarize(grt = mean(reaction_time_clean[condition=="CorrectGo"],na.rm=TRUE)) %>% 
+  summarize(grt = mean(reaction_time_clean[condition=="CorrectGo"],na.rm=TRUE),
+            grt_healthy = mean(reaction_time_clean[condition=="CorrectGo" & health_condition_label=="Healthy"],na.rm=TRUE),
+            grt_unhealthy = mean(reaction_time_clean[condition=="CorrectGo" & health_condition_label=="Unhealthy"],na.rm=TRUE),
+            ) %>% 
+  mutate(grt_healthy_m_unhealthy = grt_healthy - grt_unhealthy) %>%
   merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "subid",by.y="SID",all = FALSE)
   # summarize(mean_rt=mean(reaction_time_clean), mean_trial_n=mean(trial_n)) %>%
   # pivot_wider(names_from="health_condition_label",values_from = c("mean_rt","mean_trial_n"))
 
-
+grt_scores$PostIntervention<-grt_scores$waveid>1
+grt_scores_brt_v_cont <- grt_scores %>% filter(intervention_group %in% c("willamette","mckenzie"))
 
 base_model = lmer(
-  grt~waveid+intervention_group + (1 |subid),
-     grt_scores %>% filter(waveid %in% c(1,2)))
+  grt_healthy_m_unhealthy~waveid+intervention_group + (1 |subid),
+     grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
 summary(base_model)
 intervention_model = lmer(
-  grt~waveid*intervention_group + (1 |subid),
-  grt_scores %>% filter(waveid %in% c(1,2)))
+  grt_healthy_m_unhealthy~waveid*intervention_group + (1 |subid),
+  grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
 
 summary(intervention_model)
 
 anova(base_model,intervention_model)
 
 ```
+Great. So we can again confirm our BRT hypothesis with Go Response Time.
 
 Now let's do another model which captures the extra value we have over time.
 ```{r}
 
-grt_scores$PostIntervention<-grt_scores$waveid>1
+
 
 base_model = lmer(
-  grt~waveid+intervention_group + PostIntervention + (1 |subid),
-     grt_scores)
+  grt_healthy_m_unhealthy~waveid+intervention_group + PostIntervention + (1 |subid),
+     grt_scores_brt_v_cont)
 summary(base_model)
 intervention_model = lmer(
-  grt~waveid+PostIntervention*intervention_group + (1 |subid),
-  grt_scores)
+  grt_healthy_m_unhealthy~waveid+PostIntervention*intervention_group + (1 |subid),
+  grt_scores_brt_v_cont)
 
 summary(intervention_model)
 
 anova(base_model,intervention_model)
 ```
 
-### Separated by health condition label
+#### Separated by health condition label
 ```{r}
 
-grt_scores <- sst_all_data_clean %>% dplyr::select(subid,waveid,runid, trial_n,condition,reaction_time_clean,health_condition_label,SSD_recorded) %>%
-  group_by(health_condition_label) %>%
-  #get_more_sst_trial_stats() %>% 
-  group_by(subid,waveid,runid,health_condition_label) %>% 
-  summarize(grt = mean(reaction_time_clean[condition=="CorrectGo"],na.rm=TRUE)) %>% 
-  merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "subid",by.y="SID",all = FALSE)
-  # summarize(mean_rt=mean(reaction_time_clean), mean_trial_n=mean(trial_n)) %>%
-  # pivot_wider(names_from="health_condition_label",values_from = c("mean_rt","mean_trial_n"))
-
-
-
-```
-
-
-OK, so our effect is robust to the extra control in MLM. However you slice it, it appears that the umpqua--cognitive reappraisal-- intervention increases Go reaction times generally.
-
-
-```{r}
-
-grt_scores$PostIntervention<-grt_scores$waveid>1
 
 base_model = lmer(
-  grt~waveid+intervention_group + (1 |subid),
-     grt_scores %>% filter(health_condition_label=="Unhealthy" & waveid %in% c(1,2)))
+  grt_healthy~waveid+intervention_group + (1 |subid),
+     grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
 summary(base_model)
 intervention_model = lmer(
-  grt~waveid*intervention_group + (1 |subid),
-  grt_scores %>% filter(health_condition_label=="Unhealthy" & waveid %in% c(1,2)))
+  grt_healthy~waveid*intervention_group + (1 |subid),
+  grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
 
 summary(intervention_model)
 
 anova(base_model,intervention_model)
+
+
+base_model = lmer(
+  grt_unhealthy~waveid+intervention_group + (1 |subid),
+     grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
+summary(base_model)
+intervention_model = lmer(
+  grt_unhealthy~waveid*intervention_group + (1 |subid),
+  grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
 ```
 
-
+#### Health groups combined
 ```{r}
-
-grt_scores$PostIntervention<-grt_scores$waveid>1
 
 base_model = lmer(
   grt~waveid+intervention_group + (1 |subid),
-     grt_scores %>% filter(health_condition_label=="Healthy" & waveid %in% c(1,2)))
+     grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
 summary(base_model)
 intervention_model = lmer(
   grt~waveid*intervention_group + (1 |subid),
-  grt_scores %>% filter(health_condition_label=="Healthy" & waveid %in% c(1,2)))
+  grt_scores_brt_v_cont %>% filter(waveid %in% c(1,2)))
 
 summary(intervention_model)
 
 anova(base_model,intervention_model)
 ```
 
-### Contrasting health groups
-
-
-```{r}
-
-grt_scores_wide <- grt_scores %>% 
-  # summarize(mean_rt=mean(reaction_time_clean), mean_trial_n=mean(trial_n)) %>%
-  pivot_wider(names_from="health_condition_label",values_from = c("grt"))
-
-grt_scores_wide$healthy_minus_unhealthy_grt <- grt_scores_wide$Healthy - grt_scores_wide$Unhealthy
-
-
-base_model = lmer(
-  healthy_minus_unhealthy_grt~waveid+intervention_group + (1 |subid),
-     grt_scores_wide %>% filter(waveid %in% c(1,2)))
-summary(base_model)
-intervention_model = lmer(
-  healthy_minus_unhealthy_grt~waveid*intervention_group + (1 |subid),
-  grt_scores_wide %>% filter(waveid %in% c(1,2)))
-
-summary(intervention_model)
-
-anova(base_model,intervention_model)
-
-```
 
 ## Cognitive reappraisal theory:
 
@@ -286,25 +315,144 @@ cognitive appraisal may lead to similar changes or it might not. CR gives people
     - If CR requires a level of effort or is context restricted we expect no change in RT to unhealthy food
         - To really confirm this hypothesis, we’d have to see BRT being significantly *more* effective than CR, i.e., A greater increase in RT to unhealthy foods for BRT vs. CR
 
-
+Let's take a look at that comparison graph again:
 
 ```{r}
-#switch around the control group. the prediction for the second arm is NO change in RT to unhealthy food for cognitive reappraisal (umpqua) vs. Willammette (control) but that there IS more change in BRT
-# summary(lm(healthy_minus_unhealthy_rt_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo"))) # we actually do see a significant change for umpqua
-# 
-# #confirms the first arm!
-# 
-# #what about looking at unhealthy on its own?
-# summary(lm(mean_rt_Unhealthy_w2_m_w1~intervention_group,results_by_subj_int %>% filter(condition=="CorrectGo"))) # again, we see a change for umpqua
-# 
-# results_by_subj_cog_appraisal<-results_by_subj_int
-# results_by_subj_cog_appraisal$intervention_group<-factor(results_by_subj_cog_appraisal$intervention_group,levels=c("mckenzie", "willamette","umpqua"))
-# 
-# summary(lm(mean_rt_Unhealthy_w2_m_w1~intervention_group,results_by_subj_cog_appraisal %>% filter(condition=="CorrectGo" & intervention_group %in% c("mckenzie","umpqua")))) # compared to mckenzie (BRT), umpqua actually pushed unhealthy even more
-# 
+
+  
+ggplot(rt_comparison,aes(x=intervention_group,group=interaction(Health, Wave,intervention_group),color=Wave,y=value))+geom_boxplot()+facet_wrap(~Health)
+```
+
+### MLM
+
+#### Separated by health condition label
+
+What we are mainly hypothesizing is an INCREASE in RT in response to Unhealthy food particularly. Do we see that?
+```{r}
+
+grt_scores_cr_v_cont <- grt_scores %>% filter(intervention_group %in% c("willamette","umpqua"))
+
+base_model = lmer(
+  grt_unhealthy~waveid+intervention_group + (1 |subid),
+     grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+summary(base_model)
+intervention_model = lmer(
+  grt_unhealthy~waveid*intervention_group + (1 |subid),
+  grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
 
 ```
 
+And that seems to be what happens: for CR, the reaction time for Unhealthy food in particular _increases_. **Hypothesis confirmed**
+
+Let's look across all waves...
+
+```{r}
+
+
+
+base_model = lmer(
+  grt_unhealthy~waveid+PostIntervention+intervention_group + (1 |subid),
+     grt_scores_cr_v_cont)
+summary(base_model)
+intervention_model = lmer(
+  grt_unhealthy~waveid+PostIntervention*intervention_group + (1 |subid),
+  grt_scores_cr_v_cont)
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
+```
+
+Yes, it works across all waves, too.
+
+
+While we're here, let's look at healthy food:
+
+```{r}
+
+
+base_model = lmer(
+  grt_healthy~waveid+intervention_group + (1 |subid),
+     grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+summary(base_model)
+intervention_model = lmer(
+  grt_healthy~waveid*intervention_group + (1 |subid),
+  grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+```
+
+There's a change in healthy food in the _same_ direction--the CR group seem to be more mindful either way.
+
+
+#### Contrasting health groups
+
+It will be useful corroborating evidence if the increase for unhealthy food is _greater_ than the increase for healthy food
+
+```{r}
+library(lme4)
+
+
+#flip around to make it easier to interpret.
+grt_scores_cr_v_cont$grt_unhealthy_m_healthy <- - grt_scores_cr_v_cont$grt_healthy_m_unhealthy
+
+base_model = lmer(
+  grt_unhealthy_m_healthy~waveid+intervention_group + (1 |subid),
+     grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+summary(base_model)
+intervention_model = lmer(
+  grt_unhealthy_m_healthy~waveid*intervention_group + (1 |subid),
+  grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
+```
+
+
+```{r}
+
+
+
+base_model = lmer(
+  grt_unhealthy_m_healthy~waveid+intervention_group + PostIntervention + (1 |subid),
+     grt_scores_cr_v_cont)
+summary(base_model)
+intervention_model = lmer(
+  grt_unhealthy_m_healthy~waveid+PostIntervention*intervention_group + (1 |subid),
+  grt_scores_cr_v_cont)
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+```
+So in this test we do see a INCREASE in reaction time to unhealthy (vs. healthy) food.   This is consistent with the hypothesis for cognitive appraisal.
+
+
+
+#### Health groups combined
+```{r}
+
+base_model = lmer(
+  grt~waveid+intervention_group + (1 |subid),
+     grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+summary(base_model)
+intervention_model = lmer(
+  grt~waveid*intervention_group + (1 |subid),
+  grt_scores_cr_v_cont %>% filter(waveid %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+```
 
 
 
@@ -387,44 +535,81 @@ summary(mediation::mediate(model.m=med_model,model.y=ffq_model,mediator="healthy
 
 # Reprise with SSRT
 
+We didn't actually include a hypothesis with respect to SSRT! But, nevertheless, we can take a look.
+
+I think we are best off using `mean_ssrt_0` or `SSRTQuant`, which does not assume 50% breakeven but instead looks at 
+
 ```{r}
 source("SST_processing.R")
 
+
 ssrt_scores <- sst_all_data_clean %>% dplyr::select(subid,waveid,runid, trial_n,condition,reaction_time_clean,health_condition_label,SSD_recorded) %>%
-  group_by(health_condition_label) %>%
-  get_more_sst_trial_stats() %>% 
+  group_by(subid,waveid,runid,health_condition_label) %>%
+  get_sst_for_run() %>% 
   group_by(subid,waveid,runid,health_condition_label) %>% 
-  summarize(mean_ssrt_0 = mean(ssrt_0[condition=="CorrectStop"],na.rm=TRUE))
-  # summarize(mean_rt=mean(reaction_time_clean), mean_trial_n=mean(trial_n)) %>%
-  # pivot_wider(names_from="health_condition_label",values_from = c("mean_rt","mean_trial_n"))
+  summarize(mean_ssrt_0 = mean(ssrt_0[condition=="CorrectStop"],na.rm=TRUE)) %>%
+  filter(!is.na(health_condition_label))
 
 ssrt_scores_by_wave <- ssrt_scores %>%
   pivot_wider(id_cols=c("subid","waveid","runid"),names_from="health_condition_label",values_from="mean_ssrt_0",names_prefix = "mean_ssrt_0_") %>%
-  rename("session_id"="waveid","SID"="subid") %>% ungroup() %>% dplyr::select(-runid,-mean_ssrt_0_NA)
+  rename("session_id"="waveid","SID"="subid") %>% ungroup() %>% dplyr::select(-runid)
+
 ssrt_scores_by_wave$Healthy_m_Unhealthy_mean_ssrt_0<-ssrt_scores_by_wave$mean_ssrt_0_Healthy-ssrt_scores_by_wave$mean_ssrt_0_Unhealthy
+ssrt_scores_by_wave$Unhealthy_m_Healthy_mean_ssrt_0<-ssrt_scores_by_wave$Healthy_m_Unhealthy_mean_ssrt_0
 all_ppt_data_w_ssrt<-merge(all_ppt_data,ssrt_scores_by_wave,by=c("SID","session_id"),all.x=TRUE,all.y=TRUE)
 
-all_ppt_data_w_ssrt_int <- all_ppt_data_w_ssrt %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
+all_ppt_data_w_ssrt_int <- all_ppt_data_w_ssrt %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE) %>%
+  filter(session_id>0)
 
 value_cols <- colnames(all_ppt_data_w_ssrt)[!(colnames(all_ppt_data_w_ssrt) %in% c("SID","session_id")) & sapply(all_ppt_data_w_ssrt,class) %in% c("numeric","logical")]
 all_ppt_data_subjs <- all_ppt_data_w_ssrt %>% dplyr::select(SID)
-all_ppt_data_s1 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==1) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
-all_ppt_data_s2 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==2) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
-all_ppt_data_s3 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==3) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
 
-#w2vw1
-change_scores <- (all_ppt_data_s2[,value_cols] - all_ppt_data_s1[,value_cols])
-colnames(change_scores)<-paste0(colnames(change_scores),"_s2_m_s1")
-all_ppt_data_s2_m_s1 <- cbind(all_ppt_data_subjs,change_scores)
-all_ppt_data_s2_m_s1_int<-all_ppt_data_s2_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
+all_ppt_data_w_ssrt_int$PostIntervention <- all_ppt_data_w_ssrt_int$session_id>1
+all_ppt_data_w_ssrt_brt<-all_ppt_data_w_ssrt_int %>% filter(intervention_group %in% c("willamette","mckenzie"))
+all_ppt_data_w_ssrt_cr <- all_ppt_data_w_ssrt_int %>% filter(intervention_group %in% c("willamette","umpqua"))
+```
+
+## Exploratory
+
+When calculating SSRTs for subsets, should we just use the Go trials relating to that subset? Probably, yeah, because if there really is separate SSRT, those are the informative ones we need to know.
+```{r}
+
+ssrt_comparison<-all_ppt_data_w_ssrt_int %>%
+  filter(session_id>0 & session_id %in% c(1,2))%>%
+  select(SID,session_id,intervention_group,
+        mean_ssrt_0_Healthy,
+         mean_ssrt_0_Unhealthy) %>% 
+  pivot_longer(cols = c(-SID,-session_id,-intervention_group), names_to = "measure",values_to = "ssrt_mean") %>%
+  mutate(Health = sub("mean_ssrt_0_","",measure),
+         session_id = as.factor(session_id)
+         )
+  
+  
+  
+ggplot(ssrt_comparison,aes(x=intervention_group,group=interaction(Health, session_id,intervention_group),color=session_id,y=ssrt_mean))+geom_boxplot()+facet_wrap(~Health)
+
+```
 
 
-#w3vw1
-change_scores <- (all_ppt_data_s3[,value_cols] - all_ppt_data_s1[,value_cols])
-colnames(change_scores)<-paste0(colnames(change_scores),"_s3_m_s1")
-all_ppt_data_s3_m_s1 <- cbind(all_ppt_data_subjs,change_scores)
-all_ppt_data_s3_m_s1_int<-all_ppt_data_s3_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
-
+```{r}
+# 
+# all_ppt_data_s1 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==1) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
+# all_ppt_data_s2 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==2) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
+# all_ppt_data_s3 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==3) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
+# 
+# #w2vw1
+# change_scores <- (all_ppt_data_s2[,value_cols] - all_ppt_data_s1[,value_cols])
+# colnames(change_scores)<-paste0(colnames(change_scores),"_s2_m_s1")
+# all_ppt_data_s2_m_s1 <- cbind(all_ppt_data_subjs,change_scores)
+# all_ppt_data_s2_m_s1_int<-all_ppt_data_s2_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
+# 
+# 
+# #w3vw1
+# change_scores <- (all_ppt_data_s3[,value_cols] - all_ppt_data_s1[,value_cols])
+# colnames(change_scores)<-paste0(colnames(change_scores),"_s3_m_s1")
+# all_ppt_data_s3_m_s1 <- cbind(all_ppt_data_subjs,change_scores)
+# all_ppt_data_s3_m_s1_int<-all_ppt_data_s3_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
+# 
 
 
 
@@ -435,41 +620,16 @@ all_ppt_data_s3_m_s1_int<-all_ppt_data_s3_m_s1 %>% merge(full_dataset_with_group
 
   - BR Training (vs. Control) decreases RT to healthy foods and increases RT to unhealthy foods; because the SST task calibrates difficulty level, these two will be difficult to pull apart but we should see an increase Unhealthy RT - Healthy RT
     
-    
-```{r}
-ssrt_scores_w1<-ssrt_scores_by_wave %>% filter(session_id==1)
-ssrt_scores_w2<-ssrt_scores_by_wave %>% filter(session_id==2)
 
-```
-
-    
-    
-```{r}
-
-summary(lm(Healthy_m_Unhealthy_mean_ssrt_0_s2_m_s1~1,all_ppt_data_s2_m_s1_int))
-
-
-
-summary(lm(mean_ssrt_0_Healthy_s2_m_s1~intervention_group,all_ppt_data_s2_m_s1_int))
-summary(lm(mean_ssrt_0_Unhealthy_s2_m_s1~intervention_group,all_ppt_data_s2_m_s1_int))
-summary(lm(Healthy_m_Unhealthy_mean_ssrt_0_s2_m_s1~intervention_group,all_ppt_data_s2_m_s1_int))
-
-summary(lm(Healthy_m_Unhealthy_mean_ssrt_0_s2_m_s1~intervention_group+age365_z+birthsex_factor,all_ppt_data_s2_m_s1_int))
-
-
-```
-Nothing for BRT theory :-(
-
-
+### Contrasting health groups
 ```{r}
 library(lme4)
 
-
-base_model = lmer(SST_mean_ssrt_0~session_id+intervention_group + age365_z + (1 |SID),
-     all_ppt_data_w_ssrt_int %>% filter(session_id %in% c(1,2)))
+base_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id+intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt %>% filter(session_id %in% c(1,2)))
 summary(base_model)
-intervention_model = lmer(SST_mean_ssrt_0~session_id*intervention_group + age365_z + (1 |SID),
-     all_ppt_data_w_ssrt_int %>% filter(session_id %in% c(1,2)))
+intervention_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id*intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt %>% filter(session_id %in% c(1,2)))
 
 summary(intervention_model)
 
@@ -477,91 +637,138 @@ anova(base_model,intervention_model)
 
 ```
 
-## Ungrouped by health condition
+
+```{r}
+library(lme4)
+
+base_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id+PostIntervention+intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt)
+summary(base_model)
+intervention_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id+PostIntervention*intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt)
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
+```
+
+
+### Separated by health condition label
+
+Just look at unhealthy...
 
 
 ```{r}
-source("SST_processing.R")
+library(lme4)
 
-ssrt_scores <- sst_all_data_clean %>% dplyr::select(subid,waveid,runid, trial_n,condition,reaction_time_clean,health_condition_label,SSD_recorded) %>%
-  get_more_sst_trial_stats() %>% 
+base_model = lmer(mean_ssrt_0_Unhealthy~session_id+intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt %>% filter(session_id %in% c(1,2)))
+intervention_model = lmer(mean_ssrt_0_Unhealthy~session_id*intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt %>% filter(session_id %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
+```
+
+## CRT
+
+### Separated by health condition label
+
+Just look at unhealthy...
+
+What we are mainly hypothesizing is an INCREASE in RT in response to Unhealthy food particularly. Do we see that?
+
+```{r}
+library(lme4)
+
+base_model = lmer(mean_ssrt_0_Unhealthy~session_id+intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_cr %>% filter(session_id %in% c(1,2)))
+intervention_model = lmer(mean_ssrt_0_Unhealthy~session_id*intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_cr %>% filter(session_id %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
+```
+
+
+
+
+### Contrasting health groups
+```{r}
+library(lme4)
+
+base_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id+intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_cr %>% filter(session_id %in% c(1,2)))
+summary(base_model)
+intervention_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id*intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_cr %>% filter(session_id %in% c(1,2)))
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
+```
+
+
+```{r}
+library(lme4)
+
+base_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id+PostIntervention+intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt)
+summary(base_model)
+intervention_model = lmer(Unhealthy_m_Healthy_mean_ssrt_0~session_id+PostIntervention*intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_brt)
+
+summary(intervention_model)
+
+anova(base_model,intervention_model)
+
+```
+
+
+## Post-hoc, health groups combined
+
+```{r}
+
+
+ssrt_scores <- sst_all_data_clean %>% dplyr::select(subid,waveid,runid, trial_n,condition,reaction_time_clean,SSD_recorded) %>%
+  group_by(subid,waveid,runid) %>%
+  get_sst_for_run() %>% 
   group_by(subid,waveid,runid) %>% 
   summarize(mean_ssrt_0 = mean(ssrt_0[condition=="CorrectStop"],na.rm=TRUE))
 
 ssrt_scores_by_wave <- ssrt_scores %>%
-  # pivot_wider(id_cols=c("subid","waveid","runid"),names_from="health_condition_label",values_from="mean_ssrt_0",names_prefix = "mean_ssrt_0_") %>%
-  rename("session_id"="waveid","SID"="subid") %>% ungroup() %>% dplyr::select(-runid)
+#   pivot_wider(id_cols=c("subid","waveid","runid"),names_from="health_condition_label",values_from="mean_ssrt_0",names_prefix = "mean_ssrt_0_") %>%
+   rename("session_id"="waveid","SID"="subid") %>% ungroup() %>% 
+  dplyr::select(-runid)
+
+
 
 all_ppt_data_w_ssrt<-merge(all_ppt_data,ssrt_scores_by_wave,by=c("SID","session_id"),all.x=TRUE,all.y=TRUE)
 
+#general SSRT, without dividing by health condition, 
+all_ppt_data_w_ssrt_int_gen <- all_ppt_data_w_ssrt %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE) %>%
+  filter(session_id>0)
 
-
-value_cols <- colnames(all_ppt_data_w_ssrt)[!(colnames(all_ppt_data_w_ssrt) %in% c("SID","session_id")) & sapply(all_ppt_data_w_ssrt,class) %in% c("numeric","logical")]
-all_ppt_data_subjs <- all_ppt_data_w_ssrt %>% dplyr::select(SID)
-all_ppt_data_s1 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==1) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
-all_ppt_data_s2 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==2) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
-all_ppt_data_s3 <- all_ppt_data_w_ssrt %>% dplyr::filter(session_id==3) %>% merge(all_ppt_data_subjs,by="SID", sort = TRUE,all.y=TRUE)
-
-all_ppt_data_subjs_int <- all_ppt_data_w_ssrt %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
-
-#w2vw1
-change_scores <- (all_ppt_data_s2[,value_cols] - all_ppt_data_s1[,value_cols])
-colnames(change_scores)<-paste0(colnames(change_scores),"_s2_m_s1")
-all_ppt_data_s2_m_s1 <- cbind(all_ppt_data_subjs,change_scores)
-all_ppt_data_s2_m_s1_int<-all_ppt_data_s2_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
-
-
-#w3vw1
-change_scores <- (all_ppt_data_s3[,value_cols] - all_ppt_data_s1[,value_cols])
-colnames(change_scores)<-paste0(colnames(change_scores),"_s3_m_s1")
-all_ppt_data_s3_m_s1 <- cbind(all_ppt_data_subjs,change_scores)
-all_ppt_data_s3_m_s1_int<-all_ppt_data_s3_m_s1 %>% merge(full_dataset_with_groups %>% dplyr::select(SID,intervention_group,age365_z,birthsex_factor),by.x = "SID",by.y="SID",all = FALSE)
-
-
-
-
+all_ppt_data_w_ssrt_int_gen$PostIntervention <- all_ppt_data_w_ssrt_int_gen$session_id>1
 
 ```
 
 ```{r}
-plot(all_ppt_data_s2_m_s1_int$SST_mean_ssrt_0_s2_m_s1,all_ppt_data_s2_m_s1_int$SST_SSRT_s2_m_s1)
-summary(lm(SST_mean_ssrt_0_s2_m_s1~intervention_group,all_ppt_data_s2_m_s1_int))
-summary(lm(SST_SSRT_s2_m_s1~intervention_group,all_ppt_data_s2_m_s1_int))
-summary(lm(SST_SSRT_s3_m_s1~intervention_group,all_ppt_data_s3_m_s1_int))
 
-
-```
-
-```{r}
-library(lme4)
-
-
-base_model = lmer(mean_ssrt_0~session_id+intervention_group + (1 |SID),
-     all_ppt_data_subjs_int %>% filter(session_id %in% c(1,2)))
-summary(base_model)
-intervention_model = lmer(mean_ssrt_0~session_id*intervention_group + (1 |SID),
-     all_ppt_data_subjs_int %>% filter(session_id %in% c(1,2)))
+base_model = lmer(mean_ssrt_0~session_id+intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_int_gen %>% filter(session_id %in% c(1,2)))
+intervention_model = lmer(mean_ssrt_0~session_id*intervention_group + age365_z + (1 |SID),
+     all_ppt_data_w_ssrt_int_gen %>% filter(session_id %in% c(1,2)))
 
 summary(intervention_model)
 
 anova(base_model,intervention_model)
-
-```
-
-```{r}
-library(lme4)
-all_ppt_data_subjs_int$PostIntervention <- all_ppt_data_subjs_int$session_id>1
-
-base_model = lmer(mean_ssrt_0~PostIntervention+intervention_group+session_id + (1 |SID),
-     all_ppt_data_subjs_int)
-summary(base_model)
-intervention_model = lmer(mean_ssrt_0~PostIntervention*intervention_group+session_id + (1 |SID),
-     all_ppt_data_subjs_int)
-
-summary(intervention_model)
-
-anova(base_model,intervention_model)
-
 ```
 
 # Proportions of healthy vs unhealthy stop trials that are correct
