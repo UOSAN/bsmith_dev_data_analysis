@@ -306,6 +306,53 @@ outcome_measures <- c(
 
 ```
 
+## even more interaction terms
+
+see https://rpubs.com/alliechoate/502710
+```{r}
+#TREAT=HINTSIsRural_i
+#m1=IncomeRanges_r
+#m2=Fruit_vegetables_z
+#OUTCOME=MedConditions_HighBP_i
+
+
+#NEXT TO DO: DEAL WITH CATEGORICAL DATA. GUIDE HERE: https://lavaan.ugent.be/tutorial/cat.html
+hints_model_template_int=
+"
+  #Regressions
+  IncomeRanges_r ~ ab*HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese + Hisp_Cat2_Unknown + Hisp_Cat2_Mexican + Hisp_Cat2_Other_Hispanic + Hisp_Cat2_Puerto_Rican + Hisp_Cat2_Multiple_Hispanic_ethnicities_selected + Hisp_Cat2_Cuban
+  
+  Fruit_vegetables_z ~ bc*IncomeRanges_r + ac*HINTSIsRural_i + bc_g*IncomeRanges_r:HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese + Hisp_Cat2_Unknown + Hisp_Cat2_Mexican + Hisp_Cat2_Other_Hispanic + Hisp_Cat2_Puerto_Rican + Hisp_Cat2_Multiple_Hispanic_ethnicities_selected + Hisp_Cat2_Cuban
+  
+  (OUTCOMEVAR) ~ cd*Fruit_vegetables_z + bd*IncomeRanges_r + ad*HINTSIsRural_i + cd_g*Fruit_vegetables_z:HINTSIsRural_i + bd_g*IncomeRanges_r:HINTSIsRural_i + Age_c + Age_c_pow2 + Gender3C_Male + Gender3C_MissingOrMultiple + RacePP2_American_Indian_or_Alaska_Native + RacePP2_Asian_Indian + RacePP2_Black + RacePP2_Chinese + RacePP2_Filipino + RacePP2_Japanese + RacePP2_Korean + RacePP2_Missing_Data + RacePP2_Multiple_races_selected + RacePP2_Other_Asian + RacePP2_Pacific_Islander + RacePP2_Vietnamese + Hisp_Cat2_Unknown + Hisp_Cat2_Mexican + Hisp_Cat2_Other_Hispanic + Hisp_Cat2_Puerto_Rican + Hisp_Cat2_Multiple_Hispanic_ethnicities_selected + Hisp_Cat2_Cuban
+  
+  
+  #Defined Parameters:
+  indirect_effect_ctrl := ab*bc*cd
+  indirect_effect_treat := ab*(bc+bc_g)*(cd+cd_g)
+  indirect_effect_avg := (ab*bc*cd + ab*(bc+bc_g)*(cd+cd_g))/2
+  indirect_effect_diff := ab*bc*cd - ab*(bc+bc_g)*(cd+cd_g)
+  effect_via_inc_only :=ab*bd
+  effect_via_fruit_vege_only :=ac*cd
+  direct_effect := ad
+"
+
+# - Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
+
+outcome_measures <- c(
+  "BMI",
+  "GeneralHealth_i",
+  "MedConditionsAggregate", #would benefit from being modelled as a poisson or something.x`
+  "MedConditions_HighBP_i",
+  "EverHadCancer_i"#no cancer for now, doesn't seem very important.
+  )
+
+
+
+
+```
+
+
 ```{r}
 
 
@@ -598,6 +645,66 @@ outcome_measures <- c(
 
 
 ```
+
+### even more interaction terms
+
+
+
+```{r}
+#TREAT=HINTSIsRural_i
+#m1=IncomeRanges_r
+#m2=Fruit_vegetables_z
+#OUTCOME=MedConditions_HighBP_i
+
+
+# mb <- lm(MESA_healthyfoodavailability_z~RuralZIP_i+Gender3C+DEMO_Age_c+RaceC2+PSS_z,data_to_measure)
+# mc <- lm(BMI~RuralZIP_i+Gender3C+DEMO_Age_c+RaceC2+MESA_healthyfoodavailability_z+PSS_z,data_to_measure)
+
+# [1] "RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported + RaceC2_WhiteOnly"
+# [1] "Gender3C_Female + Gender3C_Male + Gender3C_Other"
+
+#NEXT TO DO: DEAL WITH CATEGORICAL DATA. GUIDE HERE: https://lavaan.ugent.be/tutorial/cat.html
+oregon_model_template_int=
+"
+  #Regressions
+  aSES_02_z ~ ab*RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  MESA_healthyfoodavailability_z ~ bc*aSES_02_z + ac*RuralZIP_i + bc_g*RuralZIP_i:aSES_02_z + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  FFQ_fruit_vegetables_z ~ cd*MESA_healthyfoodavailability_z + bd*aSES_02_z + ad*RuralZIP_i + cd_g*RuralZIP_i:MESA_healthyfoodavailability_z + bd_g*aSES_02_z:RuralZIP_i + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  (OUTCOMEVAR) ~ de*FFQ_fruit_vegetables_z + ce*MESA_healthyfoodavailability_z + be*aSES_02_z + ae*RuralZIP_i + de_g*RuralZIP_i:FFQ_fruit_vegetables_z + ce_g*RuralZIP_i:MESA_healthyfoodavailability_z + be_g*RuralZIP_i:MESA_healthyfoodavailability_z + DEMO_Age_c + DEMO_Age_c_pow2 + Gender3C_Male + Gender3C_Other + RaceC2_Asian + RaceC2_HawaiianOtherPacificIslander + RaceC2_HispanicAnyRace + RaceC2_OtherRaceRaceNotReported
+  
+  
+  #Defined Parameters:
+  indirect_effect_ctrl := ab*bc*cd*de
+  indirect_effect_treat := ab*(bc+bc_g)*(cd+cd_g)*(de+de_g)
+  # indirect_effect_avg := (ab*bc*cd*de + ab*(bc+bc_g)*(cd+cd_g)*(de+de_g))/2
+  # indirect_effect_diff := ab*(bc+bc_g)*(cd+cd_g)*(de+de_g) - ab*bc*cd*de
+  # model didn't work with these included.
+  
+  effect_via_food := ac*cd*de
+  effect_via_income := ab*be
+  effect_via_inc_eating := ab*bd*de
+  effect_via_eating := ad*de
+  direct_effect := ae
+"
+
+# - Outcome: Physical and health measures. Altogether, we'll repeat the mediation several times, with the following outcomes variables: BMI, self-rated health, aggregated cardiometabolic health, and high blood pressure.
+
+outcome_measures <- c(
+  "BMI"#,
+  #"GeneralHealth_i",
+  #"MedConditionsAggregate",
+  #"MedConditions_HighBP_i",
+  #"EverHadCancer_i"#no cancer for now, doesn't seem very important.
+  )
+
+
+
+
+```
+
 
 ```{r}
 
@@ -995,13 +1102,16 @@ On its face, this "hybrid effect" shows that if we assume relationships between 
 
 Because there are quite a lot of results here, we should probably summarize them in a table.
 
+### load data from HDD
+
 ```{r}
+rdata_backup_filename = paste0("sequential_boot_",boot_times,"_int2.Rdata") 
 if (exists("lavaan_results_df")){
   print("backing up data to hard disk")
-  save.image(file=paste0("sequential_boot_",boot_times,".Rdata"))
+  save.image(file=rdata_backup_filename)
 }else{
   print('loading data from hard disk')
- load(file=paste0("sequential_boot_",boot_times,".Rdata")) 
+ load(file=rdata_backup_filename) 
 
 }
 

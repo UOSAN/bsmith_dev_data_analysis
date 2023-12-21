@@ -64,7 +64,10 @@ get_hints5 <- function(location = "/Users/benjaminsmith/Dropbox (University of O
   hints5$Age_c <- hints5$Age-38 #using U.S. median age
 
   hints5$HINTSIsRural <- grepl("Metropolitan",hints5$PR_RUCA_2010)==FALSE
+  hints5$HINTSIsRural[grepl("Not coded",hints5$PR_RUCA_2010)]<-NA
   hints5$HINTSIsRural_i <- as.numeric(hints5$HINTSIsRural)
+  
+  
   
   
   hints5$RacePreprocessed<- stringr::str_replace(hints5$Race_Cat2," only","")
@@ -80,6 +83,7 @@ get_hints5 <- function(location = "/Users/benjaminsmith/Dropbox (University of O
   hints5$HHInc[hints5$HHInc=="Missing data (Web partial - Question Never Seen)"]<-NA
   median_hh_inc<-median(as.integer(hints5$HHInc),na.rm=TRUE)
   hints5$HHInc_r <- as.integer(hints5$HHInc)-median_hh_inc
+  
   
   hints5$IncomeRanges[hints5$IncomeRanges=="Missing Data"]<-NA
   hints5$IncomeRanges[hints5$IncomeRanges=="Missing data (Web partial - Question Never Seen)"]<-NA

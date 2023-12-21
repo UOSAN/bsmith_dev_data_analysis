@@ -194,6 +194,35 @@ zscore <- function(x){
   return((x-mean(x,na.rm=TRUE))/sd(x,na.rm=TRUE))
 }
 
+generate_education_categorical <- function(preprocessed_data){
+  
+  
+  
+  #11 is doctoral degree; 12+ are "other" and "decline to answer"
+  preprocessed_data$DEMO_4[preprocessed_data$DEMO_4>11]<-NA
+  
+  preprocessed_data$Education_Categorical <- preprocessed_data$DEMO_4
+  preprocessed_data$Education_Categorical <- preprocessed_data$DEMO_4
+  preprocessed_data$Education_Categorical[preprocessed_data$DEMO_4<3] <- 3 #very few under three so we'll move them up
+  #very few over 9, so we move them down
+  preprocessed_data$Education_Categorical[preprocessed_data$DEMO_4>9] <- 9
+  #now add descriptors
+  preprocessed_data$Education_Categorical<-factor(
+    preprocessed_data$Education_Categorical,
+    levels=3:9,
+    labels=c("No high school diploma",
+             "High school diploma/GED",
+             "Some college credit, no degree",
+             "Trade, technical, or vocational training",
+             "Associate's degree",
+             "Bachelor's degree",
+             "Master's, Professional, or doctoral degree"),
+      ordered = TRUE
+  )
+  
+  return(preprocessed_data)
+  
+}
 
 extract_and_label_bootstrap_results<-function(fit_obj){
   fit_to_read <- fit_obj
